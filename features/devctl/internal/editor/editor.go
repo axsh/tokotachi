@@ -1,8 +1,10 @@
 package editor
 
 import (
-	"os"
+	"encoding/hex"
+	"fmt"
 
+	"github.com/escape-dev/devctl/internal/cmdexec"
 	"github.com/escape-dev/devctl/internal/log"
 )
 
@@ -14,6 +16,7 @@ type LaunchOptions struct {
 	TryDevcontainer bool
 	Logger          *log.Logger
 	DryRun          bool
+	CmdRunner       *cmdexec.Runner
 }
 
 // LaunchResult describes the outcome of an editor launch.
@@ -31,9 +34,18 @@ type Launcher interface {
 
 // ResolveCommand returns the editor command from environment variable,
 // falling back to defaultCmd if the env var is not set.
+// Delegates to cmdexec.ResolveCommand.
 func ResolveCommand(envKey, defaultCmd string) string {
-	if v := os.Getenv(envKey); v != "" {
-		return v
+	return cmdexec.ResolveCommand(envKey, defaultCmd)
+}
+
+// DevcontainerURI builds a vscode-remote URI for attaching to a Dev Container.
+// The container name must be hex-encoded as required by the VS Code / Cursor
+// Dev Containers extension protocol.
+func DevcontainerURI(containerName, workspaceFolder string) string {
+	hexName := hex.EncodeToString([]byte(containerName))
+	if workspaceFolder == "" {
+		workspaceFolder = "/workspace"
 	}
-	return defaultCmd
+	return fmt.Sprintf("vscode-remote://attached-container+%s%s", hexName, workspaceFolder)
 }

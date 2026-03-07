@@ -12,7 +12,6 @@ type Input struct {
 	Editor        detect.Editor
 	ContainerMode matrix.ContainerMode
 	Up            bool
-	Open          bool
 	Down          bool
 	Status        bool
 	Shell         bool
@@ -20,6 +19,10 @@ type Input struct {
 	SSH           bool
 	Rebuild       bool
 	NoBuild       bool
+	// EditorOpen indicates the editor should be opened (set when --editor on up, or open subcommand).
+	EditorOpen bool
+	// Attach indicates DevContainer attach should be attempted (open --attach).
+	Attach bool
 }
 
 // Plan describes the concrete actions to execute.
@@ -52,12 +55,18 @@ func Build(input Input) Plan {
 		NoBuild:              input.NoBuild,
 	}
 
-	if input.Open {
+	if input.EditorOpen {
 		p.ShouldOpenEditor = true
-		// Determine whether to attempt devcontainer attach based on capability
-		if cap.CanTryDevcontainerAttach &&
+		// Determine whether to attempt devcontainer attach
+		if input.Attach && cap.CanTryDevcontainerAttach &&
 			(input.ContainerMode == matrix.ContainerDevContainer ||
 				input.ContainerMode == matrix.ContainerDockerLocal) {
+			p.TryDevcontainerAttach = true
+			p.CompatLevel = cap.DevcontainerOpenLevel
+		} else if input.Up && cap.CanTryDevcontainerAttach &&
+			(input.ContainerMode == matrix.ContainerDevContainer ||
+				input.ContainerMode == matrix.ContainerDockerLocal) {
+			// up --editor also tries devcontainer attach
 			p.TryDevcontainerAttach = true
 			p.CompatLevel = cap.DevcontainerOpenLevel
 		} else {

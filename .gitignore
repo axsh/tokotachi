@@ -4,6 +4,9 @@ bin/
 # Temporary files
 tmp/
 
+# Worktrees
+work/*
+
 # OS files
 .DS_Store
 Thumbs.db

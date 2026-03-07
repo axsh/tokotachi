@@ -2,8 +2,6 @@ package editor
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 )
 
 const (
@@ -34,11 +32,8 @@ func (v *VSCode) Launch(opts LaunchOptions) (LaunchResult, error) {
 	// Try devcontainer attach if capable
 	if opts.TryDevcontainer && opts.ContainerName != "" {
 		opts.Logger.Info("Attempting Dev Container attach for %s...", opts.ContainerName)
-		uri := fmt.Sprintf("vscode-remote://attached-container+%s/workspace", opts.ContainerName)
-		attach := exec.Command(cmd, "--folder-uri", uri)
-		attach.Stdout = os.Stdout
-		attach.Stderr = os.Stderr
-		if err := attach.Run(); err == nil {
+		uri := DevcontainerURI(opts.ContainerName, "")
+		if err := opts.CmdRunner.RunInteractive(cmd, "--folder-uri", uri); err == nil {
 			opts.Logger.Info("Dev Container attach succeeded")
 			return LaunchResult{Method: "devcontainer", EditorCmd: cmd}, nil
 		}
@@ -50,10 +45,7 @@ func (v *VSCode) Launch(opts LaunchOptions) (LaunchResult, error) {
 	if opts.NewWindow {
 		args = append([]string{"--new-window"}, args...)
 	}
-	run := exec.Command(cmd, args...)
-	run.Stdout = os.Stdout
-	run.Stderr = os.Stderr
-	if err := run.Run(); err != nil {
+	if err := opts.CmdRunner.RunInteractive(cmd, args...); err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to open VSCode: %w", err)
 	}
 	fallback := opts.TryDevcontainer

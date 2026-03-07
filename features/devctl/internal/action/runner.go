@@ -1,45 +1,41 @@
 package action
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
-
+	"github.com/escape-dev/devctl/internal/cmdexec"
 	"github.com/escape-dev/devctl/internal/log"
 )
 
-// Runner executes Docker commands.
+// Runner executes container and editor actions via cmdexec.
 type Runner struct {
-	Logger *log.Logger
-	DryRun bool
+	Logger    *log.Logger
+	DryRun    bool
+	CmdRunner *cmdexec.Runner
 }
 
-// DockerRun executes "docker <args...>".
-// In dry-run mode, it only logs the command.
+// DockerRun executes "docker <args...>" interactively.
 func (r *Runner) DockerRun(args ...string) error {
-	r.Logger.Debug("docker %v", args)
-	if r.DryRun {
-		r.Logger.Info("[DRY-RUN] docker %v", args)
-		return nil
-	}
-	cmd := exec.Command("docker", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker %v: %w", args, err)
-	}
-	return nil
+	return r.CmdRunner.RunInteractive("docker", args...)
 }
 
 // DockerRunOutput executes "docker <args...>" and returns stdout.
 func (r *Runner) DockerRunOutput(args ...string) (string, error) {
-	r.Logger.Debug("docker %v", args)
-	cmd := exec.Command("docker", args...)
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("docker %v: %w", args, err)
-	}
-	return string(out), nil
+	return r.CmdRunner.Run("docker", args...)
+}
+
+// DockerRunCheck executes a Docker command for condition checking.
+// Failures are logged at DEBUG level with [SKIP] label (not ERROR).
+func (r *Runner) DockerRunCheck(args ...string) error {
+	return r.CmdRunner.RunInteractiveWithOpts(cmdexec.CheckOpt(), "docker", args...)
+}
+
+// DockerRunOutputCheck is like DockerRunOutput but for condition checks.
+// Failures are logged at DEBUG level with [SKIP] label (not ERROR).
+func (r *Runner) DockerRunOutputCheck(args ...string) (string, error) {
+	return r.CmdRunner.RunWithOpts(cmdexec.CheckOpt(), "docker", args...)
+}
+
+// DockerRunTolerated executes a Docker command where failure is acceptable.
+// Failures are logged at WARN level.
+func (r *Runner) DockerRunTolerated(args ...string) error {
+	return r.CmdRunner.RunInteractiveWithOpts(cmdexec.ToleratedOpt(), "docker", args...)
 }

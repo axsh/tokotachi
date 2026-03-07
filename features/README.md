@@ -66,3 +66,10 @@ often using:
 * Git worktrees
 * Dev Containers
 * Independent development environments
+
+## Current Features
+
+| Feature | Description | Language |
+|---|---|---|
+| `devctl` | Development environment orchestrator CLI | Go |
+| `integration-test` | Integration test suite for devctl | Python |

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/escape-dev/devctl/internal/cmdexec"
 	"github.com/escape-dev/devctl/internal/detect"
 	"github.com/escape-dev/devctl/internal/editor"
 	"github.com/escape-dev/devctl/internal/log"
@@ -44,6 +45,8 @@ func TestLauncher_DryRun(t *testing.T) {
 		t.Run(string(ed), func(t *testing.T) {
 			var buf bytes.Buffer
 			logger := log.New(&buf, true)
+			rec := cmdexec.NewRecorder()
+			runner := &cmdexec.Runner{Logger: logger, DryRun: true, Recorder: rec}
 			l, err := editor.NewLauncher(ed)
 			require.NoError(t, err)
 
@@ -51,6 +54,7 @@ func TestLauncher_DryRun(t *testing.T) {
 				WorktreePath: "/tmp/test-worktree",
 				DryRun:       true,
 				Logger:       logger,
+				CmdRunner:    runner,
 			})
 			require.NoError(t, err)
 			assert.NotEmpty(t, result.Method)

@@ -5,6 +5,7 @@ set -euo pipefail
 # integration_test.sh — Integration & E2E Test Runner
 #
 # Runs integration tests located under the tests/ directory.
+# Supports both Go (*_test.go) and Python (test_*.py) tests.
 # Supports category filtering, specific test execution,
 # and resuming from the last failure point.
 #
@@ -13,7 +14,9 @@ set -euo pipefail
 #
 # Options:
 #   --categories <c1,c2>    Run tests only for specified categories
-#   --specify <TestRegex>   Run only tests matching the regex
+#   --specify <Filter>      Run only tests matching the filter
+#                            (Go: passed to 'go test -run',
+#                             Python: passed to 'pytest -k')
 #   --resume                Resume from the last failed test
 #   --help                  Show this help message
 #
@@ -51,12 +54,14 @@ Usage: ./scripts/process/integration_test.sh [OPTIONS]
 
 Runs integration tests in the tests/ directory.
 Each subdirectory under tests/ is treated as a "category".
+Supports both Go (*_test.go) and Python (test_*.py / pytest) tests.
 
 Options:
   --categories <c1,c2>    Comma-separated list of test categories to run
                            (subdirectory names under tests/)
-  --specify <TestRegex>   Run only tests matching the given regex
-                           (passed to 'go test -run')
+  --specify <Filter>      Run only tests matching the given filter
+                           (Go: passed to 'go test -run',
+                            Python: passed to 'pytest -k')
   --resume                Resume from the last failed test category
   --help                  Show this help message
 
@@ -76,6 +81,9 @@ Examples:
 
   # Combine category and test name filter
   ./scripts/process/integration_test.sh --categories "llm" --specify "TestGeminiAPI"
+
+  # Run Python integration tests
+  ./scripts/process/integration_test.sh --categories "integration-test"
 
   # Resume from last failure point
   ./scripts/process/integration_test.sh --resume
@@ -130,6 +138,26 @@ ensure_tmp() {
     mkdir -p "$TMP_DIR"
 }
 
+# Detect the test language for a category directory
+# Returns "go", "python", or "none"
+detect_category_lang() {
+    local test_dir="$1"
+
+    # Go takes priority if both exist
+    if ls "$test_dir"/*_test.go 1>/dev/null 2>&1; then
+        echo "go"
+        return
+    fi
+
+    if ls "$test_dir"/test_*.py 1>/dev/null 2>&1 || \
+       ls "$test_dir"/conftest.py 1>/dev/null 2>&1; then
+        echo "python"
+        return
+    fi
+
+    echo "none"
+}
+
 # Discover test categories (subdirectories under tests/)
 discover_categories() {
     local tests_dir="$PROJECT_ROOT/tests"
@@ -138,13 +166,14 @@ discover_categories() {
         return
     fi
 
-    # Find subdirectories that contain *_test.go files
+    # Find subdirectories that contain Go or Python test files
     for dir in "$tests_dir"/*/; do
         if [[ -d "$dir" ]]; then
             local cat_name
             cat_name=$(basename "$dir")
-            # Check if directory contains Go test files
-            if ls "$dir"*_test.go 1>/dev/null 2>&1; then
+            local lang
+            lang=$(detect_category_lang "$dir")
+            if [[ "$lang" != "none" ]]; then
                 echo "$cat_name"
             fi
         fi
@@ -194,23 +223,12 @@ get_target_categories() {
     fi
 }
 
-# Run tests for a single category
-run_category_tests() {
+# Run Go tests for a single category
+run_go_tests() {
     local category="$1"
-    local test_dir="$PROJECT_ROOT/tests/$category"
+    local test_dir="$2"
 
-    if [[ ! -d "$test_dir" ]]; then
-        warn "Category directory not found: tests/$category — skipping"
-        return 0
-    fi
-
-    # Check for test files
-    if ! ls "$test_dir"/*_test.go 1>/dev/null 2>&1; then
-        warn "No test files in tests/$category — skipping"
-        return 0
-    fi
-
-    step "Running integration tests: $category"
+    step "Running Go integration tests: $category"
 
     # Build the go test command
     local go_test_args=("-v" "-count=1")
@@ -220,20 +238,102 @@ run_category_tests() {
         go_test_args+=("-run" "$SPECIFY")
     fi
 
-    # Add the test package path
-    local pkg_path
-    pkg_path=$(cd "$test_dir" && go list . 2>/dev/null || echo "./tests/$category")
-    go_test_args+=("$pkg_path")
+    # Check if test dir has its own go.mod (independent module)
+    if [[ -f "$test_dir/go.mod" ]]; then
+        # Run go test from the test directory
+        cd "$test_dir"
+        if go test "${go_test_args[@]}" ./...; then
+            success "Category '$category' (Go) — all tests passed."
+            cd "$PROJECT_ROOT"
+            return 0
+        else
+            fail "Category '$category' (Go) — tests FAILED."
+            cd "$PROJECT_ROOT"
+            return 1
+        fi
+    else
+        # Add the test package path (resolve from project root)
+        local pkg_path
+        pkg_path=$(cd "$test_dir" && go list . 2>/dev/null || echo "./tests/$category")
+        go_test_args+=("$pkg_path")
+
+        # Execute from project root
+        cd "$PROJECT_ROOT"
+        if go test "${go_test_args[@]}"; then
+            success "Category '$category' (Go) — all tests passed."
+            return 0
+        else
+            fail "Category '$category' (Go) — tests FAILED."
+            return 1
+        fi
+    fi
+}
+
+# Run Python tests for a single category
+run_python_tests() {
+    local category="$1"
+    local test_dir="$2"
+
+    step "Running Python integration tests: $category"
+
+    # Check if pytest is available
+    if ! python -m pytest --version 1>/dev/null 2>&1 && \
+       ! python3 -m pytest --version 1>/dev/null 2>&1; then
+        fail "pytest is not installed. Install with: pip install pytest"
+        return 1
+    fi
+
+    # Determine python command
+    local python_cmd="python"
+    if ! command -v python 1>/dev/null 2>&1; then
+        python_cmd="python3"
+    fi
+
+    local pytest_args=("-v" "--tb=short")
+
+    # Add -k filter if --specify was given
+    if [[ -n "$SPECIFY" ]]; then
+        pytest_args+=("-k" "$SPECIFY")
+    fi
+
+    pytest_args+=("$test_dir")
 
     # Execute
     cd "$PROJECT_ROOT"
-    if go test "${go_test_args[@]}"; then
-        success "Category '$category' — all tests passed."
+    if $python_cmd -m pytest "${pytest_args[@]}"; then
+        success "Category '$category' (Python) — all tests passed."
         return 0
     else
-        fail "Category '$category' — tests FAILED."
+        fail "Category '$category' (Python) — tests FAILED."
         return 1
     fi
+}
+
+# Run tests for a single category (dispatches to Go or Python)
+run_category_tests() {
+    local category="$1"
+    local test_dir="$PROJECT_ROOT/tests/$category"
+
+    if [[ ! -d "$test_dir" ]]; then
+        warn "Category directory not found: tests/$category — skipping"
+        return 0
+    fi
+
+    local lang
+    lang=$(detect_category_lang "$test_dir")
+
+    case "$lang" in
+        go)
+            run_go_tests "$category" "$test_dir"
+            ;;
+        python)
+            run_python_tests "$category" "$test_dir"
+            ;;
+        *)
+            warn "No test files in tests/$category — skipping"
+            return 0
+            ;;
+    esac
 }
 
 # Save failure information for --resume
@@ -261,13 +361,6 @@ main() {
 
     cd "$PROJECT_ROOT"
 
-    # Pre-flight checks
-    if [[ ! -f "go.mod" ]]; then
-        warn "go.mod not found — skipping integration tests."
-        warn "Initialize the module with: go mod init <module-name>"
-        exit 0
-    fi
-
     if [[ ! -d "tests" ]]; then
         warn "tests/ directory not found — no integration tests to run."
         exit 0
@@ -277,8 +370,7 @@ main() {
     if [[ -f "settings/test/config.yaml" ]]; then
         info "Test configuration found: settings/test/config.yaml"
     else
-        warn "Test configuration not found: settings/test/config.yaml"
-        warn "Some tests may fail due to missing configuration."
+        info "Test configuration not found: settings/test/config.yaml (optional)"
     fi
 
     ensure_tmp
@@ -297,7 +389,9 @@ main() {
     # Display plan
     info "Categories to run:"
     while IFS= read -r cat; do
-        echo -e "  ${MAGENTA}•${NC} $cat"
+        local lang
+        lang=$(detect_category_lang "$PROJECT_ROOT/tests/$cat")
+        echo -e "  ${MAGENTA}•${NC} $cat ${BLUE}[$lang]${NC}"
     done <<< "$categories"
     if [[ -n "$SPECIFY" ]]; then
         info "Test filter: $SPECIFY"

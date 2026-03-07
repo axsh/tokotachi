@@ -17,7 +17,7 @@ const (
 
 // Status checks the state of a feature's container.
 func (r *Runner) Status(containerName, worktreePath string) FeatureState {
-	out, err := r.DockerRunOutput("inspect", "--format", "{{.State.Running}}", containerName)
+	out, err := r.DockerRunOutputCheck("inspect", "--format", "{{.State.Running}}", containerName)
 	if err != nil {
 		if worktreePath != "" {
 			return StateWorktreeOnly

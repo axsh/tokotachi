@@ -1,7 +1,7 @@
 {
     "name": "devctl-dev",
     "build": {
-        "dockerfile": "../Dockerfile"
+        "dockerfile": "./Dockerfile"
     },
     "workspaceFolder": "/workspace",
     "customizations": {

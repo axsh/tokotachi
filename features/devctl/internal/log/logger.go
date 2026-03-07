@@ -45,3 +45,25 @@ func (l *Logger) Error(format string, args ...any) { l.log(LevelError, "[ERROR]"
 
 // Debug logs a debug message (only visible when verbose is true).
 func (l *Logger) Debug(format string, args ...any) { l.log(LevelDebug, "[DEBUG]", format, args...) }
+
+// Log logs a message at the specified level with an auto-generated prefix.
+func (l *Logger) Log(level Level, format string, args ...any) {
+	prefix := levelPrefix(level)
+	l.log(level, prefix, format, args...)
+}
+
+// levelPrefix returns the prefix string for the given log level.
+func levelPrefix(level Level) string {
+	switch level {
+	case LevelDebug:
+		return "[DEBUG]"
+	case LevelInfo:
+		return "[INFO]"
+	case LevelWarn:
+		return "[WARN]"
+	case LevelError:
+		return "[ERROR]"
+	default:
+		return "[LOG]"
+	}
+}

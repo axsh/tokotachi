@@ -21,16 +21,44 @@ func TestBuildPlan_UpOnly(t *testing.T) {
 	assert.False(t, p.ShouldOpenEditor)
 }
 
-func TestBuildPlan_OpenWithDevcontainer(t *testing.T) {
+func TestBuildPlan_UpWithEditor(t *testing.T) {
 	p := plan.Build(plan.Input{
 		Feature:       "feat-a",
 		OS:            detect.OSMacOS,
 		Editor:        detect.EditorCursor,
 		ContainerMode: matrix.ContainerDevContainer,
-		Open:          true,
+		Up:            true,
+		EditorOpen:    true,
+	})
+	assert.True(t, p.ShouldStartContainer)
+	assert.True(t, p.ShouldOpenEditor)
+	assert.True(t, p.TryDevcontainerAttach)
+}
+
+func TestBuildPlan_OpenWithAttach(t *testing.T) {
+	p := plan.Build(plan.Input{
+		Feature:       "feat-a",
+		OS:            detect.OSMacOS,
+		Editor:        detect.EditorCursor,
+		ContainerMode: matrix.ContainerDevContainer,
+		EditorOpen:    true,
+		Attach:        true,
 	})
 	assert.True(t, p.ShouldOpenEditor)
 	assert.True(t, p.TryDevcontainerAttach)
+}
+
+func TestBuildPlan_OpenWithoutAttach(t *testing.T) {
+	p := plan.Build(plan.Input{
+		Feature:       "feat-a",
+		OS:            detect.OSMacOS,
+		Editor:        detect.EditorCursor,
+		ContainerMode: matrix.ContainerDevContainer,
+		EditorOpen:    true,
+		Attach:        false,
+	})
+	assert.True(t, p.ShouldOpenEditor)
+	assert.False(t, p.TryDevcontainerAttach)
 }
 
 func TestBuildPlan_OpenAG_NoDevcontainer(t *testing.T) {
@@ -39,24 +67,11 @@ func TestBuildPlan_OpenAG_NoDevcontainer(t *testing.T) {
 		OS:            detect.OSMacOS,
 		Editor:        detect.EditorAG,
 		ContainerMode: matrix.ContainerDockerLocal,
-		Open:          true,
+		EditorOpen:    true,
+		Attach:        true,
 	})
 	assert.True(t, p.ShouldOpenEditor)
 	assert.False(t, p.TryDevcontainerAttach)
-}
-
-func TestBuildPlan_UpAndOpen(t *testing.T) {
-	p := plan.Build(plan.Input{
-		Feature:       "feat-a",
-		OS:            detect.OSLinux,
-		Editor:        detect.EditorVSCode,
-		ContainerMode: matrix.ContainerDevContainer,
-		Up:            true,
-		Open:          true,
-	})
-	assert.True(t, p.ShouldStartContainer)
-	assert.True(t, p.ShouldOpenEditor)
-	assert.True(t, p.TryDevcontainerAttach)
 }
 
 func TestBuildPlan_Down(t *testing.T) {

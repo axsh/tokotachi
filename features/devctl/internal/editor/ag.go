@@ -2,8 +2,6 @@ package editor
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 )
 
 const (
@@ -27,10 +25,7 @@ func (a *AG) Launch(opts LaunchOptions) (LaunchResult, error) {
 		return LaunchResult{Method: "local", EditorCmd: cmd}, nil
 	}
 
-	run := exec.Command(cmd, opts.WorktreePath)
-	run.Stdout = os.Stdout
-	run.Stderr = os.Stderr
-	if err := run.Run(); err != nil {
+	if err := opts.CmdRunner.RunInteractive(cmd, opts.WorktreePath); err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to open Antigravity: %w", err)
 	}
 	return LaunchResult{Method: "local", EditorCmd: cmd}, nil

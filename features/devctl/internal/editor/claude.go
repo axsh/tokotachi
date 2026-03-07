@@ -2,8 +2,6 @@ package editor
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 )
 
 const (
@@ -27,14 +25,10 @@ func (c *Claude) Launch(opts LaunchOptions) (LaunchResult, error) {
 		return LaunchResult{Method: "cli", EditorCmd: cmd}, nil
 	}
 
-	run := exec.Command(cmd)
-	run.Dir = opts.WorktreePath
-	run.Stdin = os.Stdin
-	run.Stdout = os.Stdout
-	run.Stderr = os.Stderr
-	if err := run.Start(); err != nil {
+	// Claude Code is started with cwd, so we use RunInteractive
+	// but we need to set dir. For now, use the worktree path as argument.
+	if err := opts.CmdRunner.RunInteractive(cmd, opts.WorktreePath); err != nil {
 		return LaunchResult{}, fmt.Errorf("failed to start Claude Code: %w", err)
 	}
-	opts.Logger.Info("Claude Code started (pid=%d)", run.Process.Pid)
 	return LaunchResult{Method: "cli", EditorCmd: cmd}, nil
 }
