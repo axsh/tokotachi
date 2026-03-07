@@ -37,6 +37,7 @@ tokotachi/
 ├── tests/                 # Project-level test suites
 │   └── integration-test/  # Integration tests (Go)
 ├── scripts/               # Build and test automation
+│   ├── dist/              # Distribution pipeline (build, release, publish)
 │   ├── process/           # build.sh, integration_test.sh
 │   └── utils/             # Utility scripts
 ├── prompts/               # AI workflow specifications and rules
@@ -84,23 +85,60 @@ The processing pipeline detects the environment, resolves configuration, builds 
 
 See [`features/devctl/README.md`](features/devctl/README.md) for full documentation.
 
-## Getting Started
+## Installation
 
-### Prerequisites
+### Pre-built Binaries (Recommended)
 
-- **Go** 1.24+
-- **Docker** (for container-based development)
-- **Git** (with worktree support)
-- **Bash** (Git Bash on Windows)
+Download the latest release from [GitHub Releases](https://github.com/axsh/tokotachi/releases).
 
-### Build
+#### Linux / macOS
 
 ```bash
-# Build devctl using the project build script
-./scripts/process/build.sh
+# Download (replace OS and ARCH as needed: linux/darwin, amd64/arm64)
+curl -LO https://github.com/axsh/tokotachi/releases/latest/download/devctl_linux_amd64.tar.gz
 
-# Or build directly
-cd features/devctl && go build -o ../../bin/devctl .
+# Extract
+tar xzf devctl_linux_amd64.tar.gz
+
+# Move to PATH
+sudo mv devctl /usr/local/bin/
+```
+
+#### macOS (Apple Silicon)
+
+```bash
+curl -LO https://github.com/axsh/tokotachi/releases/latest/download/devctl_darwin_arm64.tar.gz
+tar xzf devctl_darwin_arm64.tar.gz
+sudo mv devctl /usr/local/bin/
+```
+
+#### Windows
+
+1. Download `devctl_windows_amd64.zip` from [Releases](https://github.com/axsh/tokotachi/releases)
+2. Extract the zip file
+3. Move `devctl.exe` to a directory in your `PATH`
+
+#### Verify Installation
+
+```bash
+devctl --help
+```
+
+### Build from Source
+
+Requires **Go 1.24+**, **Docker**, **Git**, and **Bash** (Git Bash on Windows).
+
+```bash
+# Clone the repository
+git clone https://github.com/axsh/tokotachi.git
+cd tokotachi
+
+# Bootstrap: build and install all tools
+./scripts/dist/bootstrap-tools
+
+# Or build individually
+./scripts/dist/build devctl
+./scripts/dist/install-tools devctl
 ```
 
 The compiled binary is output to `bin/devctl`.
