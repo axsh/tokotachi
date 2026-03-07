@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Bootstrap installer for {{ .ToolName }}
+# Usage: curl -fsSL <url>/install.sh | bash
+
+set -euo pipefail
+
+TOOL_NAME="{{ .ToolName }}"
+VERSION="{{ .Version }}"
+BASE_URL="{{ .BaseURL }}"
+
+detect_platform() {
+  local os arch
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64)  arch="amd64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+  esac
+  echo "${os}_${arch}"
+}
+
+main() {
+  local platform archive_url install_dir
+  platform="$(detect_platform)"
+  archive_url="${BASE_URL}/${TOOL_NAME}_${platform}.tar.gz"
+  install_dir="${HOME}/.local/bin"
+
+  echo "Installing ${TOOL_NAME} ${VERSION} for ${platform}..."
+  mkdir -p "$install_dir"
+  curl -fsSL "$archive_url" | tar xz -C "$install_dir" "$TOOL_NAME"
+  echo "Installed to ${install_dir}/${TOOL_NAME}"
+}
+
+main "$@"

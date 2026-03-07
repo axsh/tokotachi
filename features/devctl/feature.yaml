@@ -1,0 +1,8 @@
+name: devctl
+kind: cli
+language: go
+entrypoint: .
+release:
+  enabled: true
+install:
+  expose_as: devctl

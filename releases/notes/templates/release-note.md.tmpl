@@ -1,0 +1,17 @@
+# {{ .ToolName }} {{ .Version }}
+
+## What's New
+
+{{ .Changelog }}
+
+## Downloads
+
+| Platform | Architecture | Download |
+|----------|-------------|----------|
+{{ range .Assets -}}
+| {{ .OS }} | {{ .Arch }} | [{{ .Filename }}]({{ .URL }}) |
+{{ end }}
+
+## Checksums
+
+SHA256 checksums are available in `checksums.txt`.

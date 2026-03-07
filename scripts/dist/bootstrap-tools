@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Bootstrap all developer tools from scratch.
+# Checks prerequisites, builds all tools, and installs them.
+# Usage: ./scripts/dist/bootstrap-tools
+
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+
+echo ""
+echo "╔══════════════════════════════════════╗"
+echo "║     Developer Tools Bootstrap        ║"
+echo "╚══════════════════════════════════════╝"
+echo ""
+
+# ─── Prerequisites ──────────────────────────────────────────────────
+if ! command -v go &>/dev/null; then
+  fail "Go is not installed."
+  echo "  Install: https://go.dev/dl/"
+  exit 1
+fi
+pass "Go $(go version | awk '{print $3}') found"
+
+if command -v python &>/dev/null; then
+  pass "Python found"
+elif command -v python3 &>/dev/null; then
+  pass "Python3 found"
+else
+  fail "Python is not installed (required for YAML parsing)."
+  exit 1
+fi
+
+# ─── Build all tools ────────────────────────────────────────────────
+info "Building all tools..."
+
+TOOL_IDS=()
+while IFS= read -r id; do
+  id="$(echo "$id" | tr -d '\r')"
+  TOOL_IDS+=("$id")
+done < <(get_all_tool_ids)
+
+total=${#TOOL_IDS[@]}
+built=0
+failed=0
+
+for tool_id in "${TOOL_IDS[@]}"; do
+  info "Building ${tool_id}..."
+  if "${SCRIPT_DIR}/build" "$tool_id"; then
+    built=$((built + 1))
+  else
+    failed=$((failed + 1))
+  fi
+done
+
+echo ""
+if [[ $failed -gt 0 ]]; then
+  fail "${failed}/${total} tools failed to build."
+  exit 1
+fi
+pass "All ${total} tools built successfully."
+
+# ─── Install all tools ──────────────────────────────────────────────
+info "Installing all tools..."
+"${SCRIPT_DIR}/install-tools" --all
+
+echo ""
+pass "Bootstrap complete! Tools installed to bin/"
+ls -la "${REPO_ROOT}/bin/"

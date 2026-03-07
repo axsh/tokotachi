@@ -1,0 +1,22 @@
+# GoReleaser base configuration
+# This file defines shared settings for all tool builds.
+version: 2
+
+env:
+  - CGO_ENABLED=0
+
+builds: []
+
+archives:
+  - format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256

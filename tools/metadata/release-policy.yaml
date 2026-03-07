@@ -1,0 +1,5 @@
+versioning: semver
+default_channel: stable
+pre_release_channels:
+  - experimental
+release_approval: manual

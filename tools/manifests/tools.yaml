@@ -1,0 +1,6 @@
+tools:
+  - id: devctl
+    feature_path: features/devctl
+    type: go-cli
+    binary_name: devctl
+    release: true

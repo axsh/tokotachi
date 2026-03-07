@@ -1,5 +1,9 @@
 # Build output
 bin/
+build/
+
+# Distribution artifacts
+/dist/
 
 # Temporary files
 tmp/

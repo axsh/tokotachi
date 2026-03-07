@@ -1,0 +1,6 @@
+binary: "{{ .ToolName }}"
+archive: "{{ .ToolName }}_{{ .OS }}_{{ .Arch }}"
+archive_extension:
+  default: tar.gz
+  windows: zip
+checksum_file: checksums.txt
