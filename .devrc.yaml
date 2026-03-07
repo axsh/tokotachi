@@ -1,0 +1,3 @@
+project_name: ""
+default_editor: cursor
+default_container_mode: docker-local

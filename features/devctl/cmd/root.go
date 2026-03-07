@@ -37,6 +37,7 @@ func init() {
 	rootCmd.AddCommand(prCmd)
 	rootCmd.AddCommand(closeCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(doctorCmd)
 }
 
 // Execute runs the root command.
