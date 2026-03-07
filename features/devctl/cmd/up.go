@@ -99,6 +99,15 @@ func runUp(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Detect git worktree configuration
+	gitInfo, gitErr := resolve.DetectGitWorktree(worktreePath)
+	if gitErr != nil {
+		ctx.Logger.Warn("Git worktree detection failed: %v", gitErr)
+	} else if gitInfo.IsWorktree {
+		ctx.Logger.Debug("Git worktree detected: mainGitDir=%s, worktreeGitDir=%s",
+			gitInfo.MainGitDir, gitInfo.WorktreeGitDir)
+	}
+
 	// Load devcontainer.json
 	dcCfg, _ := resolve.LoadDevcontainerConfig(ctx.RepoRoot, ctx.Feature, ctx.Branch)
 
@@ -137,6 +146,11 @@ func runUp(cmd *cobra.Command, args []string) error {
 		upOpts.Mounts = dcCfg.Mounts
 		upOpts.ContainerEnv = dcCfg.ContainerEnv
 		upOpts.RemoteUser = dcCfg.RemoteUser
+	}
+
+	// Set git worktree info if detected
+	if gitErr == nil && gitInfo.IsWorktree {
+		upOpts.GitWorktree = &gitInfo
 	}
 
 	// Execute: up
