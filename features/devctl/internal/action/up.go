@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
 )
 
 const containerStartGracePeriod = 2 * time.Second
@@ -20,12 +22,13 @@ type UpOptions struct {
 	SSHMode       bool
 	Env           map[string]string
 	// DevcontainerConfig fields
-	WorkspaceFolder string            // from devcontainer.json (default: "/workspace")
-	Mounts          []string          // from devcontainer.json
-	ContainerEnv    map[string]string // from devcontainer.json
-	RemoteUser      string            // from devcontainer.json
-	DockerfilePath  string            // resolved absolute path to Dockerfile
-	BuildContext    string            // resolved absolute path to build context
+	WorkspaceFolder string                   // from devcontainer.json (default: "/workspace")
+	Mounts          []string                 // from devcontainer.json
+	ContainerEnv    map[string]string        // from devcontainer.json
+	RemoteUser      string                   // from devcontainer.json
+	DockerfilePath  string                   // resolved absolute path to Dockerfile
+	BuildContext    string                   // resolved absolute path to build context
+	GitWorktree     *resolve.GitWorktreeInfo // nil if not a worktree
 }
 
 // Up starts the development container.
@@ -65,6 +68,14 @@ func (r *Runner) Up(opts UpOptions) error {
 		"--name", opts.ContainerName,
 		"-v", opts.WorktreePath + ":" + wsFolder,
 		"-w", wsFolder,
+	}
+
+	// Add git worktree mounts if detected (read-only to avoid corrupting host files)
+	if opts.GitWorktree != nil && opts.GitWorktree.IsWorktree {
+		r.Logger.Debug("Adding git worktree mounts: mainGitDir=%s, worktreeGitDir=%s",
+			opts.GitWorktree.MainGitDir, opts.GitWorktree.WorktreeGitDir)
+		args = append(args, "-v", opts.GitWorktree.MainGitDir+":/repo-git:ro")
+		args = append(args, "-v", opts.GitWorktree.WorktreeGitDir+":/worktree-git-src:ro")
 	}
 
 	// Add mounts from devcontainer.json
@@ -115,7 +126,52 @@ func (r *Runner) Up(opts UpOptions) error {
 		)
 	}
 
+	// Step 6: Setup git worktree paths inside the container
+	if opts.GitWorktree != nil && opts.GitWorktree.IsWorktree {
+		r.Logger.Info("Setting up git worktree paths inside container...")
+		if err := r.setupGitWorktree(opts.ContainerName, opts.GitWorktree, wsFolder); err != nil {
+			r.Logger.Warn("Git worktree setup failed (git may not work inside container): %v", err)
+		}
+	}
+
 	r.Logger.Info("Container %s started successfully", opts.ContainerName)
+	return nil
+}
+
+// setupGitWorktree creates a writable copy of the read-only mounted worktree metadata
+// inside the container, and rewrites the .git file to point to it.
+// The original host files remain untouched because mounts are read-only.
+func (r *Runner) setupGitWorktree(containerName string, info *resolve.GitWorktreeInfo, wsFolder string) error {
+	// Step 1: Copy worktree metadata from read-only mount to writable location
+	copyCmd := `cp -a /worktree-git-src /worktree-git`
+	if err := r.DockerRun("exec", containerName, "sh", "-c", copyCmd); err != nil {
+		return fmt.Errorf("failed to copy worktree metadata: %w", err)
+	}
+
+	// Step 2: Backup and rewrite .git file to point to container-internal worktree-git
+	// Backup is needed because the .git file is on a bind mount and changes affect the host.
+	// DetectGitWorktree will restore from backup on next run if it finds stale container paths.
+	backupCmd := fmt.Sprintf(`cp %s/.git %s/.git.devctl-backup`, wsFolder, wsFolder)
+	_ = r.DockerRun("exec", containerName, "sh", "-c", backupCmd) // best-effort
+
+	gitFileCmd := fmt.Sprintf(`printf 'gitdir: /worktree-git\n' > %s/.git`, wsFolder)
+	if err := r.DockerRun("exec", containerName, "sh", "-c", gitFileCmd); err != nil {
+		return fmt.Errorf("failed to rewrite .git file: %w", err)
+	}
+
+	// Step 3: Rewrite commondir in the writable copy to point to /repo-git
+	commondirCmd := `printf '/repo-git\n' > /worktree-git/commondir`
+	if err := r.DockerRun("exec", containerName, "sh", "-c", commondirCmd); err != nil {
+		return fmt.Errorf("failed to rewrite commondir: %w", err)
+	}
+
+	// Step 4: Rewrite gitdir (reverse reference) to container-internal path
+	gitdirCmd := fmt.Sprintf(`printf '%s/.git\n' > /worktree-git/gitdir`, wsFolder)
+	if err := r.DockerRun("exec", containerName, "sh", "-c", gitdirCmd); err != nil {
+		return fmt.Errorf("failed to rewrite gitdir: %w", err)
+	}
+
+	r.Logger.Info("Git worktree paths configured successfully")
 	return nil
 }
 
