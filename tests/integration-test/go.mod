@@ -1,4 +1,4 @@
-module github.com/escape-dev/integration-test
+module github.com/axsh/tokotachi/tests/integration-test
 
 go 1.24.0
 

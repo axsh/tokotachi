@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/escape-dev/devctl/internal/report"
-	"github.com/escape-dev/devctl/internal/resolve"
-	"github.com/escape-dev/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/devctl/internal/report"
+	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/devctl/internal/state"
 )
 
 var downCmd = &cobra.Command{

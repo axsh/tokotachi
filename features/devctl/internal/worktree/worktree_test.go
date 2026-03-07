@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/escape-dev/devctl/internal/cmdexec"
-	"github.com/escape-dev/devctl/internal/log"
-	"github.com/escape-dev/devctl/internal/worktree"
+	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -3,7 +3,7 @@ package resolve_test
 import (
 	"testing"
 
-	"github.com/escape-dev/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
 	"github.com/stretchr/testify/assert"
 )
 

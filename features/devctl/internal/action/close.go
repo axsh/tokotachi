@@ -3,8 +3,8 @@ package action
 import (
 	"fmt"
 
-	"github.com/escape-dev/devctl/internal/state"
-	"github.com/escape-dev/devctl/internal/worktree"
+	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
 )
 
 // CloseOptions holds parameters for the close action.

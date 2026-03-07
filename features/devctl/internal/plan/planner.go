@@ -1,8 +1,8 @@
 package plan
 
 import (
-	"github.com/escape-dev/devctl/internal/detect"
-	"github.com/escape-dev/devctl/internal/matrix"
+	"github.com/axsh/tokotachi/features/devctl/internal/detect"
+	"github.com/axsh/tokotachi/features/devctl/internal/matrix"
 )
 
 // Input represents the user's request and resolved environment.

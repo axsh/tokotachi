@@ -3,7 +3,7 @@ package detect_test
 import (
 	"testing"
 
-	"github.com/escape-dev/devctl/internal/detect"
+	"github.com/axsh/tokotachi/features/devctl/internal/detect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/escape-dev/devctl/internal/cmdexec"
-	"github.com/escape-dev/devctl/internal/report"
+	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/devctl/internal/report"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -3,8 +3,8 @@ package matrix_test
 import (
 	"testing"
 
-	"github.com/escape-dev/devctl/internal/detect"
-	"github.com/escape-dev/devctl/internal/matrix"
+	"github.com/axsh/tokotachi/features/devctl/internal/detect"
+	"github.com/axsh/tokotachi/features/devctl/internal/matrix"
 	"github.com/stretchr/testify/assert"
 )
 

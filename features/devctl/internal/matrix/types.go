@@ -1,6 +1,6 @@
 package matrix
 
-import "github.com/escape-dev/devctl/internal/detect"
+import "github.com/axsh/tokotachi/features/devctl/internal/detect"
 
 // ContainerMode represents how containers are used.
 type ContainerMode string

@@ -3,7 +3,7 @@ package editor
 import (
 	"fmt"
 
-	"github.com/escape-dev/devctl/internal/detect"
+	"github.com/axsh/tokotachi/features/devctl/internal/detect"
 )
 
 // NewLauncher returns the appropriate Launcher for the given editor.

@@ -7,13 +7,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/escape-dev/devctl/internal/action"
-	"github.com/escape-dev/devctl/internal/editor"
-	"github.com/escape-dev/devctl/internal/plan"
-	"github.com/escape-dev/devctl/internal/report"
-	"github.com/escape-dev/devctl/internal/resolve"
-	"github.com/escape-dev/devctl/internal/state"
-	"github.com/escape-dev/devctl/internal/worktree"
+	"github.com/axsh/tokotachi/features/devctl/internal/action"
+	"github.com/axsh/tokotachi/features/devctl/internal/editor"
+	"github.com/axsh/tokotachi/features/devctl/internal/plan"
+	"github.com/axsh/tokotachi/features/devctl/internal/report"
+	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
 )
 
 var (

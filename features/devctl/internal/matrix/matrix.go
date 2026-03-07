@@ -1,6 +1,6 @@
 package matrix
 
-import "github.com/escape-dev/devctl/internal/detect"
+import "github.com/axsh/tokotachi/features/devctl/internal/detect"
 
 // ResolveCapability returns the Capability for the given OS and Editor.
 // This is the central matrix lookup function.

@@ -1,4 +1,4 @@
-module github.com/escape-dev/devctl
+module github.com/axsh/tokotachi/features/devctl
 
 go 1.24.0
 

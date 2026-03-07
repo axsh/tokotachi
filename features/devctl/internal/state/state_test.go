@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/escape-dev/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/devctl/internal/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/escape-dev/devctl/internal/cmdexec"
-	"github.com/escape-dev/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/devctl/internal/log"
 )
 
 // LaunchOptions holds parameters for launching an editor.

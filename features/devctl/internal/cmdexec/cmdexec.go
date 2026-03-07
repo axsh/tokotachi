@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/escape-dev/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/devctl/internal/log"
 )
 
 // ExecRecord stores one command execution history.

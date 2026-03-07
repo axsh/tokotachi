@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/escape-dev/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
 )
 
 // WorktreeInfo represents a worktree entry.

@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/escape-dev/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
 )
 
 var statusCmd = &cobra.Command{

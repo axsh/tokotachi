@@ -1,7 +1,7 @@
 package action
 
 import (
-	"github.com/escape-dev/devctl/internal/editor"
+	"github.com/axsh/tokotachi/features/devctl/internal/editor"
 )
 
 // Open launches the editor for the given feature.

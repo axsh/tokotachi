@@ -3,7 +3,7 @@ package action
 import (
 	"fmt"
 
-	"github.com/escape-dev/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
 )
 
 // PR creates a GitHub Pull Request using gh CLI.

@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/escape-dev/devctl/internal/cmdexec"
-	"github.com/escape-dev/devctl/internal/detect"
-	"github.com/escape-dev/devctl/internal/editor"
-	"github.com/escape-dev/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/devctl/internal/detect"
+	"github.com/axsh/tokotachi/features/devctl/internal/editor"
+	"github.com/axsh/tokotachi/features/devctl/internal/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
