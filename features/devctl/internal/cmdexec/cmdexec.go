@@ -53,6 +53,7 @@ type RunOption struct {
 	FailLevelSet bool      // If true, use FailLevel; if false, default to LevelError
 	FailLabel    string    // Label tag on failure (default: "FAIL")
 	QuietCmd     bool      // If true, [CMD] log uses LevelDebug instead of LevelInfo
+	Dir          string    // Working directory for command execution (empty = inherit process cwd)
 }
 
 // effectiveFailLevel returns the log level to use on failure.
@@ -104,7 +105,11 @@ func (r *Runner) RunWithOpts(opts RunOption, name string, args ...string) (strin
 	start := time.Now()
 
 	if r.DryRun {
-		r.Logger.Info("[DRY-RUN] %s", cmdLine)
+		if opts.Dir != "" {
+			r.Logger.Info("[DRY-RUN] (in %s) %s", opts.Dir, cmdLine)
+		} else {
+			r.Logger.Info("[DRY-RUN] %s", cmdLine)
+		}
 		r.Recorder.Add(ExecRecord{
 			Command:  cmdLine,
 			Success:  true,
@@ -120,7 +125,12 @@ func (r *Runner) RunWithOpts(opts RunOption, name string, args ...string) (strin
 		r.Logger.Info("[CMD] %s", cmdLine)
 	}
 	cmd := exec.Command(name, args...)
-	cmd.Stderr = os.Stderr
+	if opts.Dir != "" {
+		cmd.Dir = opts.Dir
+	}
+	if !opts.QuietCmd {
+		cmd.Stderr = os.Stderr
+	}
 	out, err := cmd.Output()
 
 	exitCode := 0
@@ -166,7 +176,11 @@ func (r *Runner) RunInteractiveWithOpts(opts RunOption, name string, args ...str
 	start := time.Now()
 
 	if r.DryRun {
-		r.Logger.Info("[DRY-RUN] %s", cmdLine)
+		if opts.Dir != "" {
+			r.Logger.Info("[DRY-RUN] (in %s) %s", opts.Dir, cmdLine)
+		} else {
+			r.Logger.Info("[DRY-RUN] %s", cmdLine)
+		}
 		r.Recorder.Add(ExecRecord{
 			Command:  cmdLine,
 			Success:  true,
@@ -182,6 +196,9 @@ func (r *Runner) RunInteractiveWithOpts(opts RunOption, name string, args ...str
 		r.Logger.Info("[CMD] %s", cmdLine)
 	}
 	cmd := exec.Command(name, args...)
+	if opts.Dir != "" {
+		cmd.Dir = opts.Dir
+	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

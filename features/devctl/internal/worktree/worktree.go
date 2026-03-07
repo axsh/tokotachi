@@ -40,7 +40,7 @@ func (m *Manager) Create(feature, branch string) error {
 	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
 
 	// Check if branch already exists
-	_, err := m.CmdRunner.Run(gitCmd, "rev-parse", "--verify", branch)
+	_, err := m.CmdRunner.RunWithOpts(cmdexec.CheckOpt(), gitCmd, "rev-parse", "--verify", branch)
 	branchExists := err == nil
 
 	var args []string
@@ -68,7 +68,7 @@ func (m *Manager) Remove(feature, branch string, force bool) error {
 		args = []string{"worktree", "remove", "-f", wtPath}
 	}
 
-	if _, err := m.CmdRunner.Run(gitCmd, args...); err != nil {
+	if _, err := m.CmdRunner.RunWithOpts(cmdexec.ToleratedOpt(), gitCmd, args...); err != nil {
 		return fmt.Errorf("git worktree remove failed: %w", err)
 	}
 	return nil
@@ -84,7 +84,7 @@ func (m *Manager) DeleteBranch(branch string, force bool) error {
 		flag = "-D"
 	}
 
-	if _, err := m.CmdRunner.Run(gitCmd, "branch", flag, branch); err != nil {
+	if _, err := m.CmdRunner.RunWithOpts(cmdexec.ToleratedOpt(), gitCmd, "branch", flag, branch); err != nil {
 		return fmt.Errorf("git branch delete failed: %w", err)
 	}
 	return nil

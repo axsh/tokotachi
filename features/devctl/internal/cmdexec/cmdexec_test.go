@@ -2,6 +2,10 @@ package cmdexec_test
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
@@ -127,4 +131,79 @@ func TestRunWithOpts_QuietCmd(t *testing.T) {
 	rLoud, bufLoud := newTestRunner(false)
 	_, _ = rLoud.RunWithOpts(cmdexec.RunOption{QuietCmd: false}, "echo", "hello")
 	assert.Contains(t, bufLoud.String(), "[CMD]", "QuietCmd=false should show [CMD]")
+}
+
+func TestRunWithOpts_Dir(t *testing.T) {
+	tmpDir := t.TempDir()
+	r, _ := newTestRunner(true)
+
+	// Run pwd/cd in the specified directory to verify cwd
+	var out string
+	var err error
+	if runtime.GOOS == "windows" {
+		out, err = r.RunWithOpts(cmdexec.RunOption{Dir: tmpDir}, "cmd", "/C", "cd")
+	} else {
+		out, err = r.RunWithOpts(cmdexec.RunOption{Dir: tmpDir}, "pwd")
+	}
+	require.NoError(t, err)
+
+	// Resolve symlinks for comparison (TempDir may use symlinks)
+	resolvedTmp, err := filepath.EvalSymlinks(tmpDir)
+	require.NoError(t, err)
+	resolvedOut, err := filepath.EvalSymlinks(strings.TrimSpace(out))
+	require.NoError(t, err)
+
+	assert.Equal(t, filepath.Clean(resolvedTmp), filepath.Clean(resolvedOut),
+		"Command should run in the specified directory")
+}
+
+func TestRunWithOpts_DirEmpty(t *testing.T) {
+	r, _ := newTestRunner(true)
+
+	// When Dir is empty, command runs in the current process directory
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	var out string
+	if runtime.GOOS == "windows" {
+		out, err = r.RunWithOpts(cmdexec.RunOption{}, "cmd", "/C", "cd")
+	} else {
+		out, err = r.RunWithOpts(cmdexec.RunOption{}, "pwd")
+	}
+	require.NoError(t, err)
+
+	resolvedCwd, err := filepath.EvalSymlinks(cwd)
+	require.NoError(t, err)
+	resolvedOut, err := filepath.EvalSymlinks(strings.TrimSpace(out))
+	require.NoError(t, err)
+
+	assert.Equal(t, filepath.Clean(resolvedCwd), filepath.Clean(resolvedOut),
+		"Without Dir, command should run in process cwd")
+}
+
+func TestRunInteractiveWithOpts_Dir(t *testing.T) {
+	tmpDir := t.TempDir()
+	r, _ := newTestRunner(true)
+
+	// RunInteractive attaches stdin/stdout/stderr, so we verify no error
+	// using a simple command that exits immediately
+	var err error
+	if runtime.GOOS == "windows" {
+		err = r.RunInteractiveWithOpts(cmdexec.RunOption{Dir: tmpDir}, "cmd", "/C", "echo ok")
+	} else {
+		err = r.RunInteractiveWithOpts(cmdexec.RunOption{Dir: tmpDir}, "true")
+	}
+	require.NoError(t, err)
+}
+
+func TestRun_DryRunWithDir(t *testing.T) {
+	r, buf := newTestRunner(true)
+	r.DryRun = true
+	tmpDir := t.TempDir()
+
+	_, err := r.RunWithOpts(cmdexec.RunOption{Dir: tmpDir}, "echo", "hello")
+	require.NoError(t, err)
+	logOut := buf.String()
+	assert.Contains(t, logOut, "[DRY-RUN]", "DryRun log should appear")
+	assert.Contains(t, logOut, tmpDir, "DryRun log should contain the Dir path")
 }

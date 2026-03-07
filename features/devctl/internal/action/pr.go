@@ -12,9 +12,8 @@ func (r *Runner) PR(worktreePath string) error {
 	ghCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GH", "gh")
 	r.Logger.Info("Creating PR from %s...", worktreePath)
 
-	// gh pr create needs to be run from the worktree directory
-	// Since RunInteractive doesn't support setting cwd, we use a wrapper
-	if err := r.CmdRunner.RunInteractive(ghCmd, "pr", "create", "--repo-dir", worktreePath); err != nil {
+	opts := cmdexec.RunOption{Dir: worktreePath}
+	if err := r.CmdRunner.RunInteractiveWithOpts(opts, ghCmd, "pr", "create"); err != nil {
 		return fmt.Errorf("gh pr create failed: %w", err)
 	}
 	return nil

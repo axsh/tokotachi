@@ -1,7 +1,7 @@
 package action
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/axsh/tokotachi/features/devctl/internal/state"
 	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
@@ -31,11 +31,18 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 		}
 	}
 
-	// Step 2: Remove worktree
+	// Step 2: Remove worktree (tolerated failure)
 	if wm.Exists(opts.Feature, opts.Branch) {
 		r.Logger.Info("Removing worktree work/%s/%s...", opts.Feature, opts.Branch)
 		if err := wm.Remove(opts.Feature, opts.Branch, opts.Force); err != nil {
-			return fmt.Errorf("worktree remove failed: %w", err)
+			r.Logger.Warn("Worktree remove failed: %v", err)
+			// Fallback: remove directory directly
+			wtPath := wm.Path(opts.Feature, opts.Branch)
+			if removeErr := os.RemoveAll(wtPath); removeErr != nil {
+				r.Logger.Warn("Directory cleanup also failed: %v", removeErr)
+			} else {
+				r.Logger.Info("Cleaned up worktree directory directly")
+			}
 		}
 	}
 
