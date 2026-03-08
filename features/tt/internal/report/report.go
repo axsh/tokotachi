@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
 )
 
 // EnvVar represents a resolved environment variable.
@@ -41,7 +41,7 @@ type Report struct {
 // Print writes the report to the given writer.
 func (r *Report) Print(w io.Writer) {
 	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "# devctl Execution Report\n")
+	fmt.Fprintf(w, "# tt Execution Report\n")
 	fmt.Fprintf(w, "- **Date**: %s\n", r.StartTime.Format("2006-01-02 15:04:05"))
 	fmt.Fprintf(w, "- **Feature**: %s\n", r.Feature)
 	fmt.Fprintf(w, "- **Branch**: %s\n", r.Branch)

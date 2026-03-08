@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	envKeyAG     = "DEVCTL_CMD_AG"
+	envKeyAG     = "TT_CMD_AG"
 	defaultCmdAG = "antigravity"
 )
 

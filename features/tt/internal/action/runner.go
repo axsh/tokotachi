@@ -1,8 +1,8 @@
 package action
 
 import (
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
 )
 
 // Runner executes container and editor actions via cmdexec.

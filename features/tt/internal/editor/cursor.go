@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	envKeyCursor     = "DEVCTL_CMD_CURSOR"
+	envKeyCursor     = "TT_CMD_CURSOR"
 	defaultCmdCursor = "cursor"
 )
 

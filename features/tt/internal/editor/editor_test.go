@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/devctl/internal/detect"
-	"github.com/axsh/tokotachi/features/devctl/internal/editor"
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/detect"
+	"github.com/axsh/tokotachi/features/tt/internal/editor"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,12 +64,12 @@ func TestLauncher_DryRun(t *testing.T) {
 }
 
 func TestResolveCommand_Default(t *testing.T) {
-	got := editor.ResolveCommand("DEVCTL_TEST_NONEXISTENT_VAR_12345", "fallback-cmd")
+	got := editor.ResolveCommand("TT_TEST_NONEXISTENT_VAR_12345", "fallback-cmd")
 	assert.Equal(t, "fallback-cmd", got)
 }
 
 func TestResolveCommand_EnvOverride(t *testing.T) {
-	t.Setenv("DEVCTL_TEST_CMD_OVERRIDE", "/custom/path/myeditor")
-	got := editor.ResolveCommand("DEVCTL_TEST_CMD_OVERRIDE", "default-cmd")
+	t.Setenv("TT_TEST_CMD_OVERRIDE", "/custom/path/myeditor")
+	got := editor.ResolveCommand("TT_TEST_CMD_OVERRIDE", "default-cmd")
 	assert.Equal(t, "/custom/path/myeditor", got)
 }

@@ -7,35 +7,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestDevctlStatusWhenRunning verifies that 'devctl status' indicates a running container.
-func TestDevctlStatusWhenRunning(t *testing.T) {
+// TestTtStatusWhenRunning verifies that 'tt status' indicates a running container.
+func TestTtStatusWhenRunning(t *testing.T) {
 	requireDockerAvailable(t)
 
 	// Setup: start a container
-	upOut, upErr, upCode := runDevctl(t, "up", branchName, featureName)
-	assert.Equal(t, 0, upCode, "devctl up failed during setup.\nSTDOUT:\n%s\nSTDERR:\n%s", upOut, upErr)
+	ensureWorktree(t)
+	upOut, upErr, upCode := runTT(t, "up", branchName, featureName)
+	assert.Equal(t, 0, upCode, "tt up failed during setup.\nSTDOUT:\n%s\nSTDERR:\n%s", upOut, upErr)
 
-	// Execute: devctl status
-	stdout, stderr, code := runDevctl(t, "status", branchName, featureName)
-	assert.Equal(t, 0, code, "devctl status failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+	// Execute: tt status
+	stdout, stderr, code := runTT(t, "status", branchName, featureName)
+	assert.Equal(t, 0, code, "tt status failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Verify: output contains "running"
 	combined := strings.ToLower(stdout + stderr)
 	assert.Contains(t, combined, "running",
-		"Expected 'running' in devctl status output.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+		"Expected 'running' in tt status output.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Cleanup
-	cleanupDevctlDown(t)
+	cleanupTTDown(t)
 }
 
-// TestDevctlStatusWhenStopped verifies that 'devctl status' works when no container is running.
-func TestDevctlStatusWhenStopped(t *testing.T) {
+// TestTtStatusWhenStopped verifies that 'tt status' works when no container is running.
+func TestTtStatusWhenStopped(t *testing.T) {
 	requireDockerAvailable(t)
 
 	// Ensure no container is running
-	cleanupDevctlDown(t)
+	cleanupTTDown(t)
 
-	// Execute: devctl status
-	stdout, stderr, code := runDevctl(t, "status", branchName, featureName)
-	assert.Equal(t, 0, code, "devctl status should not error when no container is running.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+	// Execute: tt status
+	stdout, stderr, code := runTT(t, "status", branchName, featureName)
+	assert.Equal(t, 0, code, "tt status should not error when no container is running.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 }

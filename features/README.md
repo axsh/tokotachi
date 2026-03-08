@@ -71,5 +71,5 @@ often using:
 
 | Feature | Description | Language |
 |---|---|---|
-| `devctl` | Development environment orchestrator CLI | Go |
-| `integration-test` | Integration test suite for devctl | Python |
+| `tt` | Development environment orchestrator CLI | Go |
+| `integration-test` | Integration test suite for tt | Python |

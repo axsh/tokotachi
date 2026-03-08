@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/devctl/internal/report"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/report"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,14 +16,14 @@ import (
 func sampleReport() *report.Report {
 	return &report.Report{
 		StartTime:     time.Date(2026, 3, 7, 14, 25, 0, 0, time.UTC),
-		Feature:       "devctl",
+		Feature:       "tt",
 		Branch:        "test-001",
 		OS:            "windows",
 		Editor:        "cursor",
 		ContainerMode: "docker-local",
 		EnvVars: []report.EnvVar{
-			{Name: "DEVCTL_EDITOR", Value: "", Default: "cursor", WasSet: false},
-			{Name: "DEVCTL_CMD_CURSOR", Value: "/custom/cursor", Default: "cursor", WasSet: true},
+			{Name: "TT_EDITOR", Value: "", Default: "cursor", WasSet: false},
+			{Name: "TT_CMD_CURSOR", Value: "/custom/cursor", Default: "cursor", WasSet: true},
 		},
 		ShowEnvVars: true,
 		Steps: []report.StepEntry{
@@ -39,7 +39,7 @@ func TestReport_Print(t *testing.T) {
 	r := sampleReport()
 	r.Print(&buf)
 	out := buf.String()
-	assert.Contains(t, out, "devctl")
+	assert.Contains(t, out, "tt")
 	assert.Contains(t, out, "test-001")
 	assert.Contains(t, out, "Container up")
 	assert.Contains(t, out, "SUCCESS")
@@ -50,9 +50,9 @@ func TestReport_EnvVars(t *testing.T) {
 	r := sampleReport()
 	r.Print(&buf)
 	out := buf.String()
-	assert.Contains(t, out, "DEVCTL_EDITOR")
+	assert.Contains(t, out, "TT_EDITOR")
 	assert.Contains(t, out, "not set")
-	assert.Contains(t, out, "DEVCTL_CMD_CURSOR")
+	assert.Contains(t, out, "TT_CMD_CURSOR")
 	assert.Contains(t, out, "/custom/cursor")
 }
 
@@ -60,10 +60,10 @@ func TestReport_EnvVars_Hidden(t *testing.T) {
 	var buf bytes.Buffer
 	r := &report.Report{
 		StartTime:     time.Date(2026, 3, 7, 14, 25, 0, 0, time.UTC),
-		Feature:       "devctl",
+		Feature:       "tt",
 		Branch:        "test-001",
 		EnvVars: []report.EnvVar{
-			{Name: "DEVCTL_EDITOR", Value: "", Default: "cursor", WasSet: false},
+			{Name: "TT_EDITOR", Value: "", Default: "cursor", WasSet: false},
 		},
 		ShowEnvVars:   false,
 		OverallResult: "SUCCESS",
@@ -72,7 +72,7 @@ func TestReport_EnvVars_Hidden(t *testing.T) {
 	out := buf.String()
 	assert.NotContains(t, out, "Environment Variables",
 		"env vars section should be hidden when ShowEnvVars is false")
-	assert.NotContains(t, out, "DEVCTL_EDITOR",
+	assert.NotContains(t, out, "TT_EDITOR",
 		"individual env var names should not appear")
 }
 
@@ -86,7 +86,7 @@ func TestReport_WriteMarkdown(t *testing.T) {
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 	content := string(data)
-	assert.Contains(t, content, "# devctl Execution Report")
+	assert.Contains(t, content, "# tt Execution Report")
 	assert.Contains(t, content, "SUCCESS")
 }
 

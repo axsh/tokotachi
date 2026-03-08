@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/detect"
+	"github.com/axsh/tokotachi/features/tt/internal/detect"
 	"github.com/stretchr/testify/assert"
 )
 

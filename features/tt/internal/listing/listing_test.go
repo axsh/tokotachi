@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/listing"
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/listing"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,7 +82,7 @@ func TestCollectBranches(t *testing.T) {
 				"feat-a": {
 					Branch: "feat-a",
 					Features: map[string]state.FeatureState{
-						"devctl": {Status: state.StatusActive},
+						"tt": {Status: state.StatusActive},
 					},
 				},
 			},
@@ -90,7 +90,7 @@ func TestCollectBranches(t *testing.T) {
 				{
 					Branch:   "feat-a",
 					Path:     "/repo/work/feat-a",
-					Features: []listing.FeatureInfo{{Name: "devctl", Status: "active"}},
+					Features: []listing.FeatureInfo{{Name: "tt", Status: "active"}},
 				},
 			},
 		},
@@ -128,7 +128,7 @@ func TestFormatTable(t *testing.T) {
 		{
 			Branch:   "feat-a",
 			Path:     "/repo/work/feat-a",
-			Features: []listing.FeatureInfo{{Name: "devctl", Status: "active"}},
+			Features: []listing.FeatureInfo{{Name: "tt", Status: "active"}},
 			CodeStatus: &state.CodeStatus{
 				Status:      state.CodeStatusPR,
 				PRCreatedAt: &prTime,
@@ -158,9 +158,9 @@ func TestFormatTable(t *testing.T) {
 		assert.Contains(t, out, "CODE")
 		assert.NotContains(t, out, "PATH")
 		// Body verification: feature name and container status are separated
-		assert.Contains(t, out, "devctl")
+		assert.Contains(t, out, "tt")
 		assert.Contains(t, out, "active")
-		assert.NotContains(t, out, "devctl[active]")
+		assert.NotContains(t, out, "tt[active]")
 		assert.Contains(t, out, "(main worktree)")
 		assert.Contains(t, out, "(no state)")
 		// CODE column content
@@ -391,7 +391,7 @@ func timePtr(t time.Time) *time.Time {
 func TestFormatJSON(t *testing.T) {
 	t.Run("normal", func(t *testing.T) {
 		branches := []listing.BranchInfo{
-			{Branch: "feat-a", Path: "/repo/work/feat-a", Features: []listing.FeatureInfo{{Name: "devctl", Status: "active"}}},
+			{Branch: "feat-a", Path: "/repo/work/feat-a", Features: []listing.FeatureInfo{{Name: "tt", Status: "active"}}},
 		}
 		var buf bytes.Buffer
 		err := listing.FormatJSON(&buf, branches)

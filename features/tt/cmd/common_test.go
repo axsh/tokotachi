@@ -15,7 +15,7 @@ func TestParseBranchFeature(t *testing.T) {
 		wantFeature string
 	}{
 		{"branch only", []string{"feat-x"}, "feat-x", ""},
-		{"branch and feature", []string{"feat-x", "devctl"}, "feat-x", "devctl"},
+		{"branch and feature", []string{"feat-x", "tt"}, "feat-x", "tt"},
 		{"branch and feature with slash", []string{"feat/add-auth", "my-feature"}, "feat/add-auth", "my-feature"},
 	}
 	for _, tt := range tests {
@@ -34,7 +34,7 @@ func TestHasFeature(t *testing.T) {
 		want    bool
 	}{
 		{"empty feature", "", false},
-		{"with feature", "devctl", true},
+		{"with feature", "tt", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -52,10 +52,10 @@ func TestInitContext_BranchOnly(t *testing.T) {
 }
 
 func TestInitContext_BranchAndFeature(t *testing.T) {
-	ctx, err := InitContext([]string{"feat-x", "devctl"})
+	ctx, err := InitContext([]string{"feat-x", "tt"})
 	require.NoError(t, err)
 	assert.Equal(t, "feat-x", ctx.Branch)
-	assert.Equal(t, "devctl", ctx.Feature)
+	assert.Equal(t, "tt", ctx.Feature)
 }
 
 func TestInitContext_NoArgs(t *testing.T) {

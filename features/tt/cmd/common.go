@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/action"
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/devctl/internal/detect"
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
-	"github.com/axsh/tokotachi/features/devctl/internal/matrix"
-	"github.com/axsh/tokotachi/features/devctl/internal/report"
-	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/tt/internal/action"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/detect"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/matrix"
+	"github.com/axsh/tokotachi/features/tt/internal/report"
+	"github.com/axsh/tokotachi/features/tt/internal/resolve"
 )
 
 // AppContext holds shared state for all subcommands.
@@ -28,7 +28,7 @@ type AppContext struct {
 	ReportFile   string
 }
 
-// reservedBranchNames contains branch names that cannot be used with devctl.
+// reservedBranchNames contains branch names that cannot be used with tt.
 // These are typically default branches that must be protected from accidental
 // modification or deletion.
 var reservedBranchNames = []string{"main", "master"}
@@ -39,7 +39,7 @@ var reservedBranchNames = []string{"main", "master"}
 func validateBranchName(branch string) error {
 	for _, name := range reservedBranchNames {
 		if branch == name {
-			return fmt.Errorf("%q is a reserved branch name and cannot be used with devctl commands", branch)
+			return fmt.Errorf("%q is a reserved branch name and cannot be used with tt commands", branch)
 		}
 	}
 	return nil
@@ -147,20 +147,20 @@ type envVarDef struct {
 	fallback string
 }
 
-// knownEnvVars lists all DEVCTL_* environment variables.
+// knownEnvVars lists all TT_* environment variables.
 var knownEnvVars = []envVarDef{
-	{"DEVCTL_EDITOR", "cursor"},
-	{"DEVCTL_CMD_CODE", "code"},
-	{"DEVCTL_CMD_CURSOR", "cursor"},
-	{"DEVCTL_CMD_AG", "antigravity"},
-	{"DEVCTL_CMD_CLAUDE", "claude"},
-	{"DEVCTL_CMD_GIT", "git"},
-	{"DEVCTL_CMD_GH", "gh"},
-	{"DEVCTL_LIST_WIDTH", "40"},
-	{"DEVCTL_LIST_PADDING", "2"},
+	{"TT_EDITOR", "cursor"},
+	{"TT_CMD_CODE", "code"},
+	{"TT_CMD_CURSOR", "cursor"},
+	{"TT_CMD_AG", "antigravity"},
+	{"TT_CMD_CLAUDE", "claude"},
+	{"TT_CMD_GIT", "git"},
+	{"TT_CMD_GH", "gh"},
+	{"TT_LIST_WIDTH", "40"},
+	{"TT_LIST_PADDING", "2"},
 }
 
-// CollectEnvVars gathers all DEVCTL_* env vars for the report.
+// CollectEnvVars gathers all TT_* env vars for the report.
 func CollectEnvVars() []report.EnvVar {
 	vars := make([]report.EnvVar, 0, len(knownEnvVars))
 	for _, d := range knownEnvVars {

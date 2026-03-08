@@ -180,37 +180,37 @@ build_frontend() {
 }
 
 # ============================================================
-# devctl Build & Unit Test
+# tt Build & Unit Test
 # ============================================================
-build_devctl() {
-    step "devctl (Go): Build & Unit Test"
+build_tt() {
+    step "tt (Go): Build & Unit Test"
 
-    local devctl_dir="$PROJECT_ROOT/features/devctl"
+    local tt_dir="$PROJECT_ROOT/features/tt"
 
-    if [[ ! -f "$devctl_dir/go.mod" ]]; then
-        warn "features/devctl/go.mod not found — skipping devctl build."
+    if [[ ! -f "$tt_dir/go.mod" ]]; then
+        warn "features/tt/go.mod not found — skipping tt build."
         return 0
     fi
 
-    cd "$devctl_dir"
+    cd "$tt_dir"
 
     # --- Build ---
-    info "Building devctl..."
-    if go build -o "$PROJECT_ROOT/bin/devctl" .; then
-        success "devctl build succeeded."
+    info "Building tt..."
+    if go build -o "$PROJECT_ROOT/bin/tt" .; then
+        success "tt build succeeded."
     else
-        fail "devctl build failed."
+        fail "tt build failed."
         FAILED=true
         cd "$PROJECT_ROOT"
         return 1
     fi
 
     # --- Unit Tests ---
-    info "Running devctl unit tests..."
+    info "Running tt unit tests..."
     if go test -v -count=1 ./...; then
-        success "All devctl unit tests passed."
+        success "All tt unit tests passed."
     else
-        fail "devctl unit tests failed."
+        fail "tt unit tests failed."
         FAILED=true
         cd "$PROJECT_ROOT"
         return 1
@@ -234,8 +234,8 @@ main() {
     # Always run backend
     build_backend
 
-    # Build devctl
-    build_devctl
+    # Build tt
+    build_tt
 
     # Run frontend unless --backend-only
     if [[ "$BACKEND_ONLY" == "false" ]]; then

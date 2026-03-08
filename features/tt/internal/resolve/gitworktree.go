@@ -59,9 +59,9 @@ func DetectGitWorktree(worktreePath string) (GitWorktreeInfo, error) {
 
 	// Check if the resolved path exists on the host.
 	// If not, the .git file was previously rewritten for container use.
-	// Try to restore from .git.devctl-backup.
+	// Try to restore from .git.tt-backup.
 	if _, statErr := os.Stat(worktreeGitDir); statErr != nil {
-		backupPath := filepath.Join(worktreePath, ".git.devctl-backup")
+		backupPath := filepath.Join(worktreePath, ".git.tt-backup")
 		backupData, backupErr := os.ReadFile(backupPath)
 		if backupErr != nil {
 			return GitWorktreeInfo{}, fmt.Errorf("gitdir path %s not found and no backup available: %w", worktreeGitDir, statErr)

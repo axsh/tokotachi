@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
-	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
+	"github.com/axsh/tokotachi/features/tt/internal/resolve"
+	"github.com/axsh/tokotachi/features/tt/internal/worktree"
 )
 
 var statusCmd = &cobra.Command{
@@ -27,7 +27,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
 	projectName := globalCfg.ProjectName
 	if projectName == "" {
-		projectName = "devctl"
+		projectName = "tt"
 	}
 
 	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}

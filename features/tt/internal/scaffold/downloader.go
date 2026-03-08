@@ -1,6 +1,6 @@
 package scaffold
 
-import "github.com/axsh/tokotachi/features/devctl/internal/github"
+import "github.com/axsh/tokotachi/features/tt/internal/github"
 
 // DownloadedFile is a type alias for github.DownloadedFile.
 // This maintains backward compatibility with existing scaffold code.

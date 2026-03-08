@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +31,7 @@ func TestScanStateFiles(t *testing.T) {
 					Branch:    "feat-a",
 					CreatedAt: time.Now(),
 					Features: map[string]state.FeatureState{
-						"devctl": {Status: state.StatusActive, StartedAt: time.Now()},
+						"tt": {Status: state.StatusActive, StartedAt: time.Now()},
 					},
 				}
 				require.NoError(t, state.Save(state.StatePath(root, "feat-a"), sf))

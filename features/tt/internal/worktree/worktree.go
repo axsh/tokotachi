@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
 )
 
 // WorktreeInfo represents a worktree entry.
@@ -54,7 +54,7 @@ func (m *Manager) Create(branch string) error {
 			os.RemoveAll(wtPath)
 		}
 	}
-	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 
 	// Check if branch already exists
 	_, err := m.CmdRunner.RunWithOpts(cmdexec.CheckOpt(), gitCmd, "rev-parse", "--verify", branch)
@@ -78,7 +78,7 @@ func (m *Manager) Create(branch string) error {
 // Remove removes a git worktree.
 func (m *Manager) Remove(branch string, force bool) error {
 	wtPath := m.Path(branch)
-	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 
 	args := []string{"worktree", "remove", wtPath}
 	if force {
@@ -99,7 +99,7 @@ func (m *Manager) Remove(branch string, force bool) error {
 // DeleteBranch deletes the local branch.
 // Uses -d for merged branches, -D if force is true.
 func (m *Manager) DeleteBranch(branch string, force bool) error {
-	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 
 	flag := "-d"
 	if force {
@@ -138,7 +138,7 @@ func (m *Manager) FindNestedWorktrees(branch string) []string {
 // Prune runs 'git worktree prune' to clean up stale worktree metadata
 // entries that point to non-existent worktree directories.
 func (m *Manager) Prune() error {
-	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 	if _, err := m.CmdRunner.Run(gitCmd, "worktree", "prune"); err != nil {
 		return fmt.Errorf("git worktree prune failed: %w", err)
 	}

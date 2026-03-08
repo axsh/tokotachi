@@ -34,7 +34,7 @@ type PermissionRecord struct {
 }
 
 // CheckpointFileName is the name of the checkpoint file.
-const CheckpointFileName = ".devctl-scaffold-checkpoint"
+const CheckpointFileName = ".tt-scaffold-checkpoint"
 
 // SaveCheckpoint writes checkpoint info to disk.
 func SaveCheckpoint(repoRoot string, info *CheckpointInfo) error {

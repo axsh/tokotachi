@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/tt/internal/resolve"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,28 +125,28 @@ func TestLoadDevcontainerConfig_WithMountsAndUser(t *testing.T) {
 func TestLoadDevcontainerConfig_FeatureDir(t *testing.T) {
 	root := t.TempDir()
 	// Create devcontainer.json in features/<feature>/
-	dcDir := filepath.Join(root, "features", "devctl", ".devcontainer")
+	dcDir := filepath.Join(root, "features", "tt", ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
 	content := `{
-		"name": "devctl-dev",
+		"name": "tt-dev",
 		"build": { "dockerfile": "./Dockerfile" },
 		"workspaceFolder": "/workspace"
 	}`
 	require.NoError(t, os.WriteFile(filepath.Join(dcDir, "devcontainer.json"), []byte(content), 0644))
 
-	cfg, err := resolve.LoadDevcontainerConfig(root, "devctl", "test-001")
+	cfg, err := resolve.LoadDevcontainerConfig(root, "tt", "test-001")
 	require.NoError(t, err)
-	assert.Equal(t, "devctl-dev", cfg.Name)
+	assert.Equal(t, "tt-dev", cfg.Name)
 	assert.Equal(t, "./Dockerfile", cfg.Build.Dockerfile)
-	assert.Contains(t, cfg.ConfigDir(), filepath.Join("features", "devctl", ".devcontainer"))
+	assert.Contains(t, cfg.ConfigDir(), filepath.Join("features", "tt", ".devcontainer"))
 }
 
 func TestLoadDevcontainerConfig_FeatureDirPriority(t *testing.T) {
 	root := t.TempDir()
 
 	// Priority 1: features/<feature>/.devcontainer/
-	featureDC := filepath.Join(root, "features", "devctl", ".devcontainer")
+	featureDC := filepath.Join(root, "features", "tt", ".devcontainer")
 	require.NoError(t, os.MkdirAll(featureDC, 0755))
 	featureContent := `{ "name": "from-features", "workspaceFolder": "/ws-feature" }`
 	require.NoError(t, os.WriteFile(filepath.Join(featureDC, "devcontainer.json"), []byte(featureContent), 0644))
@@ -157,7 +157,7 @@ func TestLoadDevcontainerConfig_FeatureDirPriority(t *testing.T) {
 	worktreeContent := `{ "name": "from-worktree", "workspaceFolder": "/ws-worktree" }`
 	require.NoError(t, os.WriteFile(filepath.Join(worktreeDC, "devcontainer.json"), []byte(worktreeContent), 0644))
 
-	cfg, err := resolve.LoadDevcontainerConfig(root, "devctl", "test-001")
+	cfg, err := resolve.LoadDevcontainerConfig(root, "tt", "test-001")
 	require.NoError(t, err)
 	// features/ should win
 	assert.Equal(t, "from-features", cfg.Name)

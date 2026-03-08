@@ -138,7 +138,7 @@ func CheckRequirements(reqs Requirements, repoRoot string) error {
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("prerequisites not met:\n  Missing %s\n  Hint: Run \"devctl scaffold\" first to create the base project structure",
+		return fmt.Errorf("prerequisites not met:\n  Missing %s\n  Hint: Run \"tt scaffold\" first to create the base project structure",
 			strings.Join(missing, "\n  Missing "))
 	}
 

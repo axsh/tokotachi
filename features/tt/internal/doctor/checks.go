@@ -47,7 +47,7 @@ type toolDef struct {
 var tools = []toolDef{
 	{name: "git", required: true, fixHint: "Install Git: https://git-scm.com/"},
 	{name: "docker", required: true, fixHint: "Install Docker: https://docs.docker.com/get-docker/"},
-	{name: "gh", required: false, fixHint: "Install GitHub CLI: https://cli.github.com/ (only required for 'devctl pr')"},
+	{name: "gh", required: false, fixHint: "Install GitHub CLI: https://cli.github.com/ (only required for 'tt pr')"},
 }
 
 // checkExternalTools checks git, docker, gh availability.
@@ -89,7 +89,7 @@ type dirCheck struct {
 // requiredDirs lists directories to check under repo root.
 var requiredDirs = []dirCheck{
 	{name: "features", required: true},
-	{name: "work", required: false, note: "created on first 'devctl up'"},
+	{name: "work", required: false, note: "created on first 'tt up'"},
 	{name: "scripts", required: false, note: "contains build and test automation"},
 }
 
@@ -195,7 +195,7 @@ func checkGlobalConfig(repoRoot string) []CheckResult {
 			Category: categoryConfig,
 			Name:     "project_name",
 			Status:   StatusWarn,
-			Message:  "empty (default 'devctl' will be used)",
+			Message:  "empty (default 'tt' will be used)",
 			FixHint:  "Set project_name in .devrc.yaml",
 		})
 	} else {

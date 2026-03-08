@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/action"
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
-	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
+	"github.com/axsh/tokotachi/features/tt/internal/action"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/worktree"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -237,13 +237,13 @@ func TestClose_WithNestedWorktrees_ClosesChildrenFirst(t *testing.T) {
 		[]byte("gitdir: ../../../../.git/worktrees/child-branch\n"), 0o644,
 	))
 
-	// Setup state files for both
+	// Setup state files: parent has active feature, child has no active features
+	// (Close delegates to Delete which requires no active containers)
 	setupStateFile(t, env.RepoRoot, parentBranch, map[string]state.FeatureState{
 		"feat": {Status: state.StatusActive, StartedAt: time.Now()},
 	})
-	setupStateFile(t, env.RepoRoot, childBranch, map[string]state.FeatureState{
-		"feat": {Status: state.StatusActive, StartedAt: time.Now()},
-	})
+	// Child has no active features so Delete's safety guard won't block
+	setupStateFile(t, env.RepoRoot, childBranch, map[string]state.FeatureState{})
 
 	err := env.Runner.Close(action.CloseOptions{
 		Branch:      parentBranch,
@@ -255,7 +255,7 @@ func TestClose_WithNestedWorktrees_ClosesChildrenFirst(t *testing.T) {
 	}, env.WM)
 	require.NoError(t, err)
 
-	// Verify command order: child close before parent close
+	// Verify command order: child delete before parent delete
 	recs := env.Recorder.Records()
 	childIdx := -1
 	parentIdx := -1

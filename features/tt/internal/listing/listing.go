@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
 )
 
 // WorktreeEntry represents a parsed git worktree entry.
@@ -202,8 +202,8 @@ func formatPRElapsed(now, createdAt time.Time) string {
 type TableOptions struct {
 	ShowPath bool // --path: show PATH column
 	Full     bool // --full: disable truncation
-	MaxWidth int  // DEVCTL_LIST_WIDTH (default: 40)
-	Padding  int  // DEVCTL_LIST_PADDING (default: 2)
+	MaxWidth int  // TT_LIST_WIDTH (default: 40)
+	Padding  int  // TT_LIST_PADDING (default: 2)
 }
 
 // TruncateCell truncates s if len(s) > maxWidth.

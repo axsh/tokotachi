@@ -6,20 +6,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestDevctlUpGitWorktree verifies that git commands work inside the container
+// TestTtUpGitWorktree verifies that git commands work inside the container
 // when the worktree is mounted (git worktree setup should configure paths).
-func TestDevctlUpGitWorktree(t *testing.T) {
+func TestTtUpGitWorktree(t *testing.T) {
 	requireDockerAvailable(t)
 
 	// Ensure clean state
-	cleanupDevctlDown(t)
+	cleanupTTDown(t)
+	ensureWorktree(t)
 
 	// Start container
-	stdout, stderr, code := runDevctl(t, "up", branchName, featureName, "--verbose")
-	assert.Equal(t, 0, code, "devctl up failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+	stdout, stderr, code := runTT(t, "up", branchName, featureName, "--verbose")
+	t.Logf("tt up stdout:\n%s", stdout)
+	t.Logf("tt up stderr:\n%s", stderr)
+	assert.Equal(t, 0, code, "tt up failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Verify git status works inside the container
-	containerName := "devctl-" + featureName
+	// Container name follows resolve.ContainerName pattern: <project>-<feature>
+	containerName := "tokotachi-" + featureName
 	gitOut, err := dockerRun("exec", containerName, "git", "status")
 	assert.NoError(t, err, "git status failed inside container.\nOutput: %s", gitOut)
 	assert.NotContains(t, gitOut, "fatal:", "git status returned error: %s", gitOut)
@@ -30,5 +34,5 @@ func TestDevctlUpGitWorktree(t *testing.T) {
 	assert.NotEmpty(t, logOut, "git log returned empty output")
 
 	// Cleanup
-	cleanupDevctlDown(t)
+	cleanupTTDown(t)
 }

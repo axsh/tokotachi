@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	envKeyCode     = "DEVCTL_CMD_CODE"
+	envKeyCode     = "TT_CMD_CODE"
 	defaultCmdCode = "code"
 )
 

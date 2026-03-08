@@ -102,7 +102,7 @@ func (r *Report) Summary() Summary {
 
 // PrintText writes human-readable output grouped by category.
 func (r *Report) PrintText(w io.Writer) {
-	fmt.Fprintln(w, "🏥 devctl doctor")
+	fmt.Fprintln(w, "🏥 tt doctor")
 	fmt.Fprintln(w, "================")
 	fmt.Fprintln(w)
 

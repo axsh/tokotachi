@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
 	"github.com/stretchr/testify/assert"
 )
 

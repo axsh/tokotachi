@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
 )
 
 const (
@@ -105,14 +105,14 @@ func ReleaseLock(repoRoot string) {
 }
 
 // StartBackground starts the background updater process.
-// Spawns `devctl _update-code-status` as a detached child process.
+// Spawns `tt _update-code-status` as a detached child process.
 // Returns immediately; does not wait for completion.
-func StartBackground(repoRoot, devctlBinary string) error {
+func StartBackground(repoRoot, ttBinary string) error {
 	if IsRunning(repoRoot) {
 		return nil // Already running
 	}
 
-	cmd := exec.Command(devctlBinary, "_update-code-status", "--repo-root", repoRoot)
+	cmd := exec.Command(ttBinary, "_update-code-status", "--repo-root", repoRoot)
 	cmd.Dir = repoRoot
 
 	// Detach from parent process

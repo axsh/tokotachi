@@ -15,9 +15,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "devctl",
-	Short: "Development environment orchestrator",
-	Long:  "devctl manages feature-level development environments with matrix-driven subcommands.",
+	Use:   "tt",
+	Short: "Tokotachi - Development environment orchestrator",
+	Long:  "tt (Tokotachi) manages feature-level development environments with matrix-driven subcommands.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Store start time for report
 		cmd.SetContext(cmd.Context())
@@ -33,11 +33,14 @@ func init() {
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(downCmd)
 	rootCmd.AddCommand(openCmd)
+	rootCmd.AddCommand(closeCmd)
+	rootCmd.AddCommand(createCmd)
+	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(editorCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(shellCmd)
 	rootCmd.AddCommand(execCmd)
 	rootCmd.AddCommand(prCmd)
-	rootCmd.AddCommand(closeCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(scaffoldCmd)

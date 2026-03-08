@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/github"
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/github"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
 )
 
 const defaultRepoURL = "https://github.com/axsh/tokotachi-scaffolds"
@@ -157,7 +157,7 @@ func Apply(plan *Plan, opts RunOptions) error {
 	// Check for uncommitted changes
 	if hasDirtyWorktree(opts.RepoRoot) {
 		opts.Logger.Info("Stashing uncommitted changes...")
-		out, err := runGitCommand(opts.RepoRoot, "stash", "push", "-m", "devctl-scaffold-checkpoint")
+		out, err := runGitCommand(opts.RepoRoot, "stash", "push", "-m", "tt-scaffold-checkpoint")
 		if err != nil {
 			opts.Logger.Warn("Failed to stash changes: %v (output: %s)", err, out)
 		} else {

@@ -1,40 +1,40 @@
-# devctl — Development Environment Orchestrator
+# tt — Development Environment Orchestrator
 
 A matrix-driven CLI tool that manages feature-level development environments across different OS, editor, and container combinations.
 
 ## Overview
 
-`devctl` standardizes the workflow for starting, connecting to, and tearing down development environments. It abstracts away differences between operating systems, editors, and container modes through a unified subcommand interface.
+`tt` standardizes the workflow for starting, connecting to, and tearing down development environments. It abstracts away differences between operating systems, editors, and container modes through a unified subcommand interface.
 
 ## Usage
 
 ```bash
 # Start a container for a feature
-devctl up <feature> [branch]
+tt up <feature> [branch]
 
 # Start container + open editor
-devctl up <feature> [branch] --editor cursor
+tt up <feature> [branch] --editor cursor
 
 # Open editor (local worktree)
-devctl open <feature> [branch] --editor code
+tt open <feature> [branch] --editor code
 
 # Reconnect editor to running container (DevContainer attach)
-devctl open <feature> [branch] --editor code --attach
+tt open <feature> [branch] --editor code --attach
 
 # Stop and remove the container
-devctl down <feature> [branch]
+tt down <feature> [branch]
 
 # Show feature status
-devctl status <feature> [branch]
+tt status <feature> [branch]
 
 # Open a shell in the container
-devctl shell <feature> [branch]
+tt shell <feature> [branch]
 
 # Execute a command in the container
-devctl exec <feature> [branch] -- go test ./...
+tt exec <feature> [branch] -- go test ./...
 
 # Dry-run with verbose logging and report
-devctl up <feature> [branch] --editor cursor --dry-run --verbose --report report.md
+tt up <feature> [branch] --editor cursor --dry-run --verbose --report report.md
 ```
 
 **Note**: `[branch]` is optional. When omitted, the feature name is used as the branch name.
@@ -77,12 +77,12 @@ devctl up <feature> [branch] --editor cursor --dry-run --verbose --report report
 ### Command Logging
 
 All external commands (docker, git, gh, editors) are logged before execution:
-- Normal: `[CMD] docker run -d --name myproj-devctl ...`
-- Dry-run: `[DRY-RUN] docker run -d --name myproj-devctl ...`
+- Normal: `[CMD] docker run -d --name myproj-tt ...`
+- Dry-run: `[DRY-RUN] docker run -d --name myproj-tt ...`
 
 ### Execution Report
 
-After each run, devctl outputs an execution summary including:
+After each run, tt outputs an execution summary including:
 - Date, Feature, Branch
 - Environment variables (set values / defaults)
 - Detected environment (OS, Editor, ContainerMode)
@@ -206,17 +206,17 @@ dev:
 ## Build
 
 ```bash
-# Build binary to bin/devctl
+# Build binary to bin/tt
 ./scripts/process/build.sh
 
 # Or build directly
-cd features/devctl && go build -o ../../bin/devctl .
+cd features/tt && go build -o ../../bin/tt .
 ```
 
 ## Architecture
 
 ```
-features/devctl/
+features/tt/
 ├── main.go                          # Entrypoint
 ├── cmd/
 │   ├── root.go                      # Cobra root + global flags
@@ -237,7 +237,7 @@ features/devctl/
 │   ├── editor/                      # Editor launch (VSCode, Cursor, AG, Claude)
 │   ├── plan/                        # Execution plan builder
 │   └── action/                      # Container actions (up, down, status, shell, exec, open)
-├── Dockerfile                       # Dev container for devctl itself
+├── Dockerfile                       # Dev container for tt itself
 └── .devcontainer/
     └── devcontainer.json
 ```

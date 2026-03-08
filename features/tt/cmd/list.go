@@ -10,13 +10,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/devctl/internal/codestatus"
-	"github.com/axsh/tokotachi/features/devctl/internal/listing"
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
-	"github.com/axsh/tokotachi/features/devctl/internal/report"
-	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/codestatus"
+	"github.com/axsh/tokotachi/features/tt/internal/listing"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/report"
+	"github.com/axsh/tokotachi/features/tt/internal/resolve"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
 )
 
 var (
@@ -59,7 +59,7 @@ func runListBranches() error {
 	rec := cmdexec.NewRecorder()
 	runner := &cmdexec.Runner{Logger: logger, DryRun: flagDryRun, Recorder: rec}
 
-	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 	output, err := runner.Run(gitCmd, "worktree", "list", "--porcelain")
 	if err != nil {
 		return fmt.Errorf("failed to list worktrees: %w", err)
@@ -74,7 +74,7 @@ func runListBranches() error {
 
 	// Handle --update: force foreground update
 	if flagListUpdate {
-		ghCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GH", "gh")
+		ghCmd := cmdexec.ResolveCommand("TT_CMD_GH", "gh")
 		checker := &codestatus.Checker{
 			GitCmd:   gitCmd,
 			GhCmd:    ghCmd,
@@ -122,13 +122,13 @@ func runListBranches() error {
 
 	// Read env vars for table formatting
 	maxWidth := 40
-	if v := os.Getenv("DEVCTL_LIST_WIDTH"); v != "" {
+	if v := os.Getenv("TT_LIST_WIDTH"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			maxWidth = n
 		}
 	}
 	padding := 2
-	if v := os.Getenv("DEVCTL_LIST_PADDING"); v != "" {
+	if v := os.Getenv("TT_LIST_PADDING"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
 			padding = n
 		}

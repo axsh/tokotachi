@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
-	"github.com/axsh/tokotachi/features/devctl/internal/scaffold"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/scaffold"
 )
 
 var (

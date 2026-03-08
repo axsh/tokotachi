@@ -3,7 +3,7 @@ package action
 import (
 	"fmt"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/github"
+	"github.com/axsh/tokotachi/features/tt/internal/github"
 )
 
 // PR creates a GitHub Pull Request using github.Client.

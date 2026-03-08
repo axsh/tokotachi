@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create release artifacts (archives + checksums) from built binaries.
 # Usage: ./scripts/dist/release <tool-id> <version>
-# Example: ./scripts/dist/release devctl v1.0.0
+# Example: ./scripts/dist/release tt v1.0.0
 
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
@@ -9,7 +9,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 # ─── Argument check ─────────────────────────────────────────────────
 if [[ $# -lt 2 ]]; then
   echo "Usage: $0 <tool-id> <version>"
-  echo "Example: $0 devctl v1.0.0"
+  echo "Example: $0 tt v1.0.0"
   exit 1
 fi
 

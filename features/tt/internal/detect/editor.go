@@ -13,7 +13,7 @@ const (
 )
 
 // EnvKeyEditor is the environment variable name for the default editor.
-const EnvKeyEditor = "DEVCTL_EDITOR"
+const EnvKeyEditor = "TT_EDITOR"
 
 // ParseEditor parses a string into an Editor value.
 // Accepts aliases: "vscode" -> "code", "antigravity" -> "ag".
@@ -34,7 +34,7 @@ func ParseEditor(s string) (Editor, error) {
 
 // ResolveEditor determines the editor using the following priority:
 //  1. CLI flag (cliFlag)
-//  2. Environment variable (envValue, from DEVCTL_EDITOR)
+//  2. Environment variable (envValue, from TT_EDITOR)
 //  3. Feature-level config (featureConfig)
 //  4. Global config (globalConfig, from .devrc.yaml)
 //  5. Default: "cursor"

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -78,13 +78,13 @@ func TestRecorder_Collect(t *testing.T) {
 }
 
 func TestResolveCommand_Default(t *testing.T) {
-	got := cmdexec.ResolveCommand("DEVCTL_TEST_NONEXISTENT_XYZ_001", "fallback-cmd")
+	got := cmdexec.ResolveCommand("TT_TEST_NONEXISTENT_XYZ_001", "fallback-cmd")
 	assert.Equal(t, "fallback-cmd", got)
 }
 
 func TestResolveCommand_EnvOverride(t *testing.T) {
-	t.Setenv("DEVCTL_TEST_CMD_RESOLVE_002", "/custom/path/mycmd")
-	got := cmdexec.ResolveCommand("DEVCTL_TEST_CMD_RESOLVE_002", "default-cmd")
+	t.Setenv("TT_TEST_CMD_RESOLVE_002", "/custom/path/mycmd")
+	got := cmdexec.ResolveCommand("TT_TEST_CMD_RESOLVE_002", "default-cmd")
 	assert.Equal(t, "/custom/path/mycmd", got)
 }
 

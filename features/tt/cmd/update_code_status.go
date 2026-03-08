@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/devctl/internal/codestatus"
-	"github.com/axsh/tokotachi/features/devctl/internal/log"
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/codestatus"
+	"github.com/axsh/tokotachi/features/tt/internal/log"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
 )
 
 var flagUpdateRepoRoot string
@@ -56,8 +56,8 @@ func runUpdateCodeStatus(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to scan state files: %w", err)
 	}
 
-	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
-	ghCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GH", "gh")
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
+	ghCmd := cmdexec.ResolveCommand("TT_CMD_GH", "gh")
 
 	checker := &codestatus.Checker{
 		GitCmd:   gitCmd,

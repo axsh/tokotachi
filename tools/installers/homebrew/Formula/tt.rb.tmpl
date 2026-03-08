@@ -1,33 +1,33 @@
-class Devctl < Formula
+class Tt < Formula
   desc "{{ .Description }}"
   homepage "{{ .Homepage }}"
   version "{{ .Version }}"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "{{ .BaseURL }}/devctl_darwin_arm64.tar.gz"
+      url "{{ .BaseURL }}/tt_darwin_arm64.tar.gz"
       sha256 "{{ .SHA256.DarwinArm64 }}"
     else
-      url "{{ .BaseURL }}/devctl_darwin_amd64.tar.gz"
+      url "{{ .BaseURL }}/tt_darwin_amd64.tar.gz"
       sha256 "{{ .SHA256.DarwinAmd64 }}"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "{{ .BaseURL }}/devctl_linux_arm64.tar.gz"
+      url "{{ .BaseURL }}/tt_linux_arm64.tar.gz"
       sha256 "{{ .SHA256.LinuxArm64 }}"
     else
-      url "{{ .BaseURL }}/devctl_linux_amd64.tar.gz"
+      url "{{ .BaseURL }}/tt_linux_amd64.tar.gz"
       sha256 "{{ .SHA256.LinuxAmd64 }}"
     end
   end
 
   def install
-    bin.install "devctl"
+    bin.install "tt"
   end
 
   test do
-    system "#{bin}/devctl", "version"
+    system "#{bin}/tt", "version"
   end
 end

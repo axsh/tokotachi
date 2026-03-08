@@ -65,11 +65,11 @@ func commitAll(t *testing.T, dir, message string) {
 	}
 }
 
-// runDevctlInDir executes the devctl binary with the given arguments
+// runTTInDir executes the tt binary with the given arguments
 // in the specified working directory. Returns stdout, stderr, and exit code.
-func runDevctlInDir(t *testing.T, dir string, args ...string) (stdout, stderr string, exitCode int) {
+func runTTInDir(t *testing.T, dir string, args ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
-	binary := devctlBinary(t)
+	binary := ttBinary(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -106,9 +106,9 @@ func TestScaffoldDefault(t *testing.T) {
 	initGitRepo(t, tmpDir)
 
 	// Execute scaffold against the real repository
-	stdout, stderr, code := runDevctlInDir(t, tmpDir, "scaffold", "--yes")
+	stdout, stderr, code := runTTInDir(t, tmpDir, "scaffold", "--yes")
 	require.Equal(t, 0, code,
-		"devctl scaffold --yes failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+		"tt scaffold --yes failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// --- Sub-test: directory structure ---
 	t.Run("CreatesExpectedStructure", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestScaffoldDefault(t *testing.T) {
 		commitAll(t, tmpDir, "scaffold applied")
 
 		// Second run
-		stdout2, stderr2, code2 := runDevctlInDir(t, tmpDir, "scaffold", "--yes")
+		stdout2, stderr2, code2 := runTTInDir(t, tmpDir, "scaffold", "--yes")
 		require.Equal(t, 0, code2,
 			"Second scaffold should succeed (idempotent).\nSTDOUT:\n%s\nSTDERR:\n%s",
 			stdout2, stderr2)
@@ -184,14 +184,14 @@ func TestScaffoldDefault(t *testing.T) {
 	})
 }
 
-// TestScaffoldList verifies that 'devctl scaffold --list' returns
+// TestScaffoldList verifies that 'tt scaffold --list' returns
 // entries from the real tokotachi-scaffolds repository.
 func TestScaffoldList(t *testing.T) {
 	requireGitHubReachable(t)
 
-	stdout, stderr, code := runDevctl(t, "scaffold", "--list")
+	stdout, stderr, code := runTT(t, "scaffold", "--list")
 	require.Equal(t, 0, code,
-		"devctl scaffold --list failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+		"tt scaffold --list failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	assert.Contains(t, stdout, "default",
 		"scaffold --list should include 'default' template.\nOutput:\n%s", stdout)
@@ -205,9 +205,9 @@ func TestScaffoldDefaultLocaleJa(t *testing.T) {
 	tmpDir := t.TempDir()
 	initGitRepo(t, tmpDir)
 
-	stdout, stderr, code := runDevctlInDir(t, tmpDir, "scaffold", "--yes", "--lang", "ja")
+	stdout, stderr, code := runTTInDir(t, tmpDir, "scaffold", "--yes", "--lang", "ja")
 	require.Equal(t, 0, code,
-		"devctl scaffold --yes --lang ja failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+		"tt scaffold --yes --lang ja failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Verify README files contain Japanese content from locale.ja overlay
 	readmeChecks := map[string]string{
@@ -238,9 +238,9 @@ func TestScaffoldCwdFlag(t *testing.T) {
 	tmpDir := t.TempDir()
 	// Intentionally NOT calling initGitRepo — this is a non-git directory.
 
-	stdout, stderr, code := runDevctlInDir(t, tmpDir, "scaffold", "--cwd", "--yes")
+	stdout, stderr, code := runTTInDir(t, tmpDir, "scaffold", "--cwd", "--yes")
 	require.Equal(t, 0, code,
-		"devctl scaffold --cwd --yes failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+		"tt scaffold --cwd --yes failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Verify template files were created in the CWD (tmpDir)
 	readmePath := filepath.Join(tmpDir, "features", "README.md")

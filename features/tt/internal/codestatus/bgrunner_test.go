@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/codestatus"
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/codestatus"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

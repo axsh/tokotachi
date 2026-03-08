@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/tt/internal/resolve"
 )
 
 const containerStartGracePeriod = 2 * time.Second

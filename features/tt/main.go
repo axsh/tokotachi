@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/axsh/tokotachi/features/devctl/cmd"
+	"github.com/axsh/tokotachi/features/tt/cmd"
 )
 
 func main() {

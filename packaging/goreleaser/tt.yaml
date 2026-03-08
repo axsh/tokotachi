@@ -1,13 +1,13 @@
-# GoReleaser configuration for devctl
+# GoReleaser configuration for tt
 # Extends base.yaml settings.
-project_name: devctl
+project_name: tt
 version: 2
 
 builds:
-  - id: devctl
-    dir: features/devctl
-    main: ./cmd/devctl
-    binary: devctl
+  - id: tt
+    dir: features/tt
+    main: ./cmd/tt
+    binary: tt
     env:
       - CGO_ENABLED=0
     goos:
@@ -21,4 +21,4 @@ builds:
       - goos: windows
         goarch: arm64
 
-dist: dist/devctl
+dist: dist/tt

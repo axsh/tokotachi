@@ -5,18 +5,18 @@
   "license": "{{ .License }}",
   "architecture": {
     "64bit": {
-      "url": "{{ .BaseURL }}/devctl_windows_amd64.zip",
+      "url": "{{ .BaseURL }}/tt_windows_amd64.zip",
       "hash": "{{ .SHA256.WindowsAmd64 }}"
     }
   },
-  "bin": "devctl.exe",
+  "bin": "tt.exe",
   "checkver": {
     "github": "{{ .GitHubRepo }}"
   },
   "autoupdate": {
     "architecture": {
       "64bit": {
-        "url": "{{ .BaseURL }}/devctl_windows_amd64.zip"
+        "url": "{{ .BaseURL }}/tt_windows_amd64.zip"
       }
     }
   }

@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	envKeyClaude     = "DEVCTL_CMD_CLAUDE"
+	envKeyClaude     = "TT_CMD_CLAUDE"
 	defaultCmdClaude = "claude"
 )
 

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/tt/internal/resolve"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -143,7 +143,7 @@ func TestDetectGitWorktree_ContainerPathWithBackup(t *testing.T) {
 	))
 
 	// Simulate worktree directory with .git file pointing to CONTAINER path
-	worktreeDir := filepath.Join(root, "work", "branch", "features", "devctl")
+	worktreeDir := filepath.Join(root, "work", "branch", "features", "tt")
 	require.NoError(t, os.MkdirAll(worktreeDir, 0755))
 
 	// .git file has container-internal path (residue from previous container run)
@@ -153,10 +153,10 @@ func TestDetectGitWorktree_ContainerPathWithBackup(t *testing.T) {
 		0644,
 	))
 
-	// .git.devctl-backup has the correct host path
+	// .git.tt-backup has the correct host path
 	backupContent := "gitdir: " + worktreeMetaDir + "\n"
 	require.NoError(t, os.WriteFile(
-		filepath.Join(worktreeDir, ".git.devctl-backup"),
+		filepath.Join(worktreeDir, ".git.tt-backup"),
 		[]byte(backupContent),
 		0644,
 	))
@@ -178,7 +178,7 @@ func TestDetectGitWorktree_ContainerPathWithoutBackup(t *testing.T) {
 	root := t.TempDir()
 
 	// Simulate worktree directory with .git file pointing to CONTAINER path
-	worktreeDir := filepath.Join(root, "work", "branch", "features", "devctl")
+	worktreeDir := filepath.Join(root, "work", "branch", "features", "tt")
 	require.NoError(t, os.MkdirAll(worktreeDir, 0755))
 
 	// .git file has container-internal path, no backup exists

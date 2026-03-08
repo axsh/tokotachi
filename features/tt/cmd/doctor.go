@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/doctor"
+	"github.com/axsh/tokotachi/features/tt/internal/doctor"
 )
 
 var (

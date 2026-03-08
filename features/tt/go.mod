@@ -1,4 +1,4 @@
-module github.com/axsh/tokotachi/features/devctl
+module github.com/axsh/tokotachi/features/tt
 
 go 1.24.0
 

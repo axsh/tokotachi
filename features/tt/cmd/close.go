@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/action"
-	"github.com/axsh/tokotachi/features/devctl/internal/report"
-	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
-	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
+	"github.com/axsh/tokotachi/features/tt/internal/action"
+	"github.com/axsh/tokotachi/features/tt/internal/report"
+	"github.com/axsh/tokotachi/features/tt/internal/resolve"
+	"github.com/axsh/tokotachi/features/tt/internal/worktree"
 )
 
 var closeFlagForce bool
@@ -18,8 +18,8 @@ var closeFlagYes bool
 
 var closeCmd = &cobra.Command{
 	Use:   "close <branch> [feature]",
-	Short: "Close the development environment",
-	Long:  "Stop container (if feature specified), remove worktree and delete branch.",
+	Short: "Stop containers and delete worktree (syntax sugar)",
+	Long:  "Syntax sugar: runs down → delete in sequence. If feature specified, stops only that container.",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE:  runClose,
 }
@@ -40,7 +40,7 @@ func runClose(cmd *cobra.Command, args []string) error {
 	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
 	projectName := globalCfg.ProjectName
 	if projectName == "" {
-		projectName = "devctl"
+		projectName = "tt"
 	}
 
 	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}

@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDevctlListCode_ColumnHeaders(t *testing.T) {
-	stdout, _, exitCode := runDevctl(t, "list")
+func TestTtListCode_ColumnHeaders(t *testing.T) {
+	stdout, _, exitCode := runTT(t, "list")
 	if exitCode != 0 {
-		t.Fatalf("devctl list exited with code %d", exitCode)
+		t.Fatalf("tt list exited with code %d", exitCode)
 	}
 
 	// Verify new column headers
@@ -29,10 +29,10 @@ func TestDevctlListCode_ColumnHeaders(t *testing.T) {
 	}
 }
 
-func TestDevctlListCode_NoPathByDefault(t *testing.T) {
-	stdout, _, exitCode := runDevctl(t, "list")
+func TestTtListCode_NoPathByDefault(t *testing.T) {
+	stdout, _, exitCode := runTT(t, "list")
 	if exitCode != 0 {
-		t.Fatalf("devctl list exited with code %d", exitCode)
+		t.Fatalf("tt list exited with code %d", exitCode)
 	}
 
 	lines := strings.Split(stdout, "\n")
@@ -42,27 +42,27 @@ func TestDevctlListCode_NoPathByDefault(t *testing.T) {
 	}
 }
 
-func TestDevctlListCode_WithPathFlag(t *testing.T) {
-	stdout, _, exitCode := runDevctl(t, "list", "--path")
+func TestTtListCode_WithPathFlag(t *testing.T) {
+	stdout, _, exitCode := runTT(t, "list", "--path")
 	if exitCode != 0 {
-		t.Fatalf("devctl list --path exited with code %d", exitCode)
+		t.Fatalf("tt list --path exited with code %d", exitCode)
 	}
 
 	assert.Contains(t, stdout, "PATH", "Output should contain PATH header with --path flag")
 }
 
-func TestDevctlListCode_UpdateFlagAccepted(t *testing.T) {
+func TestTtListCode_UpdateFlagAccepted(t *testing.T) {
 	// Just verify --update flag is accepted (exit code 0)
-	_, _, exitCode := runDevctl(t, "list", "--update")
+	_, _, exitCode := runTT(t, "list", "--update")
 	// This may fail if no git remote is set up, but the flag should be accepted
 	// We mainly verify the flag doesn't cause a "unknown flag" error
-	assert.Equal(t, 0, exitCode, "devctl list --update should exit successfully")
+	assert.Equal(t, 0, exitCode, "tt list --update should exit successfully")
 }
 
-func TestDevctlListCode_JSONOutput(t *testing.T) {
-	stdout, _, exitCode := runDevctl(t, "list", "--json")
+func TestTtListCode_JSONOutput(t *testing.T) {
+	stdout, _, exitCode := runTT(t, "list", "--json")
 	if exitCode != 0 {
-		t.Fatalf("devctl list --json exited with code %d", exitCode)
+		t.Fatalf("tt list --json exited with code %d", exitCode)
 	}
 
 	// JSON output should not contain table headers
@@ -74,10 +74,10 @@ func TestDevctlListCode_JSONOutput(t *testing.T) {
 		"JSON output should start with [ or {, got: %s", trimmed[:min(50, len(trimmed))])
 }
 
-func TestDevctlListCode_FullFlagAccepted(t *testing.T) {
-	stdout, _, exitCode := runDevctl(t, "list", "--full")
+func TestTtListCode_FullFlagAccepted(t *testing.T) {
+	stdout, _, exitCode := runTT(t, "list", "--full")
 	if exitCode != 0 {
-		t.Fatalf("devctl list --full exited with code %d", exitCode)
+		t.Fatalf("tt list --full exited with code %d", exitCode)
 	}
 
 	assert.Contains(t, stdout, "BRANCH", "Output should contain BRANCH header")
@@ -86,24 +86,24 @@ func TestDevctlListCode_FullFlagAccepted(t *testing.T) {
 	assert.Contains(t, stdout, "CODE", "Output should contain CODE header")
 }
 
-func TestDevctlListCode_EnvFlagAccepted(t *testing.T) {
-	_, stderr, exitCode := runDevctl(t, "list", "--env")
+func TestTtListCode_EnvFlagAccepted(t *testing.T) {
+	_, stderr, exitCode := runTT(t, "list", "--env")
 	if exitCode != 0 {
-		t.Fatalf("devctl list --env exited with code %d", exitCode)
+		t.Fatalf("tt list --env exited with code %d", exitCode)
 	}
 
 	assert.Contains(t, stderr, "Environment Variables",
 		"stderr should contain Environment Variables section")
-	assert.Contains(t, stderr, "DEVCTL_LIST_WIDTH",
-		"stderr should contain DEVCTL_LIST_WIDTH")
-	assert.Contains(t, stderr, "DEVCTL_LIST_PADDING",
-		"stderr should contain DEVCTL_LIST_PADDING")
+	assert.Contains(t, stderr, "TT_LIST_WIDTH",
+		"stderr should contain TT_LIST_WIDTH")
+	assert.Contains(t, stderr, "TT_LIST_PADDING",
+		"stderr should contain TT_LIST_PADDING")
 }
 
-func TestDevctlListCode_NoEnvByDefault(t *testing.T) {
-	stdout, stderr, exitCode := runDevctl(t, "list")
+func TestTtListCode_NoEnvByDefault(t *testing.T) {
+	stdout, stderr, exitCode := runTT(t, "list")
 	if exitCode != 0 {
-		t.Fatalf("devctl list exited with code %d", exitCode)
+		t.Fatalf("tt list exited with code %d", exitCode)
 	}
 
 	assert.NotContains(t, stdout, "Environment Variables",
@@ -112,10 +112,10 @@ func TestDevctlListCode_NoEnvByDefault(t *testing.T) {
 		"stderr should not contain Environment Variables without --env")
 }
 
-func TestDevctlListCode_DynamicColumnWidth(t *testing.T) {
-	stdout, _, exitCode := runDevctl(t, "list")
+func TestTtListCode_DynamicColumnWidth(t *testing.T) {
+	stdout, _, exitCode := runTT(t, "list")
 	if exitCode != 0 {
-		t.Fatalf("devctl list exited with code %d", exitCode)
+		t.Fatalf("tt list exited with code %d", exitCode)
 	}
 
 	lines := strings.Split(stdout, "\n")

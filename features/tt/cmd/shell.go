@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/report"
-	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/tt/internal/report"
+	"github.com/axsh/tokotachi/features/tt/internal/resolve"
 )
 
 var shellCmd = &cobra.Command{
@@ -33,7 +33,7 @@ func runShell(cmd *cobra.Command, args []string) error {
 	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
 	projectName := globalCfg.ProjectName
 	if projectName == "" {
-		projectName = "devctl"
+		projectName = "tt"
 	}
 	containerName := resolve.ContainerName(projectName, ctx.Feature)
 

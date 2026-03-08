@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
 )
 
 // DownloadedFile represents a file downloaded from a GitHub repository.
@@ -241,7 +241,7 @@ func (c *Client) CreatePR(workDir string) error {
 		return fmt.Errorf("CmdRunner is required for PR operations")
 	}
 
-	ghCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GH", "gh")
+	ghCmd := cmdexec.ResolveCommand("TT_CMD_GH", "gh")
 	opts := cmdexec.RunOption{Dir: workDir}
 	return c.cmdRunner.RunInteractiveWithOpts(opts, ghCmd, "pr", "create")
 }
@@ -256,7 +256,7 @@ type PRInfo struct {
 // Uses `gh pr list --head <branch> --json number,createdAt --limit 1`.
 // If cmdRunner is set, uses it; otherwise falls back to exec.Command directly.
 func (c *Client) ListPRs(workDir, branch string) ([]PRInfo, error) {
-	ghCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GH", "gh")
+	ghCmd := cmdexec.ResolveCommand("TT_CMD_GH", "gh")
 	args := []string{"pr", "list", "--head", branch, "--json", "number,createdAt", "--limit", "1"}
 
 	var output string

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install built CLI tools to local bin/ directory.
 # Usage: ./scripts/dist/install-tools [--all | <tool-id>...]
-# Example: ./scripts/dist/install-tools devctl
+# Example: ./scripts/dist/install-tools tt
 #          ./scripts/dist/install-tools --all
 
 set -euo pipefail
@@ -10,7 +10,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 # ─── Argument check ─────────────────────────────────────────────────
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 [--all | <tool-id>...]"
-  echo "Example: $0 devctl"
+  echo "Example: $0 tt"
   echo "         $0 --all"
   exit 1
 fi

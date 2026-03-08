@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/state"
+	"github.com/axsh/tokotachi/features/tt/internal/state"
 )
 
 // Checker resolves the code hosting status for branches.
