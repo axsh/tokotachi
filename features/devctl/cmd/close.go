@@ -14,9 +14,9 @@ import (
 var closeFlagForce bool
 
 var closeCmd = &cobra.Command{
-	Use:   "close <feature> [branch]",
-	Short: "Close: down + worktree remove + branch delete",
-	Long:  "Close the feature: stops the container, removes the worktree, and deletes the local branch.",
+	Use:   "close <branch> [feature]",
+	Short: "Close the development environment",
+	Long:  "Stop container (if feature specified), remove worktree and delete branch.",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE:  runClose,
 }

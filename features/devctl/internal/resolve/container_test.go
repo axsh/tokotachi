@@ -16,6 +16,7 @@ func TestContainerName(t *testing.T) {
 		{"myproj", "feature-a", "myproj-feature-a"},
 		{"myproj", "feature_b", "myproj-feature-b"},
 		{"myproj", "Feature.C", "myproj-feature-c"},
+		{"myproj", "", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
@@ -28,4 +29,9 @@ func TestContainerName(t *testing.T) {
 func TestImageName(t *testing.T) {
 	got := resolve.ImageName("myproj", "feature-a")
 	assert.Equal(t, "myproj-dev-feature-a", got)
+}
+
+func TestImageName_EmptyFeature(t *testing.T) {
+	got := resolve.ImageName("myproj", "")
+	assert.Equal(t, "", got)
 }

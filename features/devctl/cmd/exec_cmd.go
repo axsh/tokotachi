@@ -10,39 +10,40 @@ import (
 )
 
 var execCmd = &cobra.Command{
-	Use:   "exec <feature> [branch] -- <command...>",
+	Use:   "exec <branch> <feature> -- <command...>",
 	Short: "Execute a command in the container",
-	Long:  "Execute a command inside the running container. Use -- to separate devctl args from the command.",
+	Long:  "Execute a command inside the running container. Requires feature argument. Use -- to separate devctl args from the command.",
 	Args:  cobra.MinimumNArgs(1),
 	RunE:  runExec,
 }
 
 func runExec(cmd *cobra.Command, args []string) error {
-	// Split args: before "--" is feature/branch, after is the command
-	feature := args[0]
-	var branch string
+	// Split args: before "--" is branch [feature], after is the command
+	var branch, feature string
 	var execArgs []string
 
 	dashIdx := cmd.ArgsLenAtDash()
 	if dashIdx >= 0 {
-		// args before -- are feature [branch]
+		// args before -- are branch [feature]
 		beforeDash := args[:dashIdx]
 		execArgs = args[dashIdx:]
-		feature = beforeDash[0]
+		branch = beforeDash[0]
 		if len(beforeDash) >= 2 {
-			branch = beforeDash[1]
+			feature = beforeDash[1]
 		}
 	} else {
-		// No --, treat all remaining as feature [branch]
+		// No --, treat all remaining as branch [feature]
+		branch = args[0]
 		if len(args) >= 2 {
-			branch = args[1]
+			feature = args[1]
 		}
 	}
-	if branch == "" {
-		branch = feature
+
+	if feature == "" {
+		return fmt.Errorf("feature is required for 'exec' command (container operation)")
 	}
 
-	ctxArgs := []string{feature, branch}
+	ctxArgs := []string{branch, feature}
 	ctx, err := InitContext(ctxArgs)
 	if err != nil {
 		return err

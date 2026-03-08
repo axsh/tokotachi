@@ -1,14 +1,18 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
+	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
 )
 
 var statusCmd = &cobra.Command{
-	Use:   "status <feature> [branch]",
-	Short: "Show feature status",
+	Use:   "status <branch> [feature]",
+	Short: "Show environment status",
+	Long:  "Show worktree and container status. If feature is omitted, only shows worktree status.",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE:  runStatus,
 }
@@ -25,10 +29,30 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	if projectName == "" {
 		projectName = "devctl"
 	}
-	containerName := resolve.ContainerName(projectName, ctx.Feature)
 
-	worktreePath, _ := resolve.Worktree(ctx.RepoRoot, ctx.Feature, ctx.Branch)
-	ctx.ActionRunner.PrintStatus(ctx.Feature, containerName, worktreePath)
+	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}
+	worktreePath := wm.Path(ctx.Feature, ctx.Branch)
+
+	if ctx.HasFeature() {
+		// Full status: worktree + container
+		containerName := resolve.ContainerName(projectName, ctx.Feature)
+		resolvedPath, _ := resolve.Worktree(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+		if resolvedPath != "" {
+			worktreePath = resolvedPath
+		}
+		ctx.ActionRunner.PrintStatus(ctx.Feature, containerName, worktreePath)
+	} else {
+		// Worktree only status
+		exists := wm.Exists(ctx.Feature, ctx.Branch)
+		if exists {
+			fmt.Printf("📁 Branch: %s\n", ctx.Branch)
+			fmt.Printf("   Worktree: %s\n", worktreePath)
+			fmt.Println("   Status: WORKTREE_ONLY (no feature specified)")
+		} else {
+			fmt.Printf("❌ Branch: %s — worktree not found\n", ctx.Branch)
+		}
+	}
+
 	ctx.Report.OverallResult = "SUCCESS"
 	return nil
 }

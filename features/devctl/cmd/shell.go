@@ -10,11 +10,14 @@ import (
 )
 
 var shellCmd = &cobra.Command{
-	Use:   "shell <feature> [branch]",
-	Short: "Open a shell in the container",
+	Use:   "shell <branch> <feature>",
+	Short: "Open a shell in the development container",
+	Long:  "Open an interactive shell in the running container. Requires feature argument.",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE:  runShell,
 }
+
+func init() {}
 
 func runShell(cmd *cobra.Command, args []string) error {
 	ctx, err := InitContext(args)
@@ -22,6 +25,10 @@ func runShell(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer finalizeReport(ctx)
+
+	if !ctx.HasFeature() {
+		return fmt.Errorf("feature is required for 'shell' command (container operation)")
+	}
 
 	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
 	projectName := globalCfg.ProjectName

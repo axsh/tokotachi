@@ -12,16 +12,17 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list <feature>",
-	Short: "List branches for a feature",
+	Use:   "list <branch>",
+	Short: "List features for a branch",
+	Long:  "List all feature worktrees under the given branch (scans work/<branch>/features/).",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runList,
 }
 
 func runList(cmd *cobra.Command, args []string) error {
-	feature := args[0]
-	// list does not need branch, so manual init
-	ctx, err := InitContext([]string{feature, feature})
+	branch := args[0]
+	// list does not need feature, pass branch only
+	ctx, err := InitContext([]string{branch})
 	if err != nil {
 		return err
 	}
@@ -34,33 +35,33 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}
-	entries, err := wm.List(feature)
+	entries, err := wm.List(branch)
 	if err != nil {
 		return fmt.Errorf("list failed: %w", err)
 	}
 
 	if len(entries) == 0 {
-		fmt.Fprintf(os.Stdout, "No worktrees found for feature %q\n", feature)
+		fmt.Fprintf(os.Stdout, "No feature worktrees found for branch %q\n", branch)
 		ctx.Report.OverallResult = "SUCCESS"
 		return nil
 	}
 
 	// Print table header
-	fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", "Branch", "Status", "ContainerMode", "CreatedAt")
-	fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", "------", "------", "-------------", "---------")
+	fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", "Feature", "Status", "ContainerMode", "CreatedAt")
+	fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", "-------", "------", "-------------", "---------")
 
 	for _, e := range entries {
-		statePath := state.StatePath(ctx.RepoRoot, feature, e.Branch)
+		statePath := state.StatePath(ctx.RepoRoot, e.Feature, branch)
 		s, err := state.Load(statePath)
 		if err != nil {
 			// No state file, show minimal info
-			fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", e.Branch, "unknown", "-", "-")
+			fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", e.Feature, "unknown", "-", "-")
 			continue
 		}
-		containerName := resolve.ContainerName(projectName, feature)
+		containerName := resolve.ContainerName(projectName, e.Feature)
 		_ = containerName
 		fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n",
-			e.Branch,
+			e.Feature,
 			string(s.Status),
 			s.ContainerMode,
 			s.CreatedAt.Format("2006-01-02 15:04"),
