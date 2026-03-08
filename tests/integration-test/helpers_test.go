@@ -14,6 +14,7 @@ import (
 )
 
 const featureName = "integration-test"
+const branchName = "integration-test"
 
 // projectRoot returns the absolute path to the project root.
 // Derived from this file's location: tests/integration-test/ -> 2 levels up.
@@ -119,7 +120,7 @@ func cleanupDevctlDown(t *testing.T) {
 	binary := devctlBinary(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, binary, "down", featureName)
+	cmd := exec.CommandContext(ctx, binary, "down", branchName, featureName)
 	cmd.Dir = projectRoot()
 	_ = cmd.Run()
 }

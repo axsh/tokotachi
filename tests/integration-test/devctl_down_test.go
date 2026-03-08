@@ -11,11 +11,11 @@ func TestDevctlDownStopsContainer(t *testing.T) {
 	requireDockerAvailable(t)
 
 	// Setup: start a container
-	stdout, stderr, code := runDevctl(t, "up", featureName)
+	stdout, stderr, code := runDevctl(t, "up", branchName, featureName)
 	assert.Equal(t, 0, code, "devctl up failed during setup.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Execute: devctl down
-	stdout, stderr, code = runDevctl(t, "down", featureName, "--verbose")
+	stdout, stderr, code = runDevctl(t, "down", branchName, featureName, "--verbose")
 	assert.Equal(t, 0, code, "devctl down failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Verify: container is gone
@@ -36,7 +36,7 @@ func TestDevctlDownNoopWhenNotRunning(t *testing.T) {
 
 	// Execute: devctl down again
 	// devctl down may return exit=1 when no container exists, this is acceptable
-	stdout, stderr, _ := runDevctl(t, "down", featureName)
+	stdout, stderr, _ := runDevctl(t, "down", branchName, featureName)
 	t.Logf("devctl down (noop) stdout: %s", stdout)
 	t.Logf("devctl down (noop) stderr: %s", stderr)
 	// No assertion on exit code — devctl currently returns 1 when container doesn't exist.
