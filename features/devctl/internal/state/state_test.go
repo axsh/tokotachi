@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -229,4 +230,81 @@ func TestRemove_Existing(t *testing.T) {
 func TestRemove_NotFound(t *testing.T) {
 	err := state.Remove("/nonexistent/path/file.yaml")
 	require.NoError(t, err)
+}
+
+func TestStateFile_CodeStatus_RoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.state.yaml")
+
+	prTime := time.Date(2026, 3, 8, 10, 30, 0, 0, time.UTC)
+	checkedTime := time.Date(2026, 3, 9, 1, 0, 0, 0, time.UTC)
+
+	original := state.StateFile{
+		Branch:    "feat-test",
+		CreatedAt: time.Date(2026, 3, 7, 14, 0, 0, 0, time.UTC),
+		CodeStatus: &state.CodeStatus{
+			Status:        state.CodeStatusPR,
+			PRCreatedAt:   &prTime,
+			LastCheckedAt: &checkedTime,
+		},
+	}
+
+	err := state.Save(path, original)
+	require.NoError(t, err)
+
+	loaded, err := state.Load(path)
+	require.NoError(t, err)
+	require.NotNil(t, loaded.CodeStatus)
+	assert.Equal(t, state.CodeStatusPR, loaded.CodeStatus.Status)
+	require.NotNil(t, loaded.CodeStatus.PRCreatedAt)
+	assert.True(t, prTime.Equal(*loaded.CodeStatus.PRCreatedAt))
+	require.NotNil(t, loaded.CodeStatus.LastCheckedAt)
+	assert.True(t, checkedTime.Equal(*loaded.CodeStatus.LastCheckedAt))
+}
+
+func TestStateFile_BackwardCompat(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.state.yaml")
+
+	// Save a StateFile without CodeStatus (simulating an existing old file)
+	original := state.StateFile{
+		Branch:    "legacy-branch",
+		CreatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		Features: map[string]state.FeatureState{
+			"devctl": {Status: state.StatusActive},
+		},
+	}
+
+	err := state.Save(path, original)
+	require.NoError(t, err)
+
+	loaded, err := state.Load(path)
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-branch", loaded.Branch)
+	assert.Nil(t, loaded.CodeStatus)
+	require.Contains(t, loaded.Features, "devctl")
+}
+
+func TestStateFile_CodeStatus_OmitEmpty(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.state.yaml")
+
+	original := state.StateFile{
+		Branch:    "no-code-status",
+		CreatedAt: time.Date(2026, 3, 7, 14, 0, 0, 0, time.UTC),
+		// CodeStatus is nil
+	}
+
+	err := state.Save(path, original)
+	require.NoError(t, err)
+
+	// Read raw YAML and verify code_status key is absent
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "code_status")
+
+	// Load should still work
+	loaded, err := state.Load(path)
+	require.NoError(t, err)
+	assert.Nil(t, loaded.CodeStatus)
 }
