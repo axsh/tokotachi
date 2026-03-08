@@ -78,9 +78,10 @@ func InitContext(args []string) (*AppContext, error) {
 	}
 
 	ctx.Report = &report.Report{
-		Feature: feature,
-		Branch:  branch,
-		EnvVars: CollectEnvVars(),
+		Feature:     feature,
+		Branch:      branch,
+		EnvVars:     CollectEnvVars(),
+		ShowEnvVars: flagEnv,
 	}
 
 	return ctx, nil

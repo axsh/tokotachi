@@ -11,6 +11,7 @@ var (
 	flagVerbose bool
 	flagDryRun  bool
 	flagReport  string
+	flagEnv     bool
 )
 
 var rootCmd = &cobra.Command{
@@ -27,6 +28,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&flagVerbose, "verbose", false, "Show debug logs")
 	rootCmd.PersistentFlags().BoolVar(&flagDryRun, "dry-run", false, "Show planned actions without executing")
 	rootCmd.PersistentFlags().StringVar(&flagReport, "report", "", "Write execution report to Markdown file")
+	rootCmd.PersistentFlags().BoolVar(&flagEnv, "env", false, "Show environment variables in report")
 
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(downCmd)

@@ -24,7 +24,6 @@ var (
 	flagListPath   bool
 	flagListUpdate bool
 	flagListFull   bool
-	flagListEnv    bool
 )
 
 var listCmd = &cobra.Command{
@@ -40,7 +39,6 @@ func init() {
 	listCmd.Flags().BoolVar(&flagListPath, "path", false, "Show worktree path column")
 	listCmd.Flags().BoolVar(&flagListUpdate, "update", false, "Force update code status immediately")
 	listCmd.Flags().BoolVar(&flagListFull, "full", false, "Disable column truncation")
-	listCmd.Flags().BoolVar(&flagListEnv, "env", false, "Show environment variables in report")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -145,11 +143,12 @@ func runListBranches() error {
 	listing.FormatTable(os.Stdout, branches, opts)
 
 	// Show environment variables report if --env is specified
-	if flagListEnv {
+	if flagEnv {
 		rep := &report.Report{
-			StartTime: time.Now(),
-			Branch:    "(list)",
-			EnvVars:   CollectEnvVars(),
+			StartTime:   time.Now(),
+			Branch:      "(list)",
+			EnvVars:     CollectEnvVars(),
+			ShowEnvVars: true,
 		}
 		rep.Print(os.Stderr)
 	}

@@ -33,6 +33,7 @@ type Report struct {
 	Editor        string
 	ContainerMode string
 	EnvVars       []EnvVar
+	ShowEnvVars   bool // only print env vars section when true
 	Steps         []StepEntry
 	OverallResult string // "SUCCESS" or "FAILED"
 }
@@ -47,7 +48,7 @@ func (r *Report) Print(w io.Writer) {
 	fmt.Fprintf(w, "\n")
 
 	// Environment Variables
-	if len(r.EnvVars) > 0 {
+	if r.ShowEnvVars && len(r.EnvVars) > 0 {
 		fmt.Fprintf(w, "## Environment Variables\n")
 		fmt.Fprintf(w, "| Variable | Value |\n")
 		fmt.Fprintf(w, "|---|---|\n")

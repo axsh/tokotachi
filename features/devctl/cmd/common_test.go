@@ -63,3 +63,20 @@ func TestInitContext_NoArgs(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "branch name is required")
 }
+
+func TestInitContext_ShowEnvVarsReflectsFlagEnv(t *testing.T) {
+	origEnv := flagEnv
+	defer func() { flagEnv = origEnv }()
+
+	flagEnv = false
+	ctx, err := InitContext([]string{"test-branch"})
+	require.NoError(t, err)
+	assert.False(t, ctx.Report.ShowEnvVars,
+		"ShowEnvVars should be false when flagEnv is false")
+
+	flagEnv = true
+	ctx, err = InitContext([]string{"test-branch"})
+	require.NoError(t, err)
+	assert.True(t, ctx.Report.ShowEnvVars,
+		"ShowEnvVars should be true when flagEnv is true")
+}

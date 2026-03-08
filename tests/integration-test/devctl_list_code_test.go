@@ -100,6 +100,18 @@ func TestDevctlListCode_EnvFlagAccepted(t *testing.T) {
 		"stderr should contain DEVCTL_LIST_PADDING")
 }
 
+func TestDevctlListCode_NoEnvByDefault(t *testing.T) {
+	stdout, stderr, exitCode := runDevctl(t, "list")
+	if exitCode != 0 {
+		t.Fatalf("devctl list exited with code %d", exitCode)
+	}
+
+	assert.NotContains(t, stdout, "Environment Variables",
+		"stdout should not contain Environment Variables without --env")
+	assert.NotContains(t, stderr, "Environment Variables",
+		"stderr should not contain Environment Variables without --env")
+}
+
 func TestDevctlListCode_DynamicColumnWidth(t *testing.T) {
 	stdout, _, exitCode := runDevctl(t, "list")
 	if exitCode != 0 {

@@ -25,6 +25,7 @@ func sampleReport() *report.Report {
 			{Name: "DEVCTL_EDITOR", Value: "", Default: "cursor", WasSet: false},
 			{Name: "DEVCTL_CMD_CURSOR", Value: "/custom/cursor", Default: "cursor", WasSet: true},
 		},
+		ShowEnvVars: true,
 		Steps: []report.StepEntry{
 			{Name: "Container up", Record: &cmdexec.ExecRecord{Command: "docker run ...", Success: true, ExitCode: 0}, Success: true},
 			{Name: "Editor open", Record: &cmdexec.ExecRecord{Command: "cursor ./work", Success: true, ExitCode: 0}, Success: true},
@@ -53,6 +54,26 @@ func TestReport_EnvVars(t *testing.T) {
 	assert.Contains(t, out, "not set")
 	assert.Contains(t, out, "DEVCTL_CMD_CURSOR")
 	assert.Contains(t, out, "/custom/cursor")
+}
+
+func TestReport_EnvVars_Hidden(t *testing.T) {
+	var buf bytes.Buffer
+	r := &report.Report{
+		StartTime:     time.Date(2026, 3, 7, 14, 25, 0, 0, time.UTC),
+		Feature:       "devctl",
+		Branch:        "test-001",
+		EnvVars: []report.EnvVar{
+			{Name: "DEVCTL_EDITOR", Value: "", Default: "cursor", WasSet: false},
+		},
+		ShowEnvVars:   false,
+		OverallResult: "SUCCESS",
+	}
+	r.Print(&buf)
+	out := buf.String()
+	assert.NotContains(t, out, "Environment Variables",
+		"env vars section should be hidden when ShowEnvVars is false")
+	assert.NotContains(t, out, "DEVCTL_EDITOR",
+		"individual env var names should not appear")
 }
 
 func TestReport_WriteMarkdown(t *testing.T) {
