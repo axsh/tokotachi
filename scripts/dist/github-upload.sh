@@ -118,6 +118,7 @@ if [[ $# -lt 1 ]]; then
 fi
 
 TOOL_ID="$1"
+validate_tool_id "$TOOL_ID"
 VERSION_ARG="${2:-+v0.0.1}"
 
 # Determine mode: increment or absolute

@@ -31,8 +31,6 @@ tokotachi/
 ├── features/              # All feature implementations
 │   ├── tt/            # Development environment orchestrator (Go)
 │   └── integration-test/  # Integration test suite (Python)
-├── catalog/               # Template catalog configuration
-├── environments/          # Shared environment configs (Docker Compose)
 ├── shared/                # Shared resources (libs, schemas, testdata)
 ├── tests/                 # Project-level test suites
 │   └── integration-test/  # Integration tests (Go)
@@ -56,21 +54,71 @@ tokotachi/
 
 The core feature of this repository. `tt` is a CLI tool that manages feature-level development environments across different **OS × Editor × Container** combinations.
 
+#### Primitive Commands
+
+These are the building-block commands that perform a single operation each:
+
 ```bash
-tt up <branch> [feature]                   # Start a development container (worktree only if feature omitted)
-tt up <branch> [feature] --editor cursor   # Start + open editor
-tt down <branch> <feature>                 # Stop and remove the container
-tt open <branch> [feature] --editor code   # Open editor for a branch
-tt open <branch> [feature] --up            # Open editor + start container if needed
-tt status <branch> [feature]               # Show environment status
-tt shell <branch> <feature>                # Open a shell in the container
-tt exec <branch> <feature> -- go test ./...  # Execute a command
-tt close <branch> [feature]                # Full teardown (container + worktree + branch)
-tt close <branch> [feature] --force        # Force close even if branch not merged
-tt list <branch>                           # List features for a branch
-tt pr <branch> [feature]                   # Create a GitHub Pull Request
-tt doctor                                  # Check repository health and config
-tt doctor --fix                            # Auto-fix detected issues
+# Worktree management
+tt create <branch>                           # Create a branch and worktree
+tt delete <branch>                           # Delete worktree and branch
+tt delete <branch> --force                   # Force delete even if branch not merged
+tt delete <branch> --depth 5 --yes           # Recursive nested worktree deletion
+
+# Container management
+tt up <branch> <feature>                     # Start the development container
+tt up <branch> <feature> --ssh              # Start with SSH mode
+tt up <branch> <feature> --rebuild          # Rebuild the container image
+tt down <branch> <feature>                   # Stop and remove the container
+
+# Editor management
+tt editor <branch> [feature]                 # Open the editor for a branch
+tt editor <branch> [feature] --editor cursor # Specify editor (code|cursor|ag|claude)
+tt editor <branch> [feature] --attach        # DevContainer attach to running container
+```
+
+#### Syntax Sugar Commands
+
+These combine multiple primitive commands into a single operation:
+
+```bash
+# open = create → up → editor (all-in-one start)
+tt open <branch> [feature]                   # Create worktree, start container, and open editor
+tt open <branch> [feature] --editor code     # Specify editor to use
+
+# close = down → delete (all-in-one teardown)
+tt close <branch> [feature]                  # Stop containers and delete worktree
+tt close <branch> [feature] --force          # Force close even if branch not merged
+tt close <branch> [feature] --depth 5 --yes  # Recursive close with auto-confirm
+```
+
+#### Utility Commands
+
+```bash
+# Container interaction
+tt status <branch> [feature]                 # Show worktree and container status
+tt shell <branch> <feature>                  # Open a shell in the container
+tt exec <branch> <feature> -- go test ./...  # Execute a command in the container
+
+# Project management
+tt list                                      # List all worktree branches
+tt list [branch]                             # List features for a specific branch
+tt list --json --path --update --full        # Output options
+tt pr <branch> [feature]                     # Create a GitHub Pull Request
+tt doctor                                    # Check repository health and config
+tt doctor --fix --json                       # Auto-fix with JSON output
+tt scaffold [category] [name]                # Generate project structure from templates
+tt scaffold --list                           # List available templates
+tt scaffold --rollback                       # Rollback last scaffold operation
+```
+
+#### Global Flags
+
+```bash
+--verbose      # Show debug logs
+--dry-run      # Show planned actions without executing
+--report FILE  # Write execution report to Markdown file
+--env          # Show environment variables in report
 ```
 
 #### Supported Environments
@@ -196,10 +244,10 @@ dev:
 
 ### Creating a New Feature
 
-New features are generated from templates defined in the `catalog/` directory and placed under `features/`:
+New features are generated from templates using the `scaffold` command and placed under `features/`:
 
 ```bash
-featurectl new my-feature --template go-service
+tt scaffold [category] [name]
 ```
 
 ### Collaboration Model

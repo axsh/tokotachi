@@ -80,3 +80,29 @@ for t in d.get('tools', []):
     print(t['id'])
 PYEOF
 }
+
+# ─── Tool ID validation ─────────────────────────────────────────────
+# validate_tool_id <arg>
+# Validates that the argument is a known tool-id (not a version string).
+# Exits with error if validation fails.
+validate_tool_id() {
+  local arg="$1"
+  local available
+  available=$(get_all_tool_ids)
+
+  # Reject version-like strings as tool-id
+  if [[ "$arg" =~ ^(\+)?v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    fail "First argument looks like a version, not a tool-id: '${arg}'"
+    echo "  Usage: $0 <tool-id> [version|+increment]"
+    echo "  Available tools: $(echo "$available" | tr '\n' ', ' | sed 's/,$//')"
+    exit 1
+  fi
+
+  # Check that tool-id exists in tools.yaml
+  if ! echo "$available" | grep -qx "$arg"; then
+    fail "Unknown tool-id: '${arg}'"
+    echo "  Available tools: $(echo "$available" | tr '\n' ', ' | sed 's/,$//')"
+    exit 1
+  fi
+}
+
