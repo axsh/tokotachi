@@ -15,7 +15,7 @@ warn()  { echo -e "\033[1;33m[WARN]\033[0m $*"; }
 
 # ─── YAML helpers ───────────────────────────────────────────────────
 # yaml_get <file> <python-dict-expression>
-# Example: yaml_get "tools/manifests/devctl.yaml" "['binary_name']"
+# Example: yaml_get "tools/manifests/tt.yaml" "['binary_name']"
 yaml_get() {
   local file="$1" expr="$2"
   python - "$file" "$expr" <<'PYEOF'
@@ -51,7 +51,7 @@ manifest_path() {
 }
 
 # get_field <tool-id> <python-dict-expression>
-# Example: get_field "devctl" "['binary_name']"
+# Example: get_field "tt" "['binary_name']"
 get_field() {
   yaml_get "$(manifest_path "$1")" "$2"
 }

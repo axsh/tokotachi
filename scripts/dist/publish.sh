@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publish release artifacts to GitHub Releases.
 # Usage: ./scripts/dist/publish <tool-id> <version>
-# Example: ./scripts/dist/publish devctl v1.0.0
+# Example: ./scripts/dist/publish tt v1.0.0
 
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
@@ -9,7 +9,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 # ─── Argument check ─────────────────────────────────────────────────
 if [[ $# -lt 2 ]]; then
   echo "Usage: $0 <tool-id> <version>"
-  echo "Example: $0 devctl v1.0.0"
+  echo "Example: $0 tt v1.0.0"
   exit 1
 fi
 
@@ -61,7 +61,7 @@ pass "Published ${TOOL_ID} ${VERSION} to GitHub Releases"
 # ─── Next steps ─────────────────────────────────────────────────────
 echo ""
 info "=== Next Steps ==="
-echo "  Homebrew: Update tools/installers/homebrew/Formula/devctl.rb"
-echo "  Scoop:    Update tools/installers/scoop/devctl.json"
+echo "  Homebrew: Update tools/installers/homebrew/Formula/tt.rb"
+echo "  Scoop:    Update tools/installers/scoop/tt.json"
 echo ""
 echo "  SHA256 checksums are in: ${RELEASE_DIR}/checksums.txt"

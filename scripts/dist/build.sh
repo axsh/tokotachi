@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build CLI tools for all platforms defined in their manifest.
 # Usage: ./scripts/dist/build <tool-id>
-# Example: ./scripts/dist/build devctl
+# Example: ./scripts/dist/build tt
 
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
@@ -9,7 +9,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 # ─── Argument check ─────────────────────────────────────────────────
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <tool-id>"
-  echo "Example: $0 devctl"
+  echo "Example: $0 tt"
   exit 1
 fi
 

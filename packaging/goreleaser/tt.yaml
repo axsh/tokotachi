@@ -1,0 +1,24 @@
+# GoReleaser configuration for tt
+# Extends base.yaml settings.
+project_name: tt
+version: 2
+
+builds:
+  - id: tt
+    dir: features/tt
+    main: ./cmd/tt
+    binary: tt
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+dist: dist/tt

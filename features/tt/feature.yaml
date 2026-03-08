@@ -1,0 +1,8 @@
+name: tt
+kind: cli
+language: go
+entrypoint: .
+release:
+  enabled: true
+install:
+  expose_as: tt

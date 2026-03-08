@@ -2,9 +2,9 @@
 # All-in-one distribution: build → release → publish to GitHub.
 # Usage: ./scripts/dist/github-upload.sh <tool-id> [version|+increment]
 # Examples:
-#   ./scripts/dist/github-upload.sh devctl v1.2.0     # absolute version
-#   ./scripts/dist/github-upload.sh devctl +v0.1.0    # increment from current
-#   ./scripts/dist/github-upload.sh devctl             # defaults to +v0.0.1
+#   ./scripts/dist/github-upload.sh tt v1.2.0     # absolute version
+#   ./scripts/dist/github-upload.sh tt +v0.1.0    # increment from current
+#   ./scripts/dist/github-upload.sh tt             # defaults to +v0.0.1
 
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
@@ -48,7 +48,7 @@ get_current_version() {
   if [[ -z "$tag" ]]; then
     echo "v0.0.0"
   else
-    # Strip tool-id prefix: "devctl-v1.0.0" → "v1.0.0"
+    # Strip tool-id prefix: "tt-v1.0.0" → "v1.0.0"
     echo "${tag#${tool_id}-}"
   fi
 }
@@ -111,9 +111,9 @@ if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <tool-id> [version|+increment]"
   echo ""
   echo "Examples:"
-  echo "  $0 devctl v1.2.0     # absolute version"
-  echo "  $0 devctl +v0.1.0    # increment from current"
-  echo "  $0 devctl             # defaults to +v0.0.1 (patch bump)"
+  echo "  $0 tt v1.2.0     # absolute version"
+  echo "  $0 tt +v0.1.0    # increment from current"
+  echo "  $0 tt             # defaults to +v0.0.1 (patch bump)"
   exit 1
 fi
 

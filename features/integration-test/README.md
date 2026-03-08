@@ -1,10 +1,10 @@
-# integration-test — devctl Integration Test Suite
+# integration-test — tt Integration Test Suite
 
-Python-based integration tests that verify `devctl` CLI functionality in real Docker environments.
+Python-based integration tests that verify `tt` CLI functionality in real Docker environments.
 
 ## Overview
 
-This feature provides the test infrastructure for validating that `devctl` subcommands (`up`, `down`, `status`, etc.) work correctly with actual Docker containers.
+This feature provides the test infrastructure for validating that `tt` subcommands (`up`, `down`, `status`, etc.) work correctly with actual Docker containers.
 
 ## Structure
 
@@ -18,13 +18,13 @@ Test code is located at `$PROJECT_ROOT/tests/integration-test/` to align with th
 ## Prerequisites
 
 - Docker Desktop running
-- `devctl` binary built (`./scripts/process/build.sh`)
+- `tt` binary built (`./scripts/process/build.sh`)
 - Python 3.12+ with pytest installed
 
 ## Running Tests
 
 ```bash
-# Build devctl first
+# Build tt first
 ./scripts/process/build.sh
 
 # Run all integration tests
@@ -34,5 +34,5 @@ Test code is located at `$PROJECT_ROOT/tests/integration-test/` to align with th
 ./scripts/process/integration_test.sh --categories "integration-test"
 
 # Run a specific test
-./scripts/process/integration_test.sh --categories "integration-test" --specify "test_devctl_up"
+./scripts/process/integration_test.sh --categories "integration-test" --specify "test_tt_up"
 ```

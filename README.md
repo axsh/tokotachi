@@ -19,7 +19,7 @@ The project is designed to work seamlessly with AI coding agents, enabling a spe
 ### Key Highlights
 
 - **Feature-based monorepo** — isolated modules under `features/`, each independently buildable and testable
-- **`devctl` CLI** — a matrix-driven development environment orchestrator written in Go
+- **`tt` CLI** — a matrix-driven development environment orchestrator written in Go
 - **Template catalog** — version-pinned feature templates for reproducible scaffolding
 - **Agent workflows** — structured AI-assisted specification, planning, and implementation processes
 - **Multi-platform support** — Linux, macOS, and Windows with multiple editor/container combinations
@@ -29,7 +29,7 @@ The project is designed to work seamlessly with AI coding agents, enabling a spe
 ```
 tokotachi/
 ├── features/              # All feature implementations
-│   ├── devctl/            # Development environment orchestrator (Go)
+│   ├── tt/            # Development environment orchestrator (Go)
 │   └── integration-test/  # Integration test suite (Python)
 ├── catalog/               # Template catalog configuration
 ├── environments/          # Shared environment configs (Docker Compose)
@@ -52,25 +52,25 @@ tokotachi/
 
 ## Features
 
-### devctl — Development Environment Orchestrator
+### tt — Development Environment Orchestrator
 
-The core feature of this repository. `devctl` is a CLI tool that manages feature-level development environments across different **OS × Editor × Container** combinations.
+The core feature of this repository. `tt` is a CLI tool that manages feature-level development environments across different **OS × Editor × Container** combinations.
 
 ```bash
-devctl up <branch> [feature]                   # Start a development container (worktree only if feature omitted)
-devctl up <branch> [feature] --editor cursor   # Start + open editor
-devctl down <branch> <feature>                 # Stop and remove the container
-devctl open <branch> [feature] --editor code   # Open editor for a branch
-devctl open <branch> [feature] --up            # Open editor + start container if needed
-devctl status <branch> [feature]               # Show environment status
-devctl shell <branch> <feature>                # Open a shell in the container
-devctl exec <branch> <feature> -- go test ./...  # Execute a command
-devctl close <branch> [feature]                # Full teardown (container + worktree + branch)
-devctl close <branch> [feature] --force        # Force close even if branch not merged
-devctl list <branch>                           # List features for a branch
-devctl pr <branch> [feature]                   # Create a GitHub Pull Request
-devctl doctor                                  # Check repository health and config
-devctl doctor --fix                            # Auto-fix detected issues
+tt up <branch> [feature]                   # Start a development container (worktree only if feature omitted)
+tt up <branch> [feature] --editor cursor   # Start + open editor
+tt down <branch> <feature>                 # Stop and remove the container
+tt open <branch> [feature] --editor code   # Open editor for a branch
+tt open <branch> [feature] --up            # Open editor + start container if needed
+tt status <branch> [feature]               # Show environment status
+tt shell <branch> <feature>                # Open a shell in the container
+tt exec <branch> <feature> -- go test ./...  # Execute a command
+tt close <branch> [feature]                # Full teardown (container + worktree + branch)
+tt close <branch> [feature] --force        # Force close even if branch not merged
+tt list <branch>                           # List features for a branch
+tt pr <branch> [feature]                   # Create a GitHub Pull Request
+tt doctor                                  # Check repository health and config
+tt doctor --fix                            # Auto-fix detected issues
 ```
 
 #### Supported Environments
@@ -87,7 +87,7 @@ detect → resolve → plan → execute → report
 
 The processing pipeline detects the environment, resolves configuration, builds an execution plan, runs actions, and generates a report.
 
-See [`features/devctl/README.md`](features/devctl/README.md) for full documentation.
+See [`features/tt/README.md`](features/tt/README.md) for full documentation.
 
 ## Installation
 
@@ -99,33 +99,33 @@ Download the latest release from [GitHub Releases](https://github.com/axsh/tokot
 
 ```bash
 # Download (replace OS and ARCH as needed: linux/darwin, amd64/arm64)
-curl -LO https://github.com/axsh/tokotachi/releases/latest/download/devctl_linux_amd64.tar.gz
+curl -LO https://github.com/axsh/tokotachi/releases/latest/download/tt_linux_amd64.tar.gz
 
 # Extract
-tar xzf devctl_linux_amd64.tar.gz
+tar xzf tt_linux_amd64.tar.gz
 
 # Move to PATH
-sudo mv devctl /usr/local/bin/
+sudo mv tt /usr/local/bin/
 ```
 
 #### macOS (Apple Silicon)
 
 ```bash
-curl -LO https://github.com/axsh/tokotachi/releases/latest/download/devctl_darwin_arm64.tar.gz
-tar xzf devctl_darwin_arm64.tar.gz
-sudo mv devctl /usr/local/bin/
+curl -LO https://github.com/axsh/tokotachi/releases/latest/download/tt_darwin_arm64.tar.gz
+tar xzf tt_darwin_arm64.tar.gz
+sudo mv tt /usr/local/bin/
 ```
 
 #### Windows
 
-1. Download `devctl_windows_amd64.zip` from [Releases](https://github.com/axsh/tokotachi/releases)
+1. Download `tt_windows_amd64.zip` from [Releases](https://github.com/axsh/tokotachi/releases)
 2. Extract the zip file
-3. Move `devctl.exe` to a directory in your `PATH`
+3. Move `tt.exe` to a directory in your `PATH`
 
 #### Verify Installation
 
 ```bash
-devctl --help
+tt --help
 ```
 
 ### Build from Source
@@ -141,11 +141,11 @@ cd tokotachi
 ./scripts/dist/bootstrap-tools.sh
 
 # Or build individually
-./scripts/dist/build.sh devctl
-./scripts/dist/install-tools.sh devctl
+./scripts/dist/build.sh tt
+./scripts/dist/install-tools.sh tt
 ```
 
-The compiled binary is output to `bin/devctl`.
+The compiled binary is output to `bin/tt`.
 
 ### Run Tests
 

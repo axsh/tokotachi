@@ -1,0 +1,6 @@
+feature: tt
+branch: test-001
+created_at: 2026-03-07T17:11:37.836606+09:00
+container_mode: docker-local
+editor: cursor
+status: active

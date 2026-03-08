@@ -32,15 +32,15 @@ func projectRoot() string {
 	return root
 }
 
-// devctlBinary returns the path to the devctl binary.
+// ttBinary returns the path to the tt binary.
 // Fails the test if the binary is not found.
 // On Windows, if the binary doesn't have .exe extension, creates a copy
 // with .exe extension since exec.Command requires it.
-func devctlBinary(t *testing.T) string {
+func ttBinary(t *testing.T) string {
 	t.Helper()
 
-	exePath := filepath.Join(projectRoot(), "bin", "devctl.exe")
-	noExtPath := filepath.Join(projectRoot(), "bin", "devctl")
+	exePath := filepath.Join(projectRoot(), "bin", "tt.exe")
+	noExtPath := filepath.Join(projectRoot(), "bin", "tt")
 
 	// Check if .exe version exists
 	if _, err := os.Stat(exePath); err == nil {
@@ -53,10 +53,10 @@ func devctlBinary(t *testing.T) string {
 			// Windows exec.Command requires .exe — copy the binary
 			data, err := os.ReadFile(noExtPath)
 			if err != nil {
-				t.Fatalf("failed to read devctl binary: %v", err)
+				t.Fatalf("failed to read tt binary: %v", err)
 			}
 			if err := os.WriteFile(exePath, data, 0o755); err != nil {
-				t.Fatalf("failed to create devctl.exe: %v", err)
+				t.Fatalf("failed to create tt.exe: %v", err)
 			}
 			t.Logf("Created %s from %s for Windows compatibility", exePath, noExtPath)
 			return exePath
@@ -64,7 +64,7 @@ func devctlBinary(t *testing.T) string {
 		return noExtPath
 	}
 
-	t.Fatalf("devctl binary not found at %s or %s. Run ./scripts/process/build.sh first.", exePath, noExtPath)
+	t.Fatalf("tt binary not found at %s or %s. Run ./scripts/process/build.sh first.", exePath, noExtPath)
 	return ""
 }
 
@@ -81,11 +81,11 @@ func requireDockerAvailable(t *testing.T) {
 	}
 }
 
-// runDevctl executes the devctl binary with the given arguments.
+// runTT executes the tt binary with the given arguments.
 // Returns stdout, stderr, and exit code.
-func runDevctl(t *testing.T, args ...string) (stdout, stderr string, exitCode int) {
+func runTT(t *testing.T, args ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
-	binary := devctlBinary(t)
+	binary := ttBinary(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -113,11 +113,24 @@ func runDevctl(t *testing.T, args ...string) (stdout, stderr string, exitCode in
 	return stdout, stderr, exitCode
 }
 
-// cleanupDevctlDown runs 'devctl down' to clean up containers.
-// Does not fail on errors (used for cleanup, not assertions).
-func cleanupDevctlDown(t *testing.T) {
+// ensureWorktree ensures that the worktree exists for the branch.
+// This is required because 'tt up' no longer creates worktrees automatically.
+// Does not fail on errors (the worktree may already exist).
+func ensureWorktree(t *testing.T) {
 	t.Helper()
-	binary := devctlBinary(t)
+	binary := ttBinary(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, binary, "create", branchName)
+	cmd.Dir = projectRoot()
+	_ = cmd.Run()
+}
+
+// cleanupTTDown runs 'tt down' to clean up containers.
+// Does not fail on errors (used for cleanup, not assertions).
+func cleanupTTDown(t *testing.T) {
+	t.Helper()
+	binary := ttBinary(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, binary, "down", branchName, featureName)
@@ -147,7 +160,7 @@ func cleanupContainers() {
 	}
 
 	// Remove verification images
-	for _, img := range []string{"integration-test-verify", "devctl-verify"} {
+	for _, img := range []string{"integration-test-verify", "tt-verify"} {
 		_, _ = dockerRun("rmi", "-f", img)
 	}
 }

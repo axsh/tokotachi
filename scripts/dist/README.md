@@ -36,13 +36,13 @@ Build, release, and publish in a single command:
 
 ```bash
 # Patch release (default: +v0.0.1)
-./scripts/dist/github-upload.sh devctl
+./scripts/dist/github-upload.sh tt
 
 # Specific version
-./scripts/dist/github-upload.sh devctl v2.0.0
+./scripts/dist/github-upload.sh tt v2.0.0
 
 # Increment version
-./scripts/dist/github-upload.sh devctl +v0.1.0
+./scripts/dist/github-upload.sh tt +v0.1.0
 ```
 
 ### Step-by-Step Release
@@ -52,10 +52,10 @@ Build, release, and publish in a single command:
 Build a CLI tool from its feature source:
 
 ```bash
-./scripts/dist/build.sh devctl
+./scripts/dist/build.sh tt
 ```
 
-This reads `tools/manifests/devctl.yaml` to determine build targets,
+This reads `tools/manifests/tt.yaml` to determine build targets,
 then compiles the Go binary for all specified platforms.
 
 #### 2. Release
@@ -63,17 +63,17 @@ then compiles the Go binary for all specified platforms.
 Create release artifacts (archives + checksums):
 
 ```bash
-./scripts/dist/release.sh devctl v1.0.0
+./scripts/dist/release.sh tt v1.0.0
 ```
 
-Artifacts are written to `dist/devctl/v1.0.0/`.
+Artifacts are written to `dist/tt/v1.0.0/`.
 
 #### 3. Publish
 
 Publish the release to distribution channels:
 
 ```bash
-./scripts/dist/publish.sh devctl v1.0.0
+./scripts/dist/publish.sh tt v1.0.0
 ```
 
 This publishes to:
