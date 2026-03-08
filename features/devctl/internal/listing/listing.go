@@ -6,6 +6,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/axsh/tokotachi/features/devctl/internal/state"
 )
@@ -25,10 +26,11 @@ type FeatureInfo struct {
 
 // BranchInfo holds the merged branch overview.
 type BranchInfo struct {
-	Branch       string        `json:"branch"`
-	Path         string        `json:"path"`
-	Features     []FeatureInfo `json:"features"`
-	MainWorktree bool          `json:"main_worktree,omitempty"`
+	Branch       string            `json:"branch"`
+	Path         string            `json:"path"`
+	Features     []FeatureInfo     `json:"features"`
+	MainWorktree bool              `json:"main_worktree,omitempty"`
+	CodeStatus   *state.CodeStatus `json:"code_status,omitempty"`
 }
 
 // ParseWorktreeOutput parses `git worktree list --porcelain` output.
@@ -112,6 +114,7 @@ func CollectBranches(entries []WorktreeEntry, states map[string]state.StateFile)
 				return features[i].Name < features[j].Name
 			})
 			bi.Features = features
+			bi.CodeStatus = sf.CodeStatus
 		}
 
 		branches = append(branches, bi)
@@ -138,9 +141,9 @@ func featureColumn(bi BranchInfo) string {
 	return strings.Join(parts, ", ")
 }
 
-// stateColumn builds a display string for the STATE column.
+// containerColumn builds a display string for the CONTAINER column.
 // Returns the status of features, "(no state)", or "(main worktree)".
-func stateColumn(bi BranchInfo) string {
+func containerColumn(bi BranchInfo) string {
 	if bi.MainWorktree {
 		return "(main worktree)"
 	}
@@ -154,23 +157,143 @@ func stateColumn(bi BranchInfo) string {
 	return strings.Join(parts, ", ")
 }
 
-// FormatTable writes branch info as a human-readable table.
-// Columns: BRANCH, FEATURE, STATE, (PATH if showPath is true).
-func FormatTable(w io.Writer, branches []BranchInfo, showPath bool) {
-	if showPath {
-		fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", "BRANCH", "FEATURE", "STATE", "PATH")
-	} else {
-		fmt.Fprintf(w, "%-24s %-20s %s\n", "BRANCH", "FEATURE", "STATE")
+// FormatCodeColumn builds a display string for the CODE column.
+// The now parameter is injected for testability.
+func FormatCodeColumn(bi BranchInfo, now time.Time) string {
+	if bi.MainWorktree {
+		return "-"
+	}
+	if bi.CodeStatus == nil {
+		return "(unknown)"
+	}
+	switch bi.CodeStatus.Status {
+	case state.CodeStatusLocal:
+		return "(local)"
+	case state.CodeStatusHosted:
+		return "hosted"
+	case state.CodeStatusDeleted:
+		return "deleted"
+	case state.CodeStatusPR:
+		if bi.CodeStatus.PRCreatedAt == nil {
+			return "PR"
+		}
+		return formatPRElapsed(now, *bi.CodeStatus.PRCreatedAt)
+	default:
+		return string(bi.CodeStatus.Status)
+	}
+}
+
+// formatPRElapsed formats PR elapsed time.
+func formatPRElapsed(now, createdAt time.Time) string {
+	d := now.Sub(createdAt)
+	switch {
+	case d < 60*time.Minute:
+		return fmt.Sprintf("PR(%dm ago)", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("PR(%dh ago)", int(d.Hours()))
+	case d < 30*24*time.Hour:
+		return fmt.Sprintf("PR(%dd ago)", int(d.Hours()/24))
+	default:
+		return fmt.Sprintf("PR(%02d/%02d)", createdAt.Month(), createdAt.Day())
+	}
+}
+
+// TableOptions controls the table output format.
+type TableOptions struct {
+	ShowPath bool // --path: show PATH column
+	Full     bool // --full: disable truncation
+	MaxWidth int  // DEVCTL_LIST_WIDTH (default: 40)
+	Padding  int  // DEVCTL_LIST_PADDING (default: 2)
+}
+
+// TruncateCell truncates s if len(s) > maxWidth.
+// Returns s[:maxWidth-4] + " ..." when truncated.
+func TruncateCell(s string, maxWidth int) string {
+	if maxWidth <= 0 || len(s) <= maxWidth {
+		return s
+	}
+	cutAt := maxWidth - 4
+	if cutAt < 0 {
+		cutAt = 0
+	}
+	return s[:cutAt] + " ..."
+}
+
+// FormatTable writes branch info as a human-readable table with dynamic column widths.
+// Columns: BRANCH, FEATURE, CONTAINER, CODE, (PATH if opts.ShowPath is true).
+func FormatTable(w io.Writer, branches []BranchInfo, opts TableOptions) {
+	// Apply defaults for zero values
+	if opts.MaxWidth <= 0 {
+		opts.MaxWidth = 40
+	}
+	if opts.Padding <= 0 {
+		opts.Padding = 2
 	}
 
-	for _, bi := range branches {
+	now := time.Now()
+
+	// Build header
+	headers := []string{"BRANCH", "FEATURE", "CONTAINER", "CODE"}
+	if opts.ShowPath {
+		headers = append(headers, "PATH")
+	}
+	numCols := len(headers)
+
+	// Build cell data for each row
+	rows := make([][]string, len(branches))
+	for i, bi := range branches {
 		feat := featureColumn(bi)
-		st := stateColumn(bi)
-		if showPath {
-			fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", bi.Branch, feat, st, bi.Path)
-		} else {
-			fmt.Fprintf(w, "%-24s %-20s %s\n", bi.Branch, feat, st)
+		ct := containerColumn(bi)
+		code := FormatCodeColumn(bi, now)
+
+		row := []string{bi.Branch, feat, ct, code}
+		if opts.ShowPath {
+			row = append(row, bi.Path)
 		}
+
+		// Apply truncation (unless --full)
+		if !opts.Full {
+			for j := range row {
+				row[j] = TruncateCell(row[j], opts.MaxWidth)
+			}
+		}
+
+		rows[i] = row
+	}
+
+	// Calculate column widths from headers and cell data
+	widths := make([]int, numCols)
+	for j, h := range headers {
+		widths[j] = len(h)
+	}
+	for _, row := range rows {
+		for j, cell := range row {
+			if len(cell) > widths[j] {
+				widths[j] = len(cell)
+			}
+		}
+	}
+
+	// Print header
+	for j, h := range headers {
+		if j < numCols-1 {
+			fmt.Fprintf(w, "%-*s", widths[j]+opts.Padding, h)
+		} else {
+			fmt.Fprint(w, h)
+		}
+	}
+	fmt.Fprint(w, "\n")
+
+	// Print rows
+	for _, row := range rows {
+		for j, cell := range row {
+			if j < numCols-1 {
+				fmt.Fprintf(w, "%-*s", widths[j]+opts.Padding, cell)
+			} else {
+				fmt.Fprint(w, cell)
+			}
+		}
+		fmt.Fprint(w, "\n")
 	}
 }
 

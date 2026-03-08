@@ -99,9 +99,10 @@ func InitContext(args []string) (*AppContext, error) {
 	}
 
 	ctx.Report = &report.Report{
-		Feature: feature,
-		Branch:  branch,
-		EnvVars: CollectEnvVars(),
+		Feature:     feature,
+		Branch:      branch,
+		EnvVars:     CollectEnvVars(),
+		ShowEnvVars: flagEnv,
 	}
 
 	return ctx, nil
@@ -155,6 +156,8 @@ var knownEnvVars = []envVarDef{
 	{"DEVCTL_CMD_CLAUDE", "claude"},
 	{"DEVCTL_CMD_GIT", "git"},
 	{"DEVCTL_CMD_GH", "gh"},
+	{"DEVCTL_LIST_WIDTH", "40"},
+	{"DEVCTL_LIST_PADDING", "2"},
 }
 
 // CollectEnvVars gathers all DEVCTL_* env vars for the report.
