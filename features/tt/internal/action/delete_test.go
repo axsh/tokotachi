@@ -198,6 +198,73 @@ func TestDelete_WithNestedWorktrees_DeletesChildrenFirst(t *testing.T) {
 	}
 	assert.Greater(t, parentIdx, childIdx,
 		"child worktree remove should come before parent worktree remove, recs: %v", recs)
+
+	// Verify child worktree remove uses the correct path under parent's work/ directory
+	expectedChildPath := filepath.Join(env.RepoRoot, "work", parentBranch, "work", childBranch)
+	if childIdx >= 0 {
+		assert.Contains(t, recs[childIdx].Command, expectedChildPath,
+			"child worktree remove should use path under parent worktree, recs: %v", recs)
+	}
+}
+
+func TestDelete_WithNestedWorktrees_UsesCorrectChildPath(t *testing.T) {
+	env := newTestEnv(t)
+	parentBranch := "parent-branch"
+	childBranch := "child-branch"
+
+	// Setup parent worktree
+	parentDir := filepath.Join(env.RepoRoot, "work", parentBranch)
+	require.NoError(t, os.MkdirAll(parentDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(parentDir, ".git"),
+		[]byte("gitdir: ../../.git/worktrees/parent-branch\n"), 0o644))
+
+	// Setup child worktree inside parent's work/ directory
+	childDir := filepath.Join(parentDir, "work", childBranch)
+	require.NoError(t, os.MkdirAll(childDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(childDir, ".git"),
+		[]byte("gitdir: ../../../../.git/worktrees/child-branch\n"), 0o644))
+
+	err := env.Runner.Delete(action.DeleteOptions{
+		Branch:      parentBranch,
+		Force:       false,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Depth:       10,
+		Yes:         true,
+	}, env.WM)
+	require.NoError(t, err)
+
+	recs := env.Recorder.Records()
+
+	// Verify: child worktree remove uses path rooted at parent worktree
+	// Expected: <RepoRoot>/work/parent-branch/work/child-branch
+	// Bug path: <RepoRoot>/work/child-branch (incorrect, before fix)
+	expectedChildPath := filepath.Join(env.RepoRoot, "work", parentBranch, "work", childBranch)
+	childRemoveFound := false
+	for _, r := range recs {
+		if strings.Contains(r.Command, "worktree remove") && strings.Contains(r.Command, childBranch) {
+			childRemoveFound = true
+			assert.Contains(t, r.Command, expectedChildPath,
+				"child worktree remove must use path under parent worktree directory")
+			// Ensure it does NOT use the root-level path
+			incorrectPath := filepath.Join(env.RepoRoot, "work", childBranch)
+			if !strings.Contains(expectedChildPath, incorrectPath) {
+				assert.NotContains(t, r.Command, incorrectPath,
+					"child worktree remove must NOT use root-level path")
+			}
+		}
+	}
+	assert.True(t, childRemoveFound,
+		"worktree remove for child-branch should have been called, recs: %v", recs)
+
+	// Verify: parent worktree remove uses root-level path
+	expectedParentPath := filepath.Join(env.RepoRoot, "work", parentBranch)
+	for _, r := range recs {
+		if strings.Contains(r.Command, "worktree remove") && strings.Contains(r.Command, parentBranch) {
+			assert.Contains(t, r.Command, expectedParentPath,
+				"parent worktree remove should use root-level path")
+		}
+	}
 }
 
 func TestDelete_ConfirmNo_Aborts(t *testing.T) {

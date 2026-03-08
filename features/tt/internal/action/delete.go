@@ -95,16 +95,23 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 	if len(nested) > 0 && opts.Depth > 0 {
 		for _, childBranch := range nested {
 			r.Logger.Info("Recursively deleting nested worktree: %s", childBranch)
+			// Use parent worktree path as the child's RepoRoot
+			childRepoRoot := wm.Path(opts.Branch)
 			childOpts := DeleteOptions{
 				Branch:      childBranch,
 				Force:       opts.Force,
-				RepoRoot:    opts.RepoRoot,
+				RepoRoot:    childRepoRoot,
 				ProjectName: opts.ProjectName,
 				Depth:       opts.Depth - 1,
 				Yes:         true, // Already confirmed by parent
 				Stdin:       nil,
 			}
-			if err := r.Delete(childOpts, wm); err != nil {
+			// Create a new Manager scoped to the child's RepoRoot
+			childWM := &worktree.Manager{
+				CmdRunner: wm.CmdRunner,
+				RepoRoot:  childRepoRoot,
+			}
+			if err := r.Delete(childOpts, childWM); err != nil {
 				r.Logger.Warn("Failed to delete nested worktree %s: %v", childBranch, err)
 			}
 		}
