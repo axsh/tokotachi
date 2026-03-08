@@ -49,7 +49,7 @@ for tool_id in "${TOOL_IDS[@]}"; do
   # Auto-build if binary not found
   if [[ ! -f "$src" ]]; then
     warn "${tool_id} not built yet. Building..."
-    "${SCRIPT_DIR}/build" "$tool_id"
+    "${SCRIPT_DIR}/build.sh" "$tool_id"
   fi
 
   if [[ -f "$src" ]]; then
