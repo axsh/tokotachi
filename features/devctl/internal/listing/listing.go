@@ -198,25 +198,102 @@ func formatPRElapsed(now, createdAt time.Time) string {
 	}
 }
 
-// FormatTable writes branch info as a human-readable table.
-// Columns: BRANCH, FEATURE, CONTAINER, CODE, (PATH if showPath is true).
-func FormatTable(w io.Writer, branches []BranchInfo, showPath bool) {
-	now := time.Now()
-	if showPath {
-		fmt.Fprintf(w, "%-24s %-20s %-20s %-16s %s\n", "BRANCH", "FEATURE", "CONTAINER", "CODE", "PATH")
-	} else {
-		fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", "BRANCH", "FEATURE", "CONTAINER", "CODE")
+// TableOptions controls the table output format.
+type TableOptions struct {
+	ShowPath bool // --path: show PATH column
+	Full     bool // --full: disable truncation
+	MaxWidth int  // DEVCTL_LIST_WIDTH (default: 40)
+	Padding  int  // DEVCTL_LIST_PADDING (default: 2)
+}
+
+// TruncateCell truncates s if len(s) > maxWidth.
+// Returns s[:maxWidth-4] + " ..." when truncated.
+func TruncateCell(s string, maxWidth int) string {
+	if maxWidth <= 0 || len(s) <= maxWidth {
+		return s
+	}
+	cutAt := maxWidth - 4
+	if cutAt < 0 {
+		cutAt = 0
+	}
+	return s[:cutAt] + " ..."
+}
+
+// FormatTable writes branch info as a human-readable table with dynamic column widths.
+// Columns: BRANCH, FEATURE, CONTAINER, CODE, (PATH if opts.ShowPath is true).
+func FormatTable(w io.Writer, branches []BranchInfo, opts TableOptions) {
+	// Apply defaults for zero values
+	if opts.MaxWidth <= 0 {
+		opts.MaxWidth = 40
+	}
+	if opts.Padding <= 0 {
+		opts.Padding = 2
 	}
 
-	for _, bi := range branches {
+	now := time.Now()
+
+	// Build header
+	headers := []string{"BRANCH", "FEATURE", "CONTAINER", "CODE"}
+	if opts.ShowPath {
+		headers = append(headers, "PATH")
+	}
+	numCols := len(headers)
+
+	// Build cell data for each row
+	rows := make([][]string, len(branches))
+	for i, bi := range branches {
 		feat := featureColumn(bi)
 		ct := containerColumn(bi)
 		code := FormatCodeColumn(bi, now)
-		if showPath {
-			fmt.Fprintf(w, "%-24s %-20s %-20s %-16s %s\n", bi.Branch, feat, ct, code, bi.Path)
-		} else {
-			fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", bi.Branch, feat, ct, code)
+
+		row := []string{bi.Branch, feat, ct, code}
+		if opts.ShowPath {
+			row = append(row, bi.Path)
 		}
+
+		// Apply truncation (unless --full)
+		if !opts.Full {
+			for j := range row {
+				row[j] = TruncateCell(row[j], opts.MaxWidth)
+			}
+		}
+
+		rows[i] = row
+	}
+
+	// Calculate column widths from headers and cell data
+	widths := make([]int, numCols)
+	for j, h := range headers {
+		widths[j] = len(h)
+	}
+	for _, row := range rows {
+		for j, cell := range row {
+			if len(cell) > widths[j] {
+				widths[j] = len(cell)
+			}
+		}
+	}
+
+	// Print header
+	for j, h := range headers {
+		if j < numCols-1 {
+			fmt.Fprintf(w, "%-*s", widths[j]+opts.Padding, h)
+		} else {
+			fmt.Fprint(w, h)
+		}
+	}
+	fmt.Fprint(w, "\n")
+
+	// Print rows
+	for _, row := range rows {
+		for j, cell := range row {
+			if j < numCols-1 {
+				fmt.Fprintf(w, "%-*s", widths[j]+opts.Padding, cell)
+			} else {
+				fmt.Fprint(w, cell)
+			}
+		}
+		fmt.Fprint(w, "\n")
 	}
 }
 
