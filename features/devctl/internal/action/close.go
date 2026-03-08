@@ -1,7 +1,11 @@
 package action
 
 import (
+	"bufio"
+	"fmt"
+	"io"
 	"os"
+	"strings"
 
 	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
 	"github.com/axsh/tokotachi/features/devctl/internal/state"
@@ -14,13 +18,95 @@ type CloseOptions struct {
 	Branch      string
 	Force       bool
 	RepoRoot    string
-	ProjectName string // for resolving container names
+	ProjectName string    // for resolving container names
+	Depth       int       // max recursion depth for nested worktrees (default: 10)
+	Yes         bool      // skip [y/N] confirmation prompt
+	Stdin       io.Reader // input source for confirmation prompt
 }
 
 // Close performs the close sequence.
 // With feature: stop that feature's container, remove from state.
 // Without feature: stop all feature containers, remove worktree + branch + state.
+// Nested worktrees are detected and closed recursively (depth-limited).
 func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
+	// Phase 1: Detect nested worktrees (if depth allows)
+	var nested []string
+	hasDepthWarning := false
+	if opts.Depth > 0 {
+		nested = wm.FindNestedWorktrees(opts.Branch)
+		if len(nested) > 0 {
+			r.Logger.Info("Detected %d nested worktree(s) under %s: %v", len(nested), opts.Branch, nested)
+
+			// Check if any children have further nesting beyond depth limit
+			if opts.Depth == 1 {
+				for _, child := range nested {
+					grandchildren := wm.FindNestedWorktrees(child)
+					if len(grandchildren) > 0 {
+						hasDepthWarning = true
+						break
+					}
+				}
+			}
+		}
+	} else {
+		// At depth limit, check if there are children we cannot reach
+		possibleNested := wm.FindNestedWorktrees(opts.Branch)
+		if len(possibleNested) > 0 {
+			r.Logger.Warn("Depth limit reached: %d nested worktree(s) under %s will NOT be closed: %v",
+				len(possibleNested), opts.Branch, possibleNested)
+		}
+	}
+
+	// Phase 2: Confirmation prompt (skip for recursive child calls where Yes=true)
+	if !opts.Yes {
+		// Display preview
+		r.Logger.Info("Close preview for branch: %s", opts.Branch)
+		if len(nested) > 0 {
+			r.Logger.Info("  Nested worktrees to close first: %v", nested)
+		}
+		if hasDepthWarning {
+			r.Logger.Warn("  Depth limit (%d) may leave deeper nested worktrees behind.", opts.Depth)
+		}
+
+		// Ask for confirmation
+		if opts.Stdin == nil {
+			r.Logger.Info("Aborted (no input source for confirmation).")
+			return nil
+		}
+		fmt.Fprint(os.Stderr, "Proceed? [y/N]: ")
+		scanner := bufio.NewScanner(opts.Stdin)
+		if scanner.Scan() {
+			response := strings.TrimSpace(strings.ToLower(scanner.Text()))
+			if response != "y" && response != "yes" {
+				r.Logger.Info("Aborted.")
+				return nil
+			}
+		} else {
+			r.Logger.Info("Aborted.")
+			return nil
+		}
+	}
+
+	// Phase 3: Recursively close nested worktrees (children first)
+	if len(nested) > 0 && opts.Depth > 0 {
+		for _, childBranch := range nested {
+			r.Logger.Info("Recursively closing nested worktree: %s", childBranch)
+			childOpts := CloseOptions{
+				Branch:      childBranch,
+				Force:       opts.Force,
+				RepoRoot:    opts.RepoRoot,
+				ProjectName: opts.ProjectName,
+				Depth:       opts.Depth - 1,
+				Yes:         true, // Already confirmed by parent
+				Stdin:       nil,
+			}
+			if err := r.Close(childOpts, wm); err != nil {
+				r.Logger.Warn("Failed to close nested worktree %s: %v", childBranch, err)
+			}
+		}
+	}
+
+	// Phase 4: Execute the close for this branch
 	statePath := state.StatePath(opts.RepoRoot, opts.Branch)
 
 	if opts.Feature != "" {
@@ -73,6 +159,7 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 		}
 
 		r.Logger.Info("Close completed for feature %s on branch %s", opts.Feature, opts.Branch)
+		r.pruneIfForce(opts, wm)
 		return nil
 	}
 
@@ -131,5 +218,16 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 	}
 
 	r.Logger.Info("Close completed for branch %s", opts.Branch)
+	r.pruneIfForce(opts, wm)
 	return nil
+}
+
+// pruneIfForce runs git worktree prune when --force is set.
+func (r *Runner) pruneIfForce(opts CloseOptions, wm *worktree.Manager) {
+	if opts.Force {
+		r.Logger.Info("Pruning stale worktree metadata...")
+		if err := wm.Prune(); err != nil {
+			r.Logger.Warn("Worktree prune failed: %v", err)
+		}
+	}
 }

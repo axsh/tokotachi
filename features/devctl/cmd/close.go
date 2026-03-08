@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -12,6 +13,8 @@ import (
 )
 
 var closeFlagForce bool
+var closeFlagDepth int
+var closeFlagYes bool
 
 var closeCmd = &cobra.Command{
 	Use:   "close <branch> [feature]",
@@ -23,6 +26,8 @@ var closeCmd = &cobra.Command{
 
 func init() {
 	closeCmd.Flags().BoolVar(&closeFlagForce, "force", false, "Force delete even if branch is not merged")
+	closeCmd.Flags().IntVar(&closeFlagDepth, "depth", 10, "Maximum depth for recursive nested worktree close")
+	closeCmd.Flags().BoolVar(&closeFlagYes, "yes", false, "Skip [y/N] confirmation and execute immediately")
 }
 
 func runClose(cmd *cobra.Command, args []string) error {
@@ -46,6 +51,9 @@ func runClose(cmd *cobra.Command, args []string) error {
 		Force:       closeFlagForce,
 		RepoRoot:    ctx.RepoRoot,
 		ProjectName: projectName,
+		Depth:       closeFlagDepth,
+		Yes:         closeFlagYes,
+		Stdin:       os.Stdin,
 	}, wm); err != nil {
 		ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Close", Success: false})
 		ctx.Report.OverallResult = "FAILED"

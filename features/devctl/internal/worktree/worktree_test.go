@@ -125,3 +125,54 @@ func TestDeleteBranchCmd_Force(t *testing.T) {
 	require.Len(t, recs, 1)
 	assert.Contains(t, recs[0].Command, "branch -D")
 }
+
+func TestFindNestedWorktrees_WithChildren(t *testing.T) {
+	m := newTestManager(t, true)
+
+	// Create parent worktree directory
+	parentDir := m.Path("parent")
+	require.NoError(t, os.MkdirAll(parentDir, 0o755))
+
+	// Create child-a with .git file (valid worktree)
+	childA := filepath.Join(parentDir, "work", "child-a")
+	require.NoError(t, os.MkdirAll(childA, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(childA, ".git"),
+		[]byte("gitdir: ../../../../.git/worktrees/child-a\n"), 0o644,
+	))
+
+	// Create child-b without .git file (ghost directory — should be excluded)
+	childB := filepath.Join(parentDir, "work", "child-b")
+	require.NoError(t, os.MkdirAll(childB, 0o755))
+
+	result := m.FindNestedWorktrees("parent")
+	assert.Equal(t, []string{"child-a"}, result)
+}
+
+func TestFindNestedWorktrees_NoChildren(t *testing.T) {
+	m := newTestManager(t, true)
+
+	// Create parent worktree directory without work/ subdirectory
+	parentDir := m.Path("parent")
+	require.NoError(t, os.MkdirAll(parentDir, 0o755))
+
+	result := m.FindNestedWorktrees("parent")
+	assert.Empty(t, result)
+}
+
+func TestFindNestedWorktrees_NoWorkDir(t *testing.T) {
+	m := newTestManager(t, true)
+
+	// parent directory does not exist at all
+	result := m.FindNestedWorktrees("nonexistent")
+	assert.Empty(t, result)
+}
+
+func TestPrune(t *testing.T) {
+	m := newTestManager(t, true)
+	err := m.Prune()
+	require.NoError(t, err)
+	recs := m.CmdRunner.Recorder.Records()
+	require.Len(t, recs, 1)
+	assert.Contains(t, recs[0].Command, "worktree prune")
+}

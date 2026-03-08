@@ -64,6 +64,40 @@ func TestInitContext_NoArgs(t *testing.T) {
 	assert.Contains(t, err.Error(), "branch name is required")
 }
 
+func TestValidateBranchName(t *testing.T) {
+	tests := []struct {
+		name    string
+		branch  string
+		wantErr bool
+	}{
+		{"main is reserved", "main", true},
+		{"master is reserved", "master", true},
+		{"normal branch", "my-feature", false},
+		{"case sensitive Main", "Main", false},
+		{"case sensitive MASTER", "MASTER", false},
+		{"empty string", "", false},
+		{"main prefix", "main-feature", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateBranchName(tt.branch)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.branch)
+				assert.Contains(t, err.Error(), "reserved")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestInitContext_ReservedBranch(t *testing.T) {
+	_, err := InitContext([]string{"main"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserved")
+}
+
 func TestInitContext_ShowEnvVarsReflectsFlagEnv(t *testing.T) {
 	origEnv := flagEnv
 	defer func() { flagEnv = origEnv }()

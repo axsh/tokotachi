@@ -81,6 +81,8 @@ func TestClose_WithFeature_LastFeature_CleansUpWorktree(t *testing.T) {
 		Force:       false,
 		RepoRoot:    env.RepoRoot,
 		ProjectName: "test",
+		Yes:         true,
+		Depth:       10,
 	}, env.WM)
 	require.NoError(t, err)
 
@@ -117,6 +119,8 @@ func TestClose_WithFeature_OtherFeaturesRemain_KeepsWorktree(t *testing.T) {
 		Force:       false,
 		RepoRoot:    env.RepoRoot,
 		ProjectName: "test",
+		Yes:         true,
+		Depth:       10,
 	}, env.WM)
 	require.NoError(t, err)
 
@@ -158,6 +162,8 @@ func TestClose_WithFeature_Force_PropagatedToCleanup(t *testing.T) {
 		Force:       true, // Force=true
 		RepoRoot:    env.RepoRoot,
 		ProjectName: "test",
+		Yes:         true,
+		Depth:       10,
 	}, env.WM)
 	require.NoError(t, err)
 
@@ -192,6 +198,8 @@ func TestClose_WithoutFeature_Unchanged(t *testing.T) {
 		Force:       false,
 		RepoRoot:    env.RepoRoot,
 		ProjectName: "test",
+		Yes:         true,
+		Depth:       10,
 	}, env.WM)
 	require.NoError(t, err)
 
@@ -206,4 +214,223 @@ func TestClose_WithoutFeature_Unchanged(t *testing.T) {
 		"worktree remove should be called, got records: %v", recs)
 	assert.True(t, hasRecordContaining(recs, "branch -d"),
 		"branch delete should be called, got records: %v", recs)
+}
+
+func TestClose_WithNestedWorktrees_ClosesChildrenFirst(t *testing.T) {
+	env := newTestEnv(t)
+	parentBranch := "parent-branch"
+	childBranch := "child-branch"
+
+	// Setup parent worktree directory
+	parentDir := filepath.Join(env.RepoRoot, "work", parentBranch)
+	require.NoError(t, os.MkdirAll(parentDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(parentDir, ".git"),
+		[]byte("gitdir: ../../.git/worktrees/parent-branch\n"), 0o644,
+	))
+
+	// Setup child worktree inside parent's work/ directory
+	childDir := filepath.Join(parentDir, "work", childBranch)
+	require.NoError(t, os.MkdirAll(childDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(childDir, ".git"),
+		[]byte("gitdir: ../../../../.git/worktrees/child-branch\n"), 0o644,
+	))
+
+	// Setup state files for both
+	setupStateFile(t, env.RepoRoot, parentBranch, map[string]state.FeatureState{
+		"feat": {Status: state.StatusActive, StartedAt: time.Now()},
+	})
+	setupStateFile(t, env.RepoRoot, childBranch, map[string]state.FeatureState{
+		"feat": {Status: state.StatusActive, StartedAt: time.Now()},
+	})
+
+	err := env.Runner.Close(action.CloseOptions{
+		Branch:      parentBranch,
+		Force:       false,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Yes:         true,
+		Depth:       10,
+	}, env.WM)
+	require.NoError(t, err)
+
+	// Verify command order: child close before parent close
+	recs := env.Recorder.Records()
+	childIdx := -1
+	parentIdx := -1
+	for i, r := range recs {
+		if strings.Contains(r.Command, "worktree remove") && strings.Contains(r.Command, childBranch) {
+			childIdx = i
+		}
+		if strings.Contains(r.Command, "worktree remove") && strings.Contains(r.Command, parentBranch) {
+			parentIdx = i
+		}
+	}
+	assert.Greater(t, parentIdx, childIdx,
+		"child worktree remove should come before parent worktree remove, recs: %v", recs)
+
+	// Verify both state files are removed
+	_, err1 := os.Stat(state.StatePath(env.RepoRoot, parentBranch))
+	_, err2 := os.Stat(state.StatePath(env.RepoRoot, childBranch))
+	assert.True(t, os.IsNotExist(err1), "parent state file should be deleted")
+	assert.True(t, os.IsNotExist(err2), "child state file should be deleted")
+}
+
+func TestClose_DepthLimitStopsRecursion(t *testing.T) {
+	env := newTestEnv(t)
+
+	// Create 3-level nesting: a -> b -> c
+	dirA := filepath.Join(env.RepoRoot, "work", "a")
+	require.NoError(t, os.MkdirAll(dirA, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dirA, ".git"), []byte("gitdir: ../../.git/worktrees/a\n"), 0o644))
+
+	dirB := filepath.Join(dirA, "work", "b")
+	require.NoError(t, os.MkdirAll(dirB, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dirB, ".git"), []byte("gitdir: ../../../../.git/worktrees/b\n"), 0o644))
+
+	dirC := filepath.Join(dirB, "work", "c")
+	require.NoError(t, os.MkdirAll(dirC, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dirC, ".git"), []byte("gitdir: ../../../../../../.git/worktrees/c\n"), 0o644))
+
+	err := env.Runner.Close(action.CloseOptions{
+		Branch:      "a",
+		Force:       false,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Yes:         true,
+		Depth:       1, // Only 1 level deep
+	}, env.WM)
+	require.NoError(t, err)
+
+	recs := env.Recorder.Records()
+	// b should be closed (depth=1 allows descending to b)
+	assert.True(t, hasRecordContaining(recs, "branch") && hasRecordContaining(recs, "b"),
+		"branch b should be closed at depth=1")
+	// c should NOT be closed (depth=0 for b's children)
+	hasCRemove := false
+	for _, r := range recs {
+		if strings.Contains(r.Command, "worktree remove") && strings.Contains(r.Command, "work"+string(filepath.Separator)+"c") {
+			hasCRemove = true
+		}
+	}
+	assert.False(t, hasCRemove, "worktree c should NOT be removed at depth limit, recs: %v", recs)
+}
+
+func TestClose_Force_RunsPrune(t *testing.T) {
+	env := newTestEnv(t)
+	branch := "test-branch"
+
+	wtDir := filepath.Join(env.RepoRoot, "work", branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
+
+	err := env.Runner.Close(action.CloseOptions{
+		Branch:      branch,
+		Force:       true,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Yes:         true,
+		Depth:       10,
+	}, env.WM)
+	require.NoError(t, err)
+
+	recs := env.Recorder.Records()
+	assert.True(t, hasRecordContaining(recs, "worktree prune"),
+		"worktree prune should be called with --force, recs: %v", recs)
+}
+
+func TestClose_NoForce_SkipsPrune(t *testing.T) {
+	env := newTestEnv(t)
+	branch := "test-branch"
+
+	wtDir := filepath.Join(env.RepoRoot, "work", branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
+
+	err := env.Runner.Close(action.CloseOptions{
+		Branch:      branch,
+		Force:       false,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Yes:         true,
+		Depth:       10,
+	}, env.WM)
+	require.NoError(t, err)
+
+	recs := env.Recorder.Records()
+	assert.False(t, hasRecordContaining(recs, "worktree prune"),
+		"worktree prune should NOT be called without --force, recs: %v", recs)
+}
+
+func TestClose_ConfirmYes_Executes(t *testing.T) {
+	env := newTestEnv(t)
+	branch := "test-branch"
+
+	wtDir := filepath.Join(env.RepoRoot, "work", branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
+
+	err := env.Runner.Close(action.CloseOptions{
+		Branch:      branch,
+		Force:       false,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Yes:         false,
+		Depth:       10,
+		Stdin:       strings.NewReader("y\n"),
+	}, env.WM)
+	require.NoError(t, err)
+
+	recs := env.Recorder.Records()
+	assert.True(t, hasRecordContaining(recs, "worktree remove"),
+		"worktree remove should be called after 'y' confirmation, recs: %v", recs)
+}
+
+func TestClose_ConfirmNo_Aborts(t *testing.T) {
+	env := newTestEnv(t)
+	branch := "test-branch"
+
+	wtDir := filepath.Join(env.RepoRoot, "work", branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
+
+	err := env.Runner.Close(action.CloseOptions{
+		Branch:      branch,
+		Force:       false,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Yes:         false,
+		Depth:       10,
+		Stdin:       strings.NewReader("N\n"),
+	}, env.WM)
+	require.NoError(t, err) // Abort is not an error
+
+	recs := env.Recorder.Records()
+	assert.False(t, hasRecordContaining(recs, "worktree remove"),
+		"worktree remove should NOT be called after 'N' confirmation, recs: %v", recs)
+}
+
+func TestClose_YesFlag_SkipsConfirmation(t *testing.T) {
+	env := newTestEnv(t)
+	branch := "test-branch"
+
+	wtDir := filepath.Join(env.RepoRoot, "work", branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
+
+	err := env.Runner.Close(action.CloseOptions{
+		Branch:      branch,
+		Force:       false,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Yes:         true, // Skip confirmation
+		Depth:       10,
+		Stdin:       nil, // No stdin needed
+	}, env.WM)
+	require.NoError(t, err)
+
+	recs := env.Recorder.Records()
+	assert.True(t, hasRecordContaining(recs, "worktree remove"),
+		"worktree remove should be called with --yes, recs: %v", recs)
 }
