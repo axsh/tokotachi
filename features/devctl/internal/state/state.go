@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -139,4 +140,26 @@ func Remove(path string) error {
 		return fmt.Errorf("failed to remove state file: %w", err)
 	}
 	return nil
+}
+
+// ScanStateFiles finds all state files under work/ directory.
+// Returns a map of branch name -> StateFile.
+func ScanStateFiles(repoRoot string) (map[string]StateFile, error) {
+	pattern := filepath.Join(repoRoot, "work", "*.state.yaml")
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to glob state files: %w", err)
+	}
+
+	result := make(map[string]StateFile, len(matches))
+	for _, path := range matches {
+		branch := strings.TrimSuffix(filepath.Base(path), ".state.yaml")
+		sf, err := Load(path)
+		if err != nil {
+			// Skip corrupted files instead of failing entirely
+			continue
+		}
+		result[branch] = sf
+	}
+	return result, nil
 }
