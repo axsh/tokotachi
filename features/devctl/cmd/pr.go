@@ -10,7 +10,7 @@ import (
 )
 
 var prCmd = &cobra.Command{
-	Use:   "pr <feature> [branch]",
+	Use:   "pr <branch> [feature]",
 	Short: "Create a GitHub Pull Request",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE:  runPR,

@@ -17,17 +17,19 @@ type CloseOptions struct {
 }
 
 // Close performs the full close sequence:
-// 1. Down container (if running)
+// 1. Down container (if running and container name is provided)
 // 2. Remove worktree
 // 3. Delete branch
 // 4. Remove state file
 func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
-	// Step 1: Down container if running
-	containerState := r.Status(opts.ContainerName, wm.Path(opts.Feature, opts.Branch))
-	if containerState == StateContainerRunning || containerState == StateContainerStopped {
-		r.Logger.Info("Stopping container before close...")
-		if err := r.Down(opts.ContainerName); err != nil {
-			r.Logger.Warn("Container down failed (may already be removed): %v", err)
+	// Step 1: Down container if running (skip if no container name)
+	if opts.ContainerName != "" {
+		containerState := r.Status(opts.ContainerName, wm.Path(opts.Feature, opts.Branch))
+		if containerState == StateContainerRunning || containerState == StateContainerStopped {
+			r.Logger.Info("Stopping container before close...")
+			if err := r.Down(opts.ContainerName); err != nil {
+				r.Logger.Warn("Container down failed (may already be removed): %v", err)
+			}
 		}
 	}
 

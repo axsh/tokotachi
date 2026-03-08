@@ -13,11 +13,19 @@ func sanitize(s string) string {
 }
 
 // ContainerName returns "<project>-<feature>" with invalid chars replaced.
+// Returns empty string if feature is empty.
 func ContainerName(project, feature string) string {
+	if feature == "" {
+		return ""
+	}
 	return sanitize(project) + "-" + sanitize(feature)
 }
 
 // ImageName returns "<project>-dev-<feature>" with invalid chars replaced.
+// Returns empty string if feature is empty.
 func ImageName(project, feature string) string {
+	if feature == "" {
+		return ""
+	}
 	return sanitize(project) + "-dev-" + sanitize(feature)
 }

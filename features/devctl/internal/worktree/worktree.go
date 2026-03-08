@@ -21,9 +21,14 @@ type Manager struct {
 	RepoRoot  string
 }
 
-// Path returns the worktree directory path: work/<feature>/<branch>.
+// Path returns the worktree directory path.
+// With feature: work/<branch>/features/<feature>
+// Without feature (feature=""): work/<branch>/all
 func (m *Manager) Path(feature, branch string) string {
-	return filepath.Join(m.RepoRoot, "work", feature, branch)
+	if feature == "" {
+		return filepath.Join(m.RepoRoot, "work", branch, "all")
+	}
+	return filepath.Join(m.RepoRoot, "work", branch, "features", feature)
 }
 
 // Exists checks if the worktree directory exists.
@@ -90,15 +95,15 @@ func (m *Manager) DeleteBranch(branch string, force bool) error {
 	return nil
 }
 
-// List returns all worktree entries for a feature by scanning work/<feature>/.
-func (m *Manager) List(feature string) ([]WorktreeInfo, error) {
-	featureDir := filepath.Join(m.RepoRoot, "work", feature)
-	entries, err := os.ReadDir(featureDir)
+// List returns all feature worktree entries for a branch by scanning work/<branch>/features/.
+func (m *Manager) List(branch string) ([]WorktreeInfo, error) {
+	featuresDir := filepath.Join(m.RepoRoot, "work", branch, "features")
+	entries, err := os.ReadDir(featuresDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to read feature directory: %w", err)
+		return nil, fmt.Errorf("failed to read features directory: %w", err)
 	}
 
 	var result []WorktreeInfo
@@ -107,9 +112,9 @@ func (m *Manager) List(feature string) ([]WorktreeInfo, error) {
 			continue
 		}
 		result = append(result, WorktreeInfo{
-			Feature: feature,
-			Branch:  e.Name(),
-			Path:    filepath.Join(featureDir, e.Name()),
+			Feature: e.Name(),
+			Branch:  branch,
+			Path:    filepath.Join(featuresDir, e.Name()),
 		})
 	}
 	return result, nil

@@ -11,11 +11,14 @@ import (
 )
 
 var downCmd = &cobra.Command{
-	Use:   "down <feature> [branch]",
-	Short: "Stop and remove the container",
+	Use:   "down <branch> <feature>",
+	Short: "Stop the development container",
+	Long:  "Stop and remove the container for the given feature. Requires feature argument.",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE:  runDown,
 }
+
+func init() {}
 
 func runDown(cmd *cobra.Command, args []string) error {
 	ctx, err := InitContext(args)
@@ -23,6 +26,10 @@ func runDown(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer finalizeReport(ctx)
+
+	if !ctx.HasFeature() {
+		return fmt.Errorf("feature is required for 'down' command (container operation)")
+	}
 
 	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
 	projectName := globalCfg.ProjectName

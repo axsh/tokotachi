@@ -24,9 +24,9 @@ var (
 )
 
 var upCmd = &cobra.Command{
-	Use:   "up <feature> [branch]",
+	Use:   "up <branch> [feature]",
 	Short: "Start the development container",
-	Long:  "Start the container for the given feature. If --editor is specified, also opens the editor.",
+	Long:  "Start the container for the given branch and feature. If feature is omitted, only creates worktree without container.",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE:  runUp,
 }
@@ -56,13 +56,18 @@ func runUp(cmd *cobra.Command, args []string) error {
 	if projectName == "" {
 		projectName = "devctl"
 	}
-	containerName := resolve.ContainerName(projectName, ctx.Feature)
-	imageName := resolve.ImageName(projectName, ctx.Feature)
+
+	// Container/image names only when feature is specified
+	var containerName, imageName string
+	if ctx.HasFeature() {
+		containerName = resolve.ContainerName(projectName, ctx.Feature)
+		imageName = resolve.ImageName(projectName, ctx.Feature)
+	}
 
 	// Auto-create worktree if not exists
 	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}
 	if !wm.Exists(ctx.Feature, ctx.Branch) {
-		ctx.Logger.Info("Worktree not found, creating work/%s/%s...", ctx.Feature, ctx.Branch)
+		ctx.Logger.Info("Worktree not found, creating %s...", wm.Path(ctx.Feature, ctx.Branch))
 		if err := wm.Create(ctx.Feature, ctx.Branch); err != nil {
 			ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Worktree creation", Success: false})
 			ctx.Report.OverallResult = "FAILED"
@@ -92,86 +97,100 @@ func runUp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		if ctx.DryRun {
 			// In dry-run mode, worktree may not exist yet; use computed path
-			worktreePath = filepath.Join(ctx.RepoRoot, "work", ctx.Feature, ctx.Branch)
+			worktreePath = wm.Path(ctx.Feature, ctx.Branch)
 			ctx.Logger.Debug("Worktree not found (dry-run), using computed path: %s", worktreePath)
 		} else {
 			return fmt.Errorf("worktree resolution failed: %w", err)
 		}
 	}
 
-	// Detect git worktree configuration
-	gitInfo, gitErr := resolve.DetectGitWorktree(worktreePath)
-	if gitErr != nil {
-		ctx.Logger.Warn("Git worktree detection failed: %v", gitErr)
-	} else if gitInfo.IsWorktree {
-		ctx.Logger.Debug("Git worktree detected: mainGitDir=%s, worktreeGitDir=%s",
-			gitInfo.MainGitDir, gitInfo.WorktreeGitDir)
-	}
+	// --- Container operations: only when feature is specified ---
+	if ctx.HasFeature() {
+		// Detect git worktree configuration
+		gitInfo, gitErr := resolve.DetectGitWorktree(worktreePath)
+		if gitErr != nil {
+			ctx.Logger.Warn("Git worktree detection failed: %v", gitErr)
+		} else if gitInfo.IsWorktree {
+			ctx.Logger.Debug("Git worktree detected: mainGitDir=%s, worktreeGitDir=%s",
+				gitInfo.MainGitDir, gitInfo.WorktreeGitDir)
+		}
 
-	// Load devcontainer.json
-	dcCfg, _ := resolve.LoadDevcontainerConfig(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+		// Load devcontainer.json
+		dcCfg, _ := resolve.LoadDevcontainerConfig(ctx.RepoRoot, ctx.Feature, ctx.Branch)
 
-	// Build UpOptions from DevcontainerConfig
-	upOpts := action.UpOptions{
-		ContainerName: containerName,
-		ImageName:     imageName,
-		WorktreePath:  worktreePath,
-		FeaturePath:   filepath.Join(ctx.RepoRoot, "features", ctx.Feature),
-		Rebuild:       p.Rebuild,
-		NoBuild:       p.NoBuild,
-		SSHMode:       p.SSHMode,
-	}
+		// Build UpOptions from DevcontainerConfig
+		upOpts := action.UpOptions{
+			ContainerName: containerName,
+			ImageName:     imageName,
+			WorktreePath:  worktreePath,
+			FeaturePath:   filepath.Join(ctx.RepoRoot, "features", ctx.Feature),
+			Rebuild:       p.Rebuild,
+			NoBuild:       p.NoBuild,
+			SSHMode:       p.SSHMode,
+		}
 
-	if !dcCfg.IsEmpty() {
-		ctx.Logger.Debug("DevcontainerConfig loaded: name=%s", dcCfg.Name)
+		if !dcCfg.IsEmpty() {
+			ctx.Logger.Debug("DevcontainerConfig loaded: name=%s", dcCfg.Name)
 
-		// Resolve Dockerfile path and build context
-		if dcCfg.HasDockerfile() {
-			configDir := dcCfg.ConfigDir()
-			upOpts.DockerfilePath = filepath.Join(configDir, dcCfg.Build.Dockerfile)
-			if dcCfg.Build.Context != "" {
-				upOpts.BuildContext = filepath.Join(configDir, dcCfg.Build.Context)
-			} else {
-				upOpts.BuildContext = configDir
+			// Resolve Dockerfile path and build context
+			if dcCfg.HasDockerfile() {
+				configDir := dcCfg.ConfigDir()
+				upOpts.DockerfilePath = filepath.Join(configDir, dcCfg.Build.Dockerfile)
+				if dcCfg.Build.Context != "" {
+					upOpts.BuildContext = filepath.Join(configDir, dcCfg.Build.Context)
+				} else {
+					upOpts.BuildContext = configDir
+				}
 			}
+
+			// Use image directly if no build config
+			if dcCfg.Image != "" && !dcCfg.HasDockerfile() {
+				upOpts.ImageName = dcCfg.Image
+				upOpts.NoBuild = true
+			}
+
+			upOpts.WorkspaceFolder = dcCfg.WorkspaceFolder
+			upOpts.Mounts = dcCfg.Mounts
+			upOpts.ContainerEnv = dcCfg.ContainerEnv
+			upOpts.RemoteUser = dcCfg.RemoteUser
 		}
 
-		// Use image directly if no build config
-		if dcCfg.Image != "" && !dcCfg.HasDockerfile() {
-			upOpts.ImageName = dcCfg.Image
-			upOpts.NoBuild = true
+		// Set git worktree info if detected
+		if gitErr == nil && gitInfo.IsWorktree {
+			upOpts.GitWorktree = &gitInfo
 		}
 
-		upOpts.WorkspaceFolder = dcCfg.WorkspaceFolder
-		upOpts.Mounts = dcCfg.Mounts
-		upOpts.ContainerEnv = dcCfg.ContainerEnv
-		upOpts.RemoteUser = dcCfg.RemoteUser
-	}
+		// Execute: up
+		if err := ctx.ActionRunner.Up(upOpts); err != nil {
+			ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Container up", Success: false})
+			ctx.Report.OverallResult = "FAILED"
+			return fmt.Errorf("up failed: %w", err)
+		}
+		ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Container up", Success: true})
 
-	// Set git worktree info if detected
-	if gitErr == nil && gitInfo.IsWorktree {
-		upOpts.GitWorktree = &gitInfo
-	}
-
-	// Execute: up
-	if err := ctx.ActionRunner.Up(upOpts); err != nil {
-		ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Container up", Success: false})
-		ctx.Report.OverallResult = "FAILED"
-		return fmt.Errorf("up failed: %w", err)
-	}
-	ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Container up", Success: true})
-
-	// Save state file
-	statePath := state.StatePath(ctx.RepoRoot, ctx.Feature, ctx.Branch)
-	if err := state.Save(statePath, state.StateFile{
-		Feature:       ctx.Feature,
-		Branch:        ctx.Branch,
-		CreatedAt:     time.Now(),
-		ContainerMode: string(containerMode),
-		Editor:        string(ed),
-		Status:        state.StatusActive,
-	}); err != nil {
-		ctx.Logger.Warn("Failed to save state file: %v", err)
+		// Save state file
+		statePath := state.StatePath(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+		if err := state.Save(statePath, state.StateFile{
+			Feature:       ctx.Feature,
+			Branch:        ctx.Branch,
+			CreatedAt:     time.Now(),
+			ContainerMode: string(containerMode),
+			Editor:        string(ed),
+			Status:        state.StatusActive,
+		}); err != nil {
+			ctx.Logger.Warn("Failed to save state file: %v", err)
+		}
+	} else {
+		ctx.Logger.Info("No feature specified — skipping container operations")
+		// Save state file without container info
+		statePath := state.StatePath(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+		if err := state.Save(statePath, state.StateFile{
+			Branch:    ctx.Branch,
+			CreatedAt: time.Now(),
+			Status:    state.StatusActive,
+		}); err != nil {
+			ctx.Logger.Warn("Failed to save state file: %v", err)
+		}
 	}
 
 	// Execute: open editor if --editor was specified
@@ -180,11 +199,13 @@ func runUp(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("editor launcher creation failed: %w", err)
 		}
+		// When no feature, skip devcontainer attach
+		tryDevcontainer := p.TryDevcontainerAttach && ctx.HasFeature()
 		if _, err := ctx.ActionRunner.Open(launcher, editor.LaunchOptions{
 			WorktreePath:    worktreePath,
 			ContainerName:   containerName,
 			NewWindow:       true,
-			TryDevcontainer: p.TryDevcontainerAttach,
+			TryDevcontainer: tryDevcontainer,
 			Logger:          ctx.Logger,
 			DryRun:          ctx.DryRun,
 			CmdRunner:       ctx.CmdRunner,

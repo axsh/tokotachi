@@ -12,7 +12,8 @@ import (
 
 func TestLoadDevcontainerConfig_FromJSON(t *testing.T) {
 	root := t.TempDir()
-	dcDir := filepath.Join(root, "work", "feat-a", "main", ".devcontainer")
+	// New structure: work/<branch>/features/<feature>/.devcontainer/
+	dcDir := filepath.Join(root, "work", "main", "features", "feat-a", ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
 	content := `{
@@ -31,7 +32,7 @@ func TestLoadDevcontainerConfig_FromJSON(t *testing.T) {
 
 func TestLoadDevcontainerConfig_WithImage(t *testing.T) {
 	root := t.TempDir()
-	dcDir := filepath.Join(root, "work", "feat-b", "dev", ".devcontainer")
+	dcDir := filepath.Join(root, "work", "dev", "features", "feat-b", ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
 	content := `{ "image": "golang:1.22" }`
@@ -49,9 +50,16 @@ func TestLoadDevcontainerConfig_NotFound(t *testing.T) {
 	assert.True(t, cfg.IsEmpty())
 }
 
+func TestLoadDevcontainerConfig_EmptyFeature(t *testing.T) {
+	root := t.TempDir()
+	cfg, err := resolve.LoadDevcontainerConfig(root, "", "main")
+	require.NoError(t, err)
+	assert.True(t, cfg.IsEmpty())
+}
+
 func TestLoadDevcontainerConfig_FallbackDockerfile(t *testing.T) {
 	root := t.TempDir()
-	worktree := filepath.Join(root, "work", "feat-c", "main")
+	worktree := filepath.Join(root, "work", "main", "features", "feat-c")
 	require.NoError(t, os.MkdirAll(worktree, 0755))
 
 	require.NoError(t, os.WriteFile(
@@ -69,7 +77,7 @@ func TestLoadDevcontainerConfig_FallbackDockerfile(t *testing.T) {
 
 func TestLoadDevcontainerConfig_Priority(t *testing.T) {
 	root := t.TempDir()
-	worktree := filepath.Join(root, "work", "feat-d", "main")
+	worktree := filepath.Join(root, "work", "main", "features", "feat-d")
 	dcDir := filepath.Join(worktree, ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
@@ -88,7 +96,7 @@ func TestLoadDevcontainerConfig_Priority(t *testing.T) {
 
 func TestLoadDevcontainerConfig_WithMountsAndUser(t *testing.T) {
 	root := t.TempDir()
-	dcDir := filepath.Join(root, "work", "feat-e", "main", ".devcontainer")
+	dcDir := filepath.Join(root, "work", "main", "features", "feat-e", ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
 	content := `{
@@ -143,8 +151,8 @@ func TestLoadDevcontainerConfig_FeatureDirPriority(t *testing.T) {
 	featureContent := `{ "name": "from-features", "workspaceFolder": "/ws-feature" }`
 	require.NoError(t, os.WriteFile(filepath.Join(featureDC, "devcontainer.json"), []byte(featureContent), 0644))
 
-	// Priority 2: work/<feature>/<branch>/.devcontainer/
-	worktreeDC := filepath.Join(root, "work", "devctl", "test-001", ".devcontainer")
+	// Priority 2: work/<branch>/features/<feature>/.devcontainer/
+	worktreeDC := filepath.Join(root, "work", "test-001", "features", "devctl", ".devcontainer")
 	require.NoError(t, os.MkdirAll(worktreeDC, 0755))
 	worktreeContent := `{ "name": "from-worktree", "workspaceFolder": "/ws-worktree" }`
 	require.NoError(t, os.WriteFile(filepath.Join(worktreeDC, "devcontainer.json"), []byte(worktreeContent), 0644))
@@ -154,4 +162,18 @@ func TestLoadDevcontainerConfig_FeatureDirPriority(t *testing.T) {
 	// features/ should win
 	assert.Equal(t, "from-features", cfg.Name)
 	assert.Equal(t, "/ws-feature", cfg.WorkspaceFolder)
+}
+
+func TestLoadDevcontainerConfig_OldPathFallback(t *testing.T) {
+	root := t.TempDir()
+	// Old structure: work/<feature>/<branch>/.devcontainer/
+	dcDir := filepath.Join(root, "work", "feat-old", "main", ".devcontainer")
+	require.NoError(t, os.MkdirAll(dcDir, 0755))
+
+	content := `{ "name": "old-style", "workspaceFolder": "/ws-old" }`
+	require.NoError(t, os.WriteFile(filepath.Join(dcDir, "devcontainer.json"), []byte(content), 0644))
+
+	cfg, err := resolve.LoadDevcontainerConfig(root, "feat-old", "main")
+	require.NoError(t, err)
+	assert.Equal(t, "old-style", cfg.Name)
 }

@@ -28,25 +28,28 @@ type AppContext struct {
 	ReportFile   string
 }
 
-// ParseFeatureBranch extracts feature and optional branch from args.
-// If branch is omitted, defaults to feature name.
-func ParseFeatureBranch(args []string) (feature, branch string) {
-	feature = args[0]
+// ParseBranchFeature extracts branch and optional feature from args.
+// If feature is omitted, it defaults to empty string (no container operations).
+func ParseBranchFeature(args []string) (branch, feature string) {
+	branch = args[0]
 	if len(args) >= 2 {
-		branch = args[1]
-	} else {
-		branch = feature
+		feature = args[1]
 	}
 	return
+}
+
+// HasFeature returns true if a feature was specified.
+func (ctx *AppContext) HasFeature() bool {
+	return ctx.Feature != ""
 }
 
 // InitContext builds AppContext from global flags and args.
 func InitContext(args []string) (*AppContext, error) {
 	if len(args) == 0 {
-		return nil, fmt.Errorf("feature name is required")
+		return nil, fmt.Errorf("branch name is required")
 	}
 
-	feature, branch := ParseFeatureBranch(args)
+	branch, feature := ParseBranchFeature(args)
 
 	logger := log.New(os.Stderr, flagVerbose)
 	rec := cmdexec.NewRecorder()

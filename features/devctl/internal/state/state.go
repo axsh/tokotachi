@@ -28,9 +28,14 @@ type StateFile struct {
 	Status        Status    `yaml:"status"`
 }
 
-// StatePath returns the state file path: work/<feature>/<branch>.state.yaml
+// StatePath returns the state file path.
+// With feature: work/<branch>/features/<feature>.state.yaml
+// Without feature: work/<branch>/all.state.yaml
 func StatePath(repoRoot, feature, branch string) string {
-	return filepath.Join(repoRoot, "work", feature, branch+".state.yaml")
+	if feature == "" {
+		return filepath.Join(repoRoot, "work", branch, "all.state.yaml")
+	}
+	return filepath.Join(repoRoot, "work", branch, "features", feature+".state.yaml")
 }
 
 // Load reads a state file from disk.

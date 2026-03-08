@@ -10,9 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStatePath(t *testing.T) {
+func TestStatePath_WithFeature(t *testing.T) {
 	got := state.StatePath("/repo", "devctl", "test-001")
-	expected := filepath.Join("/repo", "work", "devctl", "test-001.state.yaml")
+	expected := filepath.Join("/repo", "work", "test-001", "features", "devctl.state.yaml")
+	assert.Equal(t, expected, got)
+}
+
+func TestStatePath_NoFeature(t *testing.T) {
+	got := state.StatePath("/repo", "", "test-001")
+	expected := filepath.Join("/repo", "work", "test-001", "all.state.yaml")
 	assert.Equal(t, expected, got)
 }
 
