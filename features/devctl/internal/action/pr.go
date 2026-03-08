@@ -3,17 +3,20 @@ package action
 import (
 	"fmt"
 
-	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/devctl/internal/github"
 )
 
-// PR creates a GitHub Pull Request using gh CLI.
-// Executes gh pr create interactively in the given worktree directory.
+// PR creates a GitHub Pull Request using github.Client.
+// The underlying implementation uses gh CLI via the shared github package.
 func (r *Runner) PR(worktreePath string) error {
-	ghCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GH", "gh")
 	r.Logger.Info("Creating PR from %s...", worktreePath)
 
-	opts := cmdexec.RunOption{Dir: worktreePath}
-	if err := r.CmdRunner.RunInteractiveWithOpts(opts, ghCmd, "pr", "create"); err != nil {
+	client, err := github.NewClient("", github.WithCmdRunner(r.CmdRunner))
+	if err != nil {
+		return fmt.Errorf("github client creation failed: %w", err)
+	}
+
+	if err := client.CreatePR(worktreePath); err != nil {
 		return fmt.Errorf("gh pr create failed: %w", err)
 	}
 	return nil
