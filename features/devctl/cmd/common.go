@@ -28,6 +28,23 @@ type AppContext struct {
 	ReportFile   string
 }
 
+// reservedBranchNames contains branch names that cannot be used with devctl.
+// These are typically default branches that must be protected from accidental
+// modification or deletion.
+var reservedBranchNames = []string{"main", "master"}
+
+// validateBranchName checks if the given branch name is reserved.
+// Returns an error if the branch is in the reservedBranchNames list.
+// Comparison is case-sensitive (exact match only).
+func validateBranchName(branch string) error {
+	for _, name := range reservedBranchNames {
+		if branch == name {
+			return fmt.Errorf("%q is a reserved branch name and cannot be used with devctl commands", branch)
+		}
+	}
+	return nil
+}
+
 // ParseBranchFeature extracts branch and optional feature from args.
 // If feature is omitted, it defaults to empty string (no container operations).
 func ParseBranchFeature(args []string) (branch, feature string) {
@@ -50,6 +67,10 @@ func InitContext(args []string) (*AppContext, error) {
 	}
 
 	branch, feature := ParseBranchFeature(args)
+
+	if err := validateBranchName(branch); err != nil {
+		return nil, err
+	}
 
 	logger := log.New(os.Stderr, flagVerbose)
 	rec := cmdexec.NewRecorder()

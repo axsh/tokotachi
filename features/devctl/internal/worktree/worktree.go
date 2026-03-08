@@ -111,3 +111,36 @@ func (m *Manager) DeleteBranch(branch string, force bool) error {
 	}
 	return nil
 }
+
+// FindNestedWorktrees returns child worktree branch names found under
+// the given branch's work/ directory. Only directories with a .git file
+// (valid worktrees) are included; ghost directories are excluded.
+func (m *Manager) FindNestedWorktrees(branch string) []string {
+	childWorkDir := filepath.Join(m.Path(branch), "work")
+	entries, err := os.ReadDir(childWorkDir)
+	if err != nil {
+		return nil
+	}
+
+	var result []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		gitPath := filepath.Join(childWorkDir, entry.Name(), ".git")
+		if _, statErr := os.Stat(gitPath); statErr == nil {
+			result = append(result, entry.Name())
+		}
+	}
+	return result
+}
+
+// Prune runs 'git worktree prune' to clean up stale worktree metadata
+// entries that point to non-existent worktree directories.
+func (m *Manager) Prune() error {
+	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
+	if _, err := m.CmdRunner.Run(gitCmd, "worktree", "prune"); err != nil {
+		return fmt.Errorf("git worktree prune failed: %w", err)
+	}
+	return nil
+}
