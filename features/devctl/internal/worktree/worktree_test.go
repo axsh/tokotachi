@@ -33,12 +33,53 @@ func TestExists_True(t *testing.T) {
 	m := newTestManager(t, true)
 	dir := m.Path("test-001")
 	require.NoError(t, os.MkdirAll(dir, 0o755))
+	// Create .git file to simulate valid worktree
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: ../../.git/worktrees/test-001\n"), 0o644))
 	assert.True(t, m.Exists("test-001"))
 }
 
 func TestExists_False(t *testing.T) {
 	m := newTestManager(t, true)
 	assert.False(t, m.Exists("nonexistent"))
+}
+
+func TestExists_GhostDirectory(t *testing.T) {
+	m := newTestManager(t, true)
+	dir := m.Path("ghost-branch")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	// No .git file — ghost directory
+	assert.False(t, m.Exists("ghost-branch"))
+}
+
+func TestExists_ValidWorktree(t *testing.T) {
+	m := newTestManager(t, true)
+	dir := m.Path("valid-branch")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: ../../.git/worktrees/valid-branch\n"), 0o644))
+	assert.True(t, m.Exists("valid-branch"))
+}
+
+func TestCreate_CleansGhostDirectory(t *testing.T) {
+	m := newTestManager(t, true)
+	dir := m.Path("ghost-branch")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	// No .git file = ghost directory
+	err := m.Create("ghost-branch")
+	require.NoError(t, err)
+	// Dry-run mode: git worktree add command should be recorded
+	recs := m.CmdRunner.Recorder.Records()
+	require.GreaterOrEqual(t, len(recs), 1)
+}
+
+func TestRemove_CleansRemainingDirectory(t *testing.T) {
+	m := newTestManager(t, true)
+	dir := m.Path("leftover-branch")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	err := m.Remove("leftover-branch", false)
+	require.NoError(t, err)
+	// Directory should be removed after Remove() post-cleanup
+	_, statErr := os.Stat(dir)
+	assert.True(t, os.IsNotExist(statErr), "directory should be removed after Remove()")
 }
 
 func TestCreateCmd(t *testing.T) {

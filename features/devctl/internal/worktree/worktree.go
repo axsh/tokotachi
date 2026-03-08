@@ -26,10 +26,18 @@ func (m *Manager) Path(branch string) string {
 	return filepath.Join(m.RepoRoot, "work", branch)
 }
 
-// Exists checks if the worktree directory exists.
+// Exists checks if the worktree directory exists and is a valid git worktree.
+// A valid worktree has a .git file (not directory) pointing to the main repo's worktree metadata.
 func (m *Manager) Exists(branch string) bool {
-	info, err := os.Stat(m.Path(branch))
-	return err == nil && info.IsDir()
+	wtPath := m.Path(branch)
+	info, err := os.Stat(wtPath)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	// Valid worktrees have a .git file inside
+	gitPath := filepath.Join(wtPath, ".git")
+	_, err = os.Stat(gitPath)
+	return err == nil
 }
 
 // Create creates a new git worktree.
@@ -37,6 +45,15 @@ func (m *Manager) Exists(branch string) bool {
 // Uses --force to handle branches already checked out in other worktrees.
 func (m *Manager) Create(branch string) error {
 	wtPath := m.Path(branch)
+
+	// Clean up ghost directory: directory exists but is not a valid worktree
+	if info, err := os.Stat(wtPath); err == nil && info.IsDir() {
+		gitPath := filepath.Join(wtPath, ".git")
+		if _, gitErr := os.Stat(gitPath); os.IsNotExist(gitErr) {
+			// Ghost directory — remove before creating new worktree
+			os.RemoveAll(wtPath)
+		}
+	}
 	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
 
 	// Check if branch already exists
@@ -70,6 +87,11 @@ func (m *Manager) Remove(branch string, force bool) error {
 
 	if _, err := m.CmdRunner.RunWithOpts(cmdexec.ToleratedOpt(), gitCmd, args...); err != nil {
 		return fmt.Errorf("git worktree remove failed: %w", err)
+	}
+
+	// Ensure directory is fully removed (git may leave empty directory)
+	if _, err := os.Stat(wtPath); err == nil {
+		os.RemoveAll(wtPath)
 	}
 	return nil
 }

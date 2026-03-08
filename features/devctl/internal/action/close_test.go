@@ -72,6 +72,8 @@ func TestClose_WithFeature_LastFeature_CleansUpWorktree(t *testing.T) {
 	// Create worktree directory so wm.Exists() returns true
 	wtDir := filepath.Join(env.RepoRoot, "work", branch)
 	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	// Add .git file so wm.Exists() recognizes this as a valid worktree
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
 
 	err := env.Runner.Close(action.CloseOptions{
 		Feature:     "myfeature",
@@ -106,6 +108,8 @@ func TestClose_WithFeature_OtherFeaturesRemain_KeepsWorktree(t *testing.T) {
 	// Create worktree directory
 	wtDir := filepath.Join(env.RepoRoot, "work", branch)
 	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	// Add .git file so wm.Exists() recognizes this as a valid worktree
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
 
 	err := env.Runner.Close(action.CloseOptions{
 		Feature:     "feature-a",
@@ -145,6 +149,8 @@ func TestClose_WithFeature_Force_PropagatedToCleanup(t *testing.T) {
 	// Create worktree directory
 	wtDir := filepath.Join(env.RepoRoot, "work", branch)
 	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	// Add .git file so wm.Exists() recognizes this as a valid worktree
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
 
 	err := env.Runner.Close(action.CloseOptions{
 		Feature:     "myfeature",
@@ -177,6 +183,8 @@ func TestClose_WithoutFeature_Unchanged(t *testing.T) {
 	// Create worktree directory
 	wtDir := filepath.Join(env.RepoRoot, "work", branch)
 	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	// Add .git file so wm.Exists() recognizes this as a valid worktree
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"), []byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
 
 	err := env.Runner.Close(action.CloseOptions{
 		Feature:     "", // No feature = close all
