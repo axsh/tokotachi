@@ -24,7 +24,7 @@ DEVCTL="${REPO_ROOT}/bin/devctl"
 
 if [[ ! -x "$DEVCTL" ]]; then
   warn "devctl not found in bin/. Installing..."
-  "${SCRIPT_DIR}/install-tools" devctl
+  "${SCRIPT_DIR}/install-tools.sh" devctl
 fi
 
 if [[ ! -x "$DEVCTL" ]]; then

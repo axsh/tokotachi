@@ -44,7 +44,7 @@ failed=0
 
 for tool_id in "${TOOL_IDS[@]}"; do
   info "Building ${tool_id}..."
-  if "${SCRIPT_DIR}/build" "$tool_id"; then
+  if "${SCRIPT_DIR}/build.sh" "$tool_id"; then
     built=$((built + 1))
   else
     failed=$((failed + 1))
@@ -60,7 +60,7 @@ pass "All ${total} tools built successfully."
 
 # ─── Install all tools ──────────────────────────────────────────────
 info "Installing all tools..."
-"${SCRIPT_DIR}/install-tools" --all
+"${SCRIPT_DIR}/install-tools.sh" --all
 
 echo ""
 pass "Bootstrap complete! Tools installed to bin/"

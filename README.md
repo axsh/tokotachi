@@ -138,11 +138,11 @@ git clone https://github.com/axsh/tokotachi.git
 cd tokotachi
 
 # Bootstrap: build and install all tools
-./scripts/dist/bootstrap-tools
+./scripts/dist/bootstrap-tools.sh
 
 # Or build individually
-./scripts/dist/build devctl
-./scripts/dist/install-tools devctl
+./scripts/dist/build.sh devctl
+./scripts/dist/install-tools.sh devctl
 ```
 
 The compiled binary is output to `bin/devctl`.
