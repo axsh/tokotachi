@@ -38,6 +38,7 @@ func init() {
 	rootCmd.AddCommand(closeCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(doctorCmd)
+	rootCmd.AddCommand(scaffoldCmd)
 }
 
 // Execute runs the root command.
