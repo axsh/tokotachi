@@ -6,6 +6,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/axsh/tokotachi/features/devctl/internal/state"
 )
@@ -25,10 +26,11 @@ type FeatureInfo struct {
 
 // BranchInfo holds the merged branch overview.
 type BranchInfo struct {
-	Branch       string        `json:"branch"`
-	Path         string        `json:"path"`
-	Features     []FeatureInfo `json:"features"`
-	MainWorktree bool          `json:"main_worktree,omitempty"`
+	Branch       string            `json:"branch"`
+	Path         string            `json:"path"`
+	Features     []FeatureInfo     `json:"features"`
+	MainWorktree bool              `json:"main_worktree,omitempty"`
+	CodeStatus   *state.CodeStatus `json:"code_status,omitempty"`
 }
 
 // ParseWorktreeOutput parses `git worktree list --porcelain` output.
@@ -112,6 +114,7 @@ func CollectBranches(entries []WorktreeEntry, states map[string]state.StateFile)
 				return features[i].Name < features[j].Name
 			})
 			bi.Features = features
+			bi.CodeStatus = sf.CodeStatus
 		}
 
 		branches = append(branches, bi)
@@ -138,9 +141,9 @@ func featureColumn(bi BranchInfo) string {
 	return strings.Join(parts, ", ")
 }
 
-// stateColumn builds a display string for the STATE column.
+// containerColumn builds a display string for the CONTAINER column.
 // Returns the status of features, "(no state)", or "(main worktree)".
-func stateColumn(bi BranchInfo) string {
+func containerColumn(bi BranchInfo) string {
 	if bi.MainWorktree {
 		return "(main worktree)"
 	}
@@ -154,22 +157,65 @@ func stateColumn(bi BranchInfo) string {
 	return strings.Join(parts, ", ")
 }
 
+// FormatCodeColumn builds a display string for the CODE column.
+// The now parameter is injected for testability.
+func FormatCodeColumn(bi BranchInfo, now time.Time) string {
+	if bi.MainWorktree {
+		return "-"
+	}
+	if bi.CodeStatus == nil {
+		return "(unknown)"
+	}
+	switch bi.CodeStatus.Status {
+	case state.CodeStatusLocal:
+		return "(local)"
+	case state.CodeStatusHosted:
+		return "hosted"
+	case state.CodeStatusDeleted:
+		return "deleted"
+	case state.CodeStatusPR:
+		if bi.CodeStatus.PRCreatedAt == nil {
+			return "PR"
+		}
+		return formatPRElapsed(now, *bi.CodeStatus.PRCreatedAt)
+	default:
+		return string(bi.CodeStatus.Status)
+	}
+}
+
+// formatPRElapsed formats PR elapsed time.
+func formatPRElapsed(now, createdAt time.Time) string {
+	d := now.Sub(createdAt)
+	switch {
+	case d < 60*time.Minute:
+		return fmt.Sprintf("PR(%dm ago)", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("PR(%dh ago)", int(d.Hours()))
+	case d < 30*24*time.Hour:
+		return fmt.Sprintf("PR(%dd ago)", int(d.Hours()/24))
+	default:
+		return fmt.Sprintf("PR(%02d/%02d)", createdAt.Month(), createdAt.Day())
+	}
+}
+
 // FormatTable writes branch info as a human-readable table.
-// Columns: BRANCH, FEATURE, STATE, (PATH if showPath is true).
+// Columns: BRANCH, FEATURE, CONTAINER, CODE, (PATH if showPath is true).
 func FormatTable(w io.Writer, branches []BranchInfo, showPath bool) {
+	now := time.Now()
 	if showPath {
-		fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", "BRANCH", "FEATURE", "STATE", "PATH")
+		fmt.Fprintf(w, "%-24s %-20s %-20s %-16s %s\n", "BRANCH", "FEATURE", "CONTAINER", "CODE", "PATH")
 	} else {
-		fmt.Fprintf(w, "%-24s %-20s %s\n", "BRANCH", "FEATURE", "STATE")
+		fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", "BRANCH", "FEATURE", "CONTAINER", "CODE")
 	}
 
 	for _, bi := range branches {
 		feat := featureColumn(bi)
-		st := stateColumn(bi)
+		ct := containerColumn(bi)
+		code := FormatCodeColumn(bi, now)
 		if showPath {
-			fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", bi.Branch, feat, st, bi.Path)
+			fmt.Fprintf(w, "%-24s %-20s %-20s %-16s %s\n", bi.Branch, feat, ct, code, bi.Path)
 		} else {
-			fmt.Fprintf(w, "%-24s %-20s %s\n", bi.Branch, feat, st)
+			fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", bi.Branch, feat, ct, code)
 		}
 	}
 }

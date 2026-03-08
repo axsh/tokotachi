@@ -45,12 +45,30 @@ type FeatureState struct {
 	Connectivity Connectivity `yaml:"connectivity"`
 }
 
+// CodeStatusType represents the code hosting status.
+type CodeStatusType string
+
+const (
+	CodeStatusLocal   CodeStatusType = "local"
+	CodeStatusHosted  CodeStatusType = "hosted"
+	CodeStatusPR      CodeStatusType = "pr"
+	CodeStatusDeleted CodeStatusType = "deleted"
+)
+
+// CodeStatus holds the code hosting service status for a branch.
+type CodeStatus struct {
+	Status        CodeStatusType `yaml:"status"`
+	PRCreatedAt   *time.Time     `yaml:"pr_created_at,omitempty"`
+	LastCheckedAt *time.Time     `yaml:"last_checked_at,omitempty"`
+}
+
 // StateFile represents the branch-level state YAML file.
 // Features map holds per-feature state entries.
 type StateFile struct {
-	Branch    string                  `yaml:"branch"`
-	CreatedAt time.Time               `yaml:"created_at"`
-	Features  map[string]FeatureState `yaml:"features,omitempty"`
+	Branch     string                  `yaml:"branch"`
+	CreatedAt  time.Time               `yaml:"created_at"`
+	Features   map[string]FeatureState `yaml:"features,omitempty"`
+	CodeStatus *CodeStatus             `yaml:"code_status,omitempty"`
 }
 
 // StatePath returns the state file path: work/<branch>.state.yaml

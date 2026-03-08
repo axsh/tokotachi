@@ -1,13 +1,16 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/axsh/tokotachi/features/devctl/internal/cmdexec"
+	"github.com/axsh/tokotachi/features/devctl/internal/codestatus"
 	"github.com/axsh/tokotachi/features/devctl/internal/listing"
 	"github.com/axsh/tokotachi/features/devctl/internal/log"
 	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
@@ -15,8 +18,9 @@ import (
 )
 
 var (
-	flagListJSON bool
-	flagListPath bool
+	flagListJSON   bool
+	flagListPath   bool
+	flagListUpdate bool
 )
 
 var listCmd = &cobra.Command{
@@ -30,6 +34,7 @@ var listCmd = &cobra.Command{
 func init() {
 	listCmd.Flags().BoolVar(&flagListJSON, "json", false, "Output in JSON format")
 	listCmd.Flags().BoolVar(&flagListPath, "path", false, "Show worktree path column")
+	listCmd.Flags().BoolVar(&flagListUpdate, "update", false, "Force update code status immediately")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -63,12 +68,60 @@ func runListBranches() error {
 		states = make(map[string]state.StateFile)
 	}
 
+	// Handle --update: force foreground update
+	if flagListUpdate {
+		ghCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GH", "gh")
+		checker := &codestatus.Checker{
+			GitCmd:   gitCmd,
+			GhCmd:    ghCmd,
+			RepoRoot: repoRoot,
+			Timeout:  30 * time.Second,
+		}
+
+		// Collect all non-bare branch names
+		var branchNames []string
+		for _, e := range entries {
+			if !e.Bare {
+				branchNames = append(branchNames, e.Branch)
+			}
+		}
+
+		if len(branchNames) > 0 {
+			ctx := context.Background()
+			if err := checker.UpdateAll(ctx, branchNames); err != nil {
+				logger.Warn("Some branches failed to update: %v", err)
+			}
+			// Re-scan after update
+			states, err = state.ScanStateFiles(repoRoot)
+			if err != nil {
+				logger.Warn("Failed to re-scan state files: %v", err)
+				states = make(map[string]state.StateFile)
+			}
+		}
+	} else {
+		// Check if background update needed
+		if codestatus.NeedsUpdate(states, time.Now()) {
+			exe, err := os.Executable()
+			if err == nil {
+				if bgErr := codestatus.StartBackground(repoRoot, exe); bgErr != nil {
+					logger.Debug("Failed to start background updater: %v", bgErr)
+				}
+			}
+		}
+	}
+
 	branches := listing.CollectBranches(entries, states)
 
 	if flagListJSON {
 		return listing.FormatJSON(os.Stdout, branches)
 	}
 	listing.FormatTable(os.Stdout, branches, flagListPath)
+
+	// Show background process message
+	if !flagListUpdate && codestatus.IsRunning(repoRoot) {
+		fmt.Fprintln(os.Stderr, "* update process is still running in the background.")
+	}
+
 	return nil
 }
 

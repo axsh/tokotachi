@@ -245,3 +245,47 @@ func (c *Client) CreatePR(workDir string) error {
 	opts := cmdexec.RunOption{Dir: workDir}
 	return c.cmdRunner.RunInteractiveWithOpts(opts, ghCmd, "pr", "create")
 }
+
+// PRInfo holds information about a pull request.
+type PRInfo struct {
+	Number    int       `json:"number"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// ListPRs returns open PRs matching the given head branch.
+// Uses `gh pr list --head <branch> --json number,createdAt --limit 1`.
+// If cmdRunner is set, uses it; otherwise falls back to exec.Command directly.
+func (c *Client) ListPRs(workDir, branch string) ([]PRInfo, error) {
+	ghCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GH", "gh")
+	args := []string{"pr", "list", "--head", branch, "--json", "number,createdAt", "--limit", "1"}
+
+	var output string
+	var err error
+
+	if c.cmdRunner != nil {
+		opts := cmdexec.RunOption{Dir: workDir, QuietCmd: true}
+		output, err = c.cmdRunner.RunWithOpts(opts, ghCmd, args...)
+	} else {
+		cmd := exec.Command(ghCmd, args...)
+		if workDir != "" {
+			cmd.Dir = workDir
+		}
+		out, execErr := cmd.Output()
+		output = strings.TrimSpace(string(out))
+		err = execErr
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("gh pr list failed: %w", err)
+	}
+
+	if output == "" || output == "[]" {
+		return nil, nil
+	}
+
+	var prs []PRInfo
+	if err := json.Unmarshal([]byte(output), &prs); err != nil {
+		return nil, fmt.Errorf("failed to parse PR list: %w", err)
+	}
+	return prs, nil
+}
