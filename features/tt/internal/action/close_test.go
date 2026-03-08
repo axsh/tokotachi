@@ -242,8 +242,10 @@ func TestClose_WithNestedWorktrees_ClosesChildrenFirst(t *testing.T) {
 	setupStateFile(t, env.RepoRoot, parentBranch, map[string]state.FeatureState{
 		"feat": {Status: state.StatusActive, StartedAt: time.Now()},
 	})
-	// Child has no active features so Delete's safety guard won't block
-	setupStateFile(t, env.RepoRoot, childBranch, map[string]state.FeatureState{})
+	// Child state file at child's RepoRoot level (= parent worktree path)
+	// After the fix, recursive Delete uses parentDir as RepoRoot for the child
+	childRepoRoot := filepath.Join(env.RepoRoot, "work", parentBranch)
+	setupStateFile(t, childRepoRoot, childBranch, map[string]state.FeatureState{})
 
 	err := env.Runner.Close(action.CloseOptions{
 		Branch:      parentBranch,
@@ -270,10 +272,12 @@ func TestClose_WithNestedWorktrees_ClosesChildrenFirst(t *testing.T) {
 	assert.Greater(t, parentIdx, childIdx,
 		"child worktree remove should come before parent worktree remove, recs: %v", recs)
 
-	// Verify both state files are removed
+	// Verify parent state file is removed (from env.RepoRoot)
 	_, err1 := os.Stat(state.StatePath(env.RepoRoot, parentBranch))
-	_, err2 := os.Stat(state.StatePath(env.RepoRoot, childBranch))
 	assert.True(t, os.IsNotExist(err1), "parent state file should be deleted")
+
+	// Verify child state file is removed (from childRepoRoot = parent worktree path)
+	_, err2 := os.Stat(state.StatePath(childRepoRoot, childBranch))
 	assert.True(t, os.IsNotExist(err2), "child state file should be deleted")
 }
 
