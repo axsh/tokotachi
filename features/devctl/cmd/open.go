@@ -75,18 +75,18 @@ func runOpen(cmd *cobra.Command, args []string) error {
 	// --up flag: ensure worktree and container are ready
 	if openFlagUp {
 		// Create worktree if not exists
-		if !wm.Exists(ctx.Feature, ctx.Branch) {
-			ctx.Logger.Info("Worktree not found, creating %s...", wm.Path(ctx.Feature, ctx.Branch))
-			if err := wm.Create(ctx.Feature, ctx.Branch); err != nil {
+		if !wm.Exists(ctx.Branch) {
+			ctx.Logger.Info("Worktree not found, creating %s...", wm.Path(ctx.Branch))
+			if err := wm.Create(ctx.Branch); err != nil {
 				return fmt.Errorf("worktree creation failed: %w", err)
 			}
 		}
 
 		// Start container if feature is specified and container is not running
 		if ctx.HasFeature() {
-			worktreePath, err := resolve.Worktree(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+			worktreePath, err := resolve.Worktree(ctx.RepoRoot, ctx.Branch)
 			if err != nil {
-				worktreePath = wm.Path(ctx.Feature, ctx.Branch)
+				worktreePath = wm.Path(ctx.Branch)
 			}
 
 			containerState := ctx.ActionRunner.Status(containerName, worktreePath)
@@ -149,20 +149,30 @@ func runOpen(cmd *cobra.Command, args []string) error {
 				}
 
 				// Save state
-				statePath := state.StatePath(ctx.RepoRoot, ctx.Feature, ctx.Branch)
-				_ = state.Save(statePath, state.StateFile{
-					Feature:       ctx.Feature,
-					Branch:        ctx.Branch,
-					CreatedAt:     time.Now(),
-					ContainerMode: string(containerMode),
-					Editor:        string(ed),
-					Status:        state.StatusActive,
+				statePath := state.StatePath(ctx.RepoRoot, ctx.Branch)
+				sf, _ := state.Load(statePath)
+				if sf.Branch == "" {
+					sf.Branch = ctx.Branch
+					sf.CreatedAt = time.Now()
+				}
+				sf.SetFeature(ctx.Feature, state.FeatureState{
+					Status:    state.StatusActive,
+					StartedAt: time.Now(),
+					Connectivity: state.Connectivity{
+						Docker: state.DockerConnectivity{
+							Enabled:       true,
+							ContainerName: containerName,
+							Devcontainer:  !dcCfg.IsEmpty(),
+						},
+						SSH: state.SSHConnectivity{Enabled: false},
+					},
 				})
+				_ = state.Save(statePath, sf)
 			}
 		}
 	}
 
-	worktreePath, err := resolve.Worktree(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+	worktreePath, err := resolve.Worktree(ctx.RepoRoot, ctx.Branch)
 	if err != nil {
 		return fmt.Errorf("worktree resolution failed: %w", err)
 	}

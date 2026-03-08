@@ -21,27 +21,22 @@ type Manager struct {
 	RepoRoot  string
 }
 
-// Path returns the worktree directory path.
-// With feature: work/<branch>/features/<feature>
-// Without feature (feature=""): work/<branch>/all
-func (m *Manager) Path(feature, branch string) string {
-	if feature == "" {
-		return filepath.Join(m.RepoRoot, "work", branch, "all")
-	}
-	return filepath.Join(m.RepoRoot, "work", branch, "features", feature)
+// Path returns the worktree directory path: work/<branch>
+func (m *Manager) Path(branch string) string {
+	return filepath.Join(m.RepoRoot, "work", branch)
 }
 
 // Exists checks if the worktree directory exists.
-func (m *Manager) Exists(feature, branch string) bool {
-	info, err := os.Stat(m.Path(feature, branch))
+func (m *Manager) Exists(branch string) bool {
+	info, err := os.Stat(m.Path(branch))
 	return err == nil && info.IsDir()
 }
 
 // Create creates a new git worktree.
 // If the branch already exists, uses it without -b flag.
 // Uses --force to handle branches already checked out in other worktrees.
-func (m *Manager) Create(feature, branch string) error {
-	wtPath := m.Path(feature, branch)
+func (m *Manager) Create(branch string) error {
+	wtPath := m.Path(branch)
 	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
 
 	// Check if branch already exists
@@ -64,8 +59,8 @@ func (m *Manager) Create(feature, branch string) error {
 }
 
 // Remove removes a git worktree.
-func (m *Manager) Remove(feature, branch string, force bool) error {
-	wtPath := m.Path(feature, branch)
+func (m *Manager) Remove(branch string, force bool) error {
+	wtPath := m.Path(branch)
 	gitCmd := cmdexec.ResolveCommand("DEVCTL_CMD_GIT", "git")
 
 	args := []string{"worktree", "remove", wtPath}
@@ -93,29 +88,4 @@ func (m *Manager) DeleteBranch(branch string, force bool) error {
 		return fmt.Errorf("git branch delete failed: %w", err)
 	}
 	return nil
-}
-
-// List returns all feature worktree entries for a branch by scanning work/<branch>/features/.
-func (m *Manager) List(branch string) ([]WorktreeInfo, error) {
-	featuresDir := filepath.Join(m.RepoRoot, "work", branch, "features")
-	entries, err := os.ReadDir(featuresDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to read features directory: %w", err)
-	}
-
-	var result []WorktreeInfo
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		result = append(result, WorktreeInfo{
-			Feature: e.Name(),
-			Branch:  branch,
-			Path:    filepath.Join(featuresDir, e.Name()),
-		})
-	}
-	return result, nil
 }

@@ -37,16 +37,15 @@ func runClose(cmd *cobra.Command, args []string) error {
 	if projectName == "" {
 		projectName = "devctl"
 	}
-	containerName := resolve.ContainerName(projectName, ctx.Feature)
 
 	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}
 
 	if err := ctx.ActionRunner.Close(action.CloseOptions{
-		ContainerName: containerName,
-		Feature:       ctx.Feature,
-		Branch:        ctx.Branch,
-		Force:         closeFlagForce,
-		RepoRoot:      ctx.RepoRoot,
+		Feature:     ctx.Feature,
+		Branch:      ctx.Branch,
+		Force:       closeFlagForce,
+		RepoRoot:    ctx.RepoRoot,
+		ProjectName: projectName,
 	}, wm); err != nil {
 		ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Close", Success: false})
 		ctx.Report.OverallResult = "FAILED"

@@ -23,7 +23,7 @@ func runPR(cmd *cobra.Command, args []string) error {
 	}
 	defer finalizeReport(ctx)
 
-	worktreePath, err := resolve.Worktree(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+	worktreePath, err := resolve.Worktree(ctx.RepoRoot, ctx.Branch)
 	if err != nil {
 		return fmt.Errorf("worktree resolution failed: %w", err)
 	}

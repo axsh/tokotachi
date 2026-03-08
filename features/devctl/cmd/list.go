@@ -8,13 +8,12 @@ import (
 
 	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
 	"github.com/axsh/tokotachi/features/devctl/internal/state"
-	"github.com/axsh/tokotachi/features/devctl/internal/worktree"
 )
 
 var listCmd = &cobra.Command{
 	Use:   "list <branch>",
 	Short: "List features for a branch",
-	Long:  "List all feature worktrees under the given branch (scans work/<branch>/features/).",
+	Long:  "List all features under the given branch by reading the state file.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runList,
 }
@@ -29,42 +28,32 @@ func runList(cmd *cobra.Command, args []string) error {
 	defer finalizeReport(ctx)
 
 	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	projectName := globalCfg.ProjectName
-	if projectName == "" {
-		projectName = "devctl"
-	}
+	_ = globalCfg
 
-	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}
-	entries, err := wm.List(branch)
+	statePath := state.StatePath(ctx.RepoRoot, branch)
+	sf, err := state.Load(statePath)
 	if err != nil {
-		return fmt.Errorf("list failed: %w", err)
+		fmt.Fprintf(os.Stdout, "No state found for branch %q\n", branch)
+		ctx.Report.OverallResult = "SUCCESS"
+		return nil
 	}
 
-	if len(entries) == 0 {
-		fmt.Fprintf(os.Stdout, "No feature worktrees found for branch %q\n", branch)
+	if len(sf.Features) == 0 {
+		fmt.Fprintf(os.Stdout, "No features for branch %q\n", branch)
 		ctx.Report.OverallResult = "SUCCESS"
 		return nil
 	}
 
 	// Print table header
-	fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", "Feature", "Status", "ContainerMode", "CreatedAt")
-	fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", "-------", "------", "-------------", "---------")
+	fmt.Fprintf(os.Stdout, "%-20s %-10s %-20s %s\n", "Feature", "Status", "Container", "StartedAt")
+	fmt.Fprintf(os.Stdout, "%-20s %-10s %-20s %s\n", "-------", "------", "---------", "---------")
 
-	for _, e := range entries {
-		statePath := state.StatePath(ctx.RepoRoot, e.Feature, branch)
-		s, err := state.Load(statePath)
-		if err != nil {
-			// No state file, show minimal info
-			fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n", e.Feature, "unknown", "-", "-")
-			continue
-		}
-		containerName := resolve.ContainerName(projectName, e.Feature)
-		_ = containerName
-		fmt.Fprintf(os.Stdout, "%-20s %-10s %-15s %s\n",
-			e.Feature,
-			string(s.Status),
-			s.ContainerMode,
-			s.CreatedAt.Format("2006-01-02 15:04"),
+	for name, fs := range sf.Features {
+		fmt.Fprintf(os.Stdout, "%-20s %-10s %-20s %s\n",
+			name,
+			string(fs.Status),
+			fs.Connectivity.Docker.ContainerName,
+			fs.StartedAt.Format("2006-01-02 15:04"),
 		)
 	}
 

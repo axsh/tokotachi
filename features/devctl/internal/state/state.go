@@ -18,24 +18,90 @@ const (
 	StatusClosed  Status = "closed"
 )
 
-// StateFile represents the worktree state YAML file.
-type StateFile struct {
-	Feature       string    `yaml:"feature"`
-	Branch        string    `yaml:"branch"`
-	CreatedAt     time.Time `yaml:"created_at"`
-	ContainerMode string    `yaml:"container_mode"`
-	Editor        string    `yaml:"editor"`
-	Status        Status    `yaml:"status"`
+// DockerConnectivity holds Docker container connection information.
+type DockerConnectivity struct {
+	Enabled       bool   `yaml:"enabled"`
+	ContainerName string `yaml:"container_name"`
+	Devcontainer  bool   `yaml:"devcontainer"`
 }
 
-// StatePath returns the state file path.
-// With feature: work/<branch>/features/<feature>.state.yaml
-// Without feature: work/<branch>/all.state.yaml
-func StatePath(repoRoot, feature, branch string) string {
-	if feature == "" {
-		return filepath.Join(repoRoot, "work", branch, "all.state.yaml")
+// SSHConnectivity holds SSH connection information.
+type SSHConnectivity struct {
+	Enabled  bool   `yaml:"enabled"`
+	Endpoint string `yaml:"endpoint,omitempty"`
+}
+
+// Connectivity groups all connection methods for a feature.
+type Connectivity struct {
+	Docker DockerConnectivity `yaml:"docker"`
+	SSH    SSHConnectivity    `yaml:"ssh"`
+}
+
+// FeatureState represents the state of a single feature within a branch.
+type FeatureState struct {
+	Status       Status       `yaml:"status"`
+	StartedAt    time.Time    `yaml:"started_at"`
+	Connectivity Connectivity `yaml:"connectivity"`
+}
+
+// StateFile represents the branch-level state YAML file.
+// Features map holds per-feature state entries.
+type StateFile struct {
+	Branch    string                  `yaml:"branch"`
+	CreatedAt time.Time               `yaml:"created_at"`
+	Features  map[string]FeatureState `yaml:"features,omitempty"`
+}
+
+// StatePath returns the state file path: work/<branch>.state.yaml
+func StatePath(repoRoot, branch string) string {
+	return filepath.Join(repoRoot, "work", branch+".state.yaml")
+}
+
+// SetFeature adds or overwrites a feature entry in the state file.
+func (s *StateFile) SetFeature(feature string, fs FeatureState) {
+	if s.Features == nil {
+		s.Features = make(map[string]FeatureState)
 	}
-	return filepath.Join(repoRoot, "work", branch, "features", feature+".state.yaml")
+	s.Features[feature] = fs
+}
+
+// UpdateFeatureStatus updates only the Status field of an existing feature,
+// preserving Connectivity and other fields.
+// Returns an error if the feature is not found.
+func (s *StateFile) UpdateFeatureStatus(feature string, status Status) error {
+	fs, ok := s.Features[feature]
+	if !ok {
+		return fmt.Errorf("feature %q not found in state", feature)
+	}
+	fs.Status = status
+	s.Features[feature] = fs
+	return nil
+}
+
+// RemoveFeature deletes a feature entry from the state file.
+func (s *StateFile) RemoveFeature(feature string) {
+	delete(s.Features, feature)
+}
+
+// HasActiveFeatures returns true if at least one feature has active status.
+func (s *StateFile) HasActiveFeatures() bool {
+	for _, fs := range s.Features {
+		if fs.Status == StatusActive {
+			return true
+		}
+	}
+	return false
+}
+
+// ActiveFeatureNames returns feature names with active status.
+func (s *StateFile) ActiveFeatureNames() []string {
+	var names []string
+	for name, fs := range s.Features {
+		if fs.Status == StatusActive {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 // Load reads a state file from disk.

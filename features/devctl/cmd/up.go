@@ -67,9 +67,9 @@ func runUp(cmd *cobra.Command, args []string) error {
 
 	// Auto-create worktree if not exists
 	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}
-	if !wm.Exists(ctx.Feature, ctx.Branch) {
-		ctx.Logger.Info("Worktree not found, creating %s...", wm.Path(ctx.Feature, ctx.Branch))
-		if err := wm.Create(ctx.Feature, ctx.Branch); err != nil {
+	if !wm.Exists(ctx.Branch) {
+		ctx.Logger.Info("Worktree not found, creating %s...", wm.Path(ctx.Branch))
+		if err := wm.Create(ctx.Branch); err != nil {
 			ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Worktree creation", Success: false})
 			ctx.Report.OverallResult = "FAILED"
 			return fmt.Errorf("worktree creation failed: %w", err)
@@ -94,15 +94,23 @@ func runUp(cmd *cobra.Command, args []string) error {
 	ctx.Logger.Debug("Plan: up=%v editor=%v devcontainer=%v", p.ShouldStartContainer, p.ShouldOpenEditor, p.TryDevcontainerAttach)
 
 	// Resolve worktree path
-	worktreePath, err := resolve.Worktree(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+	worktreePath, err := resolve.Worktree(ctx.RepoRoot, ctx.Branch)
 	if err != nil {
 		if ctx.DryRun {
 			// In dry-run mode, worktree may not exist yet; use computed path
-			worktreePath = wm.Path(ctx.Feature, ctx.Branch)
+			worktreePath = wm.Path(ctx.Branch)
 			ctx.Logger.Debug("Worktree not found (dry-run), using computed path: %s", worktreePath)
 		} else {
 			return fmt.Errorf("worktree resolution failed: %w", err)
 		}
+	}
+
+	// Load or create state file
+	statePath := state.StatePath(ctx.RepoRoot, ctx.Branch)
+	sf, _ := state.Load(statePath)
+	if sf.Branch == "" {
+		sf.Branch = ctx.Branch
+		sf.CreatedAt = time.Now()
 	}
 
 	// --- Container operations: only when feature is specified ---
@@ -176,29 +184,26 @@ func runUp(cmd *cobra.Command, args []string) error {
 		}
 		ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Container up", Success: true})
 
-		// Save state file
-		statePath := state.StatePath(ctx.RepoRoot, ctx.Feature, ctx.Branch)
-		if err := state.Save(statePath, state.StateFile{
-			Feature:       ctx.Feature,
-			Branch:        ctx.Branch,
-			CreatedAt:     time.Now(),
-			ContainerMode: string(containerMode),
-			Editor:        string(ed),
-			Status:        state.StatusActive,
-		}); err != nil {
-			ctx.Logger.Warn("Failed to save state file: %v", err)
-		}
+		// Save feature state
+		sf.SetFeature(ctx.Feature, state.FeatureState{
+			Status:    state.StatusActive,
+			StartedAt: time.Now(),
+			Connectivity: state.Connectivity{
+				Docker: state.DockerConnectivity{
+					Enabled:       true,
+					ContainerName: containerName,
+					Devcontainer:  !dcCfg.IsEmpty(),
+				},
+				SSH: state.SSHConnectivity{Enabled: upFlagSSH},
+			},
+		})
 	} else {
 		ctx.Logger.Info("No feature specified — skipping container operations")
-		// Save state file without container info
-		statePath := state.StatePath(ctx.RepoRoot, ctx.Feature, ctx.Branch)
-		if err := state.Save(statePath, state.StateFile{
-			Branch:    ctx.Branch,
-			CreatedAt: time.Now(),
-			Status:    state.StatusActive,
-		}); err != nil {
-			ctx.Logger.Warn("Failed to save state file: %v", err)
-		}
+	}
+
+	// Save state file
+	if err := state.Save(statePath, sf); err != nil {
+		ctx.Logger.Warn("Failed to save state file: %v", err)
 	}
 
 	// Execute: open editor if --editor was specified
