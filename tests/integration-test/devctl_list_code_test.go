@@ -73,3 +73,64 @@ func TestDevctlListCode_JSONOutput(t *testing.T) {
 	assert.True(t, strings.HasPrefix(trimmed, "[") || strings.HasPrefix(trimmed, "{"),
 		"JSON output should start with [ or {, got: %s", trimmed[:min(50, len(trimmed))])
 }
+
+func TestDevctlListCode_FullFlagAccepted(t *testing.T) {
+	stdout, _, exitCode := runDevctl(t, "list", "--full")
+	if exitCode != 0 {
+		t.Fatalf("devctl list --full exited with code %d", exitCode)
+	}
+
+	assert.Contains(t, stdout, "BRANCH", "Output should contain BRANCH header")
+	assert.Contains(t, stdout, "FEATURE", "Output should contain FEATURE header")
+	assert.Contains(t, stdout, "CONTAINER", "Output should contain CONTAINER header")
+	assert.Contains(t, stdout, "CODE", "Output should contain CODE header")
+}
+
+func TestDevctlListCode_EnvFlagAccepted(t *testing.T) {
+	_, stderr, exitCode := runDevctl(t, "list", "--env")
+	if exitCode != 0 {
+		t.Fatalf("devctl list --env exited with code %d", exitCode)
+	}
+
+	assert.Contains(t, stderr, "Environment Variables",
+		"stderr should contain Environment Variables section")
+	assert.Contains(t, stderr, "DEVCTL_LIST_WIDTH",
+		"stderr should contain DEVCTL_LIST_WIDTH")
+	assert.Contains(t, stderr, "DEVCTL_LIST_PADDING",
+		"stderr should contain DEVCTL_LIST_PADDING")
+}
+
+func TestDevctlListCode_DynamicColumnWidth(t *testing.T) {
+	stdout, _, exitCode := runDevctl(t, "list")
+	if exitCode != 0 {
+		t.Fatalf("devctl list exited with code %d", exitCode)
+	}
+
+	lines := strings.Split(stdout, "\n")
+	if len(lines) < 2 {
+		t.Fatal("expected at least 2 lines (header + data)")
+	}
+
+	// Dynamic width: last column should not have trailing spaces
+	for _, line := range lines {
+		trimmed := strings.TrimRight(line, " \r")
+		if trimmed == "" {
+			continue
+		}
+		assert.Equal(t, trimmed, strings.TrimRight(line, " \r"),
+			"line should not have trailing spaces: %q", line)
+	}
+
+	// Verify columns are separated by at least 2 spaces (default padding)
+	header := lines[0]
+	assert.Contains(t, header, "BRANCH", "header should contain BRANCH")
+	assert.Contains(t, header, "FEATURE", "header should contain FEATURE")
+	// Between BRANCH and FEATURE there should be at least 2 spaces
+	branchIdx := strings.Index(header, "BRANCH")
+	featureIdx := strings.Index(header, "FEATURE")
+	if branchIdx >= 0 && featureIdx > branchIdx {
+		gap := header[branchIdx+len("BRANCH") : featureIdx]
+		assert.True(t, len(gap) >= 2,
+			"gap between BRANCH and FEATURE should be at least 2 spaces, got %d", len(gap))
+	}
+}

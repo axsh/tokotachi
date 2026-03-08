@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -13,6 +14,7 @@ import (
 	"github.com/axsh/tokotachi/features/devctl/internal/codestatus"
 	"github.com/axsh/tokotachi/features/devctl/internal/listing"
 	"github.com/axsh/tokotachi/features/devctl/internal/log"
+	"github.com/axsh/tokotachi/features/devctl/internal/report"
 	"github.com/axsh/tokotachi/features/devctl/internal/resolve"
 	"github.com/axsh/tokotachi/features/devctl/internal/state"
 )
@@ -21,6 +23,8 @@ var (
 	flagListJSON   bool
 	flagListPath   bool
 	flagListUpdate bool
+	flagListFull   bool
+	flagListEnv    bool
 )
 
 var listCmd = &cobra.Command{
@@ -35,6 +39,8 @@ func init() {
 	listCmd.Flags().BoolVar(&flagListJSON, "json", false, "Output in JSON format")
 	listCmd.Flags().BoolVar(&flagListPath, "path", false, "Show worktree path column")
 	listCmd.Flags().BoolVar(&flagListUpdate, "update", false, "Force update code status immediately")
+	listCmd.Flags().BoolVar(&flagListFull, "full", false, "Disable column truncation")
+	listCmd.Flags().BoolVar(&flagListEnv, "env", false, "Show environment variables in report")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -115,7 +121,38 @@ func runListBranches() error {
 	if flagListJSON {
 		return listing.FormatJSON(os.Stdout, branches)
 	}
-	listing.FormatTable(os.Stdout, branches, flagListPath)
+
+	// Read env vars for table formatting
+	maxWidth := 40
+	if v := os.Getenv("DEVCTL_LIST_WIDTH"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			maxWidth = n
+		}
+	}
+	padding := 2
+	if v := os.Getenv("DEVCTL_LIST_PADDING"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			padding = n
+		}
+	}
+
+	opts := listing.TableOptions{
+		ShowPath: flagListPath,
+		Full:     flagListFull,
+		MaxWidth: maxWidth,
+		Padding:  padding,
+	}
+	listing.FormatTable(os.Stdout, branches, opts)
+
+	// Show environment variables report if --env is specified
+	if flagListEnv {
+		rep := &report.Report{
+			StartTime: time.Now(),
+			Branch:    "(list)",
+			EnvVars:   CollectEnvVars(),
+		}
+		rep.Print(os.Stderr)
+	}
 
 	// Show background process message
 	if !flagListUpdate && codestatus.IsRunning(repoRoot) {

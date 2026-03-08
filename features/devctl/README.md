@@ -63,6 +63,8 @@ devctl up <feature> [branch] --editor cursor --dry-run --verbose --report report
 | `--no-build` | `up` | Skip image build |
 | `--attach` | `open` | Attempt DevContainer attach to running container |
 | `--force` | `close` | Force delete even if branch is not merged |
+| `--full` | `list` | Disable column truncation (show full text) |
+| `--env` | `list` | Show environment variables section in report |
 
 ### Global Flags (All Subcommands)
 
@@ -109,6 +111,13 @@ All external commands can be overridden via environment variables. This is usefu
 | `DEVCTL_CMD_CLAUDE` | Path to Claude Code CLI | `claude` |
 | `DEVCTL_CMD_GIT` | Path to Git CLI | `git` |
 | `DEVCTL_CMD_GH` | Path to GitHub CLI | `gh` |
+
+### List Display
+
+| Variable | Description | Default |
+|---|---|---|
+| `DEVCTL_LIST_WIDTH` | Maximum column width before truncation | `40` |
+| `DEVCTL_LIST_PADDING` | Number of spaces between columns | `2` |
 
 ### Editor Resolution Priority
 
