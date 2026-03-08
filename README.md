@@ -57,16 +57,20 @@ tokotachi/
 The core feature of this repository. `devctl` is a CLI tool that manages feature-level development environments across different **OS × Editor × Container** combinations.
 
 ```bash
-devctl up <feature> [branch]              # Start a development container
-devctl up <feature> [branch] --editor cursor  # Start + open editor
-devctl down <feature> [branch]            # Stop and remove the container
-devctl open <feature> [branch] --editor code  # Open editor for a feature
-devctl status <feature> [branch]          # Show feature status
-devctl shell <feature> [branch]           # Open a shell in the container
-devctl exec <feature> [branch] -- go test ./...  # Execute a command
-devctl close <feature> [branch]           # Full teardown (container + worktree + branch)
-devctl list <feature>                     # List branches for a feature
-devctl pr <feature> [branch]              # Create a GitHub Pull Request
+devctl up <branch> [feature]                   # Start a development container (worktree only if feature omitted)
+devctl up <branch> [feature] --editor cursor   # Start + open editor
+devctl down <branch> <feature>                 # Stop and remove the container
+devctl open <branch> [feature] --editor code   # Open editor for a branch
+devctl open <branch> [feature] --up            # Open editor + start container if needed
+devctl status <branch> [feature]               # Show environment status
+devctl shell <branch> <feature>                # Open a shell in the container
+devctl exec <branch> <feature> -- go test ./...  # Execute a command
+devctl close <branch> [feature]                # Full teardown (container + worktree + branch)
+devctl close <branch> [feature] --force        # Force close even if branch not merged
+devctl list <branch>                           # List features for a branch
+devctl pr <branch> [feature]                   # Create a GitHub Pull Request
+devctl doctor                                  # Check repository health and config
+devctl doctor --fix                            # Auto-fix detected issues
 ```
 
 #### Supported Environments
