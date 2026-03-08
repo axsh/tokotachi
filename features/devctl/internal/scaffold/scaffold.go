@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/axsh/tokotachi/features/devctl/internal/github"
 	"github.com/axsh/tokotachi/features/devctl/internal/log"
 )
 
@@ -43,7 +44,7 @@ func Run(opts RunOptions) (*Plan, error) {
 
 	// 1. Download catalog
 	spinner.Start("Fetching catalog...")
-	downloader, err := NewGitHubDownloader(opts.RepoURL)
+	downloader, err := github.NewClient(opts.RepoURL)
 	if err != nil {
 		spinner.Stop()
 		return nil, fmt.Errorf("failed to create downloader: %w", err)
@@ -171,7 +172,7 @@ func Apply(plan *Plan, opts RunOptions) error {
 
 	// 2. Download template files again for application
 	// (we don't store files in the plan, so re-download)
-	downloader, err := NewGitHubDownloader(opts.RepoURL)
+	downloader, err := github.NewClient(opts.RepoURL)
 	if err != nil {
 		return err
 	}
@@ -289,7 +290,7 @@ func List(repoURL string) ([]ScaffoldEntry, error) {
 		repoURL = defaultRepoURL
 	}
 
-	downloader, err := NewGitHubDownloader(repoURL)
+	downloader, err := github.NewClient(repoURL)
 	if err != nil {
 		return nil, err
 	}
