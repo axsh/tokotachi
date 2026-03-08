@@ -31,19 +31,19 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}
-	worktreePath := wm.Path(ctx.Feature, ctx.Branch)
+	worktreePath := wm.Path(ctx.Branch)
 
 	if ctx.HasFeature() {
 		// Full status: worktree + container
 		containerName := resolve.ContainerName(projectName, ctx.Feature)
-		resolvedPath, _ := resolve.Worktree(ctx.RepoRoot, ctx.Feature, ctx.Branch)
+		resolvedPath, _ := resolve.Worktree(ctx.RepoRoot, ctx.Branch)
 		if resolvedPath != "" {
 			worktreePath = resolvedPath
 		}
 		ctx.ActionRunner.PrintStatus(ctx.Feature, containerName, worktreePath)
 	} else {
 		// Worktree only status
-		exists := wm.Exists(ctx.Feature, ctx.Branch)
+		exists := wm.Exists(ctx.Branch)
 		if exists {
 			fmt.Printf("📁 Branch: %s\n", ctx.Branch)
 			fmt.Printf("   Worktree: %s\n", worktreePath)

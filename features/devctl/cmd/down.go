@@ -45,12 +45,15 @@ func runDown(cmd *cobra.Command, args []string) error {
 	}
 	ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Container down", Success: true})
 
-	// Update state file to stopped
-	statePath := state.StatePath(ctx.RepoRoot, ctx.Feature, ctx.Branch)
-	if s, err := state.Load(statePath); err == nil {
-		s.Status = state.StatusStopped
-		if err := state.Save(statePath, s); err != nil {
-			ctx.Logger.Warn("Failed to update state file: %v", err)
+	// Update state file: change feature status to stopped (preserving connectivity)
+	statePath := state.StatePath(ctx.RepoRoot, ctx.Branch)
+	if sf, err := state.Load(statePath); err == nil {
+		if err := sf.UpdateFeatureStatus(ctx.Feature, state.StatusStopped); err != nil {
+			ctx.Logger.Warn("Failed to update feature status: %v", err)
+		} else {
+			if err := state.Save(statePath, sf); err != nil {
+				ctx.Logger.Warn("Failed to save state file: %v", err)
+			}
 		}
 	}
 

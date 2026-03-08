@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoadDevcontainerConfig_FromJSON(t *testing.T) {
+func TestLoadDevcontainerConfig_FromWorktreeJSON(t *testing.T) {
 	root := t.TempDir()
-	// New structure: work/<branch>/features/<feature>/.devcontainer/
-	dcDir := filepath.Join(root, "work", "main", "features", "feat-a", ".devcontainer")
+	// Unified structure: work/<branch>/.devcontainer/
+	dcDir := filepath.Join(root, "work", "main", ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
 	content := `{
@@ -32,7 +32,7 @@ func TestLoadDevcontainerConfig_FromJSON(t *testing.T) {
 
 func TestLoadDevcontainerConfig_WithImage(t *testing.T) {
 	root := t.TempDir()
-	dcDir := filepath.Join(root, "work", "dev", "features", "feat-b", ".devcontainer")
+	dcDir := filepath.Join(root, "work", "dev", ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
 	content := `{ "image": "golang:1.22" }`
@@ -59,11 +59,11 @@ func TestLoadDevcontainerConfig_EmptyFeature(t *testing.T) {
 
 func TestLoadDevcontainerConfig_FallbackDockerfile(t *testing.T) {
 	root := t.TempDir()
-	worktree := filepath.Join(root, "work", "main", "features", "feat-c")
-	require.NoError(t, os.MkdirAll(worktree, 0755))
+	worktreeDir := filepath.Join(root, "work", "main")
+	require.NoError(t, os.MkdirAll(worktreeDir, 0755))
 
 	require.NoError(t, os.WriteFile(
-		filepath.Join(worktree, "Dockerfile"),
+		filepath.Join(worktreeDir, "Dockerfile"),
 		[]byte("FROM golang:1.22\n"),
 		0644,
 	))
@@ -77,8 +77,8 @@ func TestLoadDevcontainerConfig_FallbackDockerfile(t *testing.T) {
 
 func TestLoadDevcontainerConfig_Priority(t *testing.T) {
 	root := t.TempDir()
-	worktree := filepath.Join(root, "work", "main", "features", "feat-d")
-	dcDir := filepath.Join(worktree, ".devcontainer")
+	worktreeDir := filepath.Join(root, "work", "main")
+	dcDir := filepath.Join(worktreeDir, ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
 	// Priority: devcontainer.json
@@ -86,7 +86,7 @@ func TestLoadDevcontainerConfig_Priority(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dcDir, "devcontainer.json"), []byte(content), 0644))
 
 	// Lower priority: root Dockerfile (should be ignored)
-	require.NoError(t, os.WriteFile(filepath.Join(worktree, "Dockerfile"), []byte("FROM alpine\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(worktreeDir, "Dockerfile"), []byte("FROM alpine\n"), 0644))
 
 	cfg, err := resolve.LoadDevcontainerConfig(root, "feat-d", "main")
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestLoadDevcontainerConfig_Priority(t *testing.T) {
 
 func TestLoadDevcontainerConfig_WithMountsAndUser(t *testing.T) {
 	root := t.TempDir()
-	dcDir := filepath.Join(root, "work", "main", "features", "feat-e", ".devcontainer")
+	dcDir := filepath.Join(root, "work", "main", ".devcontainer")
 	require.NoError(t, os.MkdirAll(dcDir, 0755))
 
 	content := `{
@@ -151,8 +151,8 @@ func TestLoadDevcontainerConfig_FeatureDirPriority(t *testing.T) {
 	featureContent := `{ "name": "from-features", "workspaceFolder": "/ws-feature" }`
 	require.NoError(t, os.WriteFile(filepath.Join(featureDC, "devcontainer.json"), []byte(featureContent), 0644))
 
-	// Priority 2: work/<branch>/features/<feature>/.devcontainer/
-	worktreeDC := filepath.Join(root, "work", "test-001", "features", "devctl", ".devcontainer")
+	// Priority 2: work/<branch>/.devcontainer/
+	worktreeDC := filepath.Join(root, "work", "test-001", ".devcontainer")
 	require.NoError(t, os.MkdirAll(worktreeDC, 0755))
 	worktreeContent := `{ "name": "from-worktree", "workspaceFolder": "/ws-worktree" }`
 	require.NoError(t, os.WriteFile(filepath.Join(worktreeDC, "devcontainer.json"), []byte(worktreeContent), 0644))
@@ -162,18 +162,4 @@ func TestLoadDevcontainerConfig_FeatureDirPriority(t *testing.T) {
 	// features/ should win
 	assert.Equal(t, "from-features", cfg.Name)
 	assert.Equal(t, "/ws-feature", cfg.WorkspaceFolder)
-}
-
-func TestLoadDevcontainerConfig_OldPathFallback(t *testing.T) {
-	root := t.TempDir()
-	// Old structure: work/<feature>/<branch>/.devcontainer/
-	dcDir := filepath.Join(root, "work", "feat-old", "main", ".devcontainer")
-	require.NoError(t, os.MkdirAll(dcDir, 0755))
-
-	content := `{ "name": "old-style", "workspaceFolder": "/ws-old" }`
-	require.NoError(t, os.WriteFile(filepath.Join(dcDir, "devcontainer.json"), []byte(content), 0644))
-
-	cfg, err := resolve.LoadDevcontainerConfig(root, "feat-old", "main")
-	require.NoError(t, err)
-	assert.Equal(t, "old-style", cfg.Name)
 }
