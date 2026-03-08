@@ -40,8 +40,35 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 		sf, err := state.Load(statePath)
 		if err == nil {
 			sf.RemoveFeature(opts.Feature)
-			if saveErr := state.Save(statePath, sf); saveErr != nil {
-				r.Logger.Warn("Failed to save state file: %v", saveErr)
+
+			if len(sf.Features) == 0 {
+				// Last feature closed: clean up worktree, branch, and state file
+				if wm.Exists(opts.Branch) {
+					r.Logger.Info("Removing worktree work/%s...", opts.Branch)
+					if rmErr := wm.Remove(opts.Branch, opts.Force); rmErr != nil {
+						r.Logger.Warn("Worktree remove failed: %v", rmErr)
+						wtPath := wm.Path(opts.Branch)
+						if dirErr := os.RemoveAll(wtPath); dirErr != nil {
+							r.Logger.Warn("Directory cleanup also failed: %v", dirErr)
+						} else {
+							r.Logger.Info("Cleaned up worktree directory directly")
+						}
+					}
+				}
+
+				r.Logger.Info("Deleting branch %s...", opts.Branch)
+				if brErr := wm.DeleteBranch(opts.Branch, opts.Force); brErr != nil {
+					r.Logger.Warn("Branch delete failed: %v", brErr)
+				}
+
+				if rmErr := state.Remove(statePath); rmErr != nil {
+					r.Logger.Warn("State file remove failed: %v", rmErr)
+				}
+			} else {
+				// Other features remain: save updated state
+				if saveErr := state.Save(statePath, sf); saveErr != nil {
+					r.Logger.Warn("Failed to save state file: %v", saveErr)
+				}
 			}
 		}
 
