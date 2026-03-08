@@ -12,11 +12,11 @@ func TestDevctlStatusWhenRunning(t *testing.T) {
 	requireDockerAvailable(t)
 
 	// Setup: start a container
-	upOut, upErr, upCode := runDevctl(t, "up", featureName)
+	upOut, upErr, upCode := runDevctl(t, "up", branchName, featureName)
 	assert.Equal(t, 0, upCode, "devctl up failed during setup.\nSTDOUT:\n%s\nSTDERR:\n%s", upOut, upErr)
 
 	// Execute: devctl status
-	stdout, stderr, code := runDevctl(t, "status", featureName)
+	stdout, stderr, code := runDevctl(t, "status", branchName, featureName)
 	assert.Equal(t, 0, code, "devctl status failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Verify: output contains "running"
@@ -36,6 +36,6 @@ func TestDevctlStatusWhenStopped(t *testing.T) {
 	cleanupDevctlDown(t)
 
 	// Execute: devctl status
-	stdout, stderr, code := runDevctl(t, "status", featureName)
+	stdout, stderr, code := runDevctl(t, "status", branchName, featureName)
 	assert.Equal(t, 0, code, "devctl status should not error when no container is running.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 }

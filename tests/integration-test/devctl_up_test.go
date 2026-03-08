@@ -14,7 +14,7 @@ func TestDevctlUpStartsContainer(t *testing.T) {
 	cleanupDevctlDown(t)
 
 	// Execute: devctl up
-	stdout, stderr, code := runDevctl(t, "up", featureName, "--verbose")
+	stdout, stderr, code := runDevctl(t, "up", branchName, featureName, "--verbose")
 	assert.Equal(t, 0, code, "devctl up failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Verify: container is running
@@ -34,11 +34,11 @@ func TestDevctlUpIdempotent(t *testing.T) {
 	cleanupDevctlDown(t)
 
 	// First up
-	stdout1, stderr1, code1 := runDevctl(t, "up", featureName)
+	stdout1, stderr1, code1 := runDevctl(t, "up", branchName, featureName)
 	assert.Equal(t, 0, code1, "First devctl up failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout1, stderr1)
 
 	// Second up (should be idempotent)
-	stdout2, stderr2, code2 := runDevctl(t, "up", featureName)
+	stdout2, stderr2, code2 := runDevctl(t, "up", branchName, featureName)
 	assert.Equal(t, 0, code2, "Second devctl up should be idempotent.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout2, stderr2)
 
 	// Cleanup

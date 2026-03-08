@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -134,6 +135,13 @@ func runOpen(cmd *cobra.Command, args []string) error {
 
 				if gitErr == nil && gitInfo.IsWorktree {
 					upOpts.GitWorktree = &gitInfo
+					// Create temp .git override file for container mount
+					overrideFile, oErr := resolve.CreateContainerGitFile(os.TempDir())
+					if oErr != nil {
+						ctx.Logger.Warn("Failed to create git override file: %v", oErr)
+					} else {
+						upOpts.GitOverrideFile = overrideFile
+					}
 				}
 
 				if err := ctx.ActionRunner.Up(upOpts); err != nil {

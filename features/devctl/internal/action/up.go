@@ -29,6 +29,7 @@ type UpOptions struct {
 	DockerfilePath  string                   // resolved absolute path to Dockerfile
 	BuildContext    string                   // resolved absolute path to build context
 	GitWorktree     *resolve.GitWorktreeInfo // nil if not a worktree
+	GitOverrideFile string                   // path to temp .git override file (for container mount)
 }
 
 // Up starts the development container.
@@ -76,6 +77,10 @@ func (r *Runner) Up(opts UpOptions) error {
 			opts.GitWorktree.MainGitDir, opts.GitWorktree.WorktreeGitDir)
 		args = append(args, "-v", opts.GitWorktree.MainGitDir+":/repo-git:ro")
 		args = append(args, "-v", opts.GitWorktree.WorktreeGitDir+":/worktree-git-src:ro")
+		// Override-mount the .git file so the host .git is never modified
+		if opts.GitOverrideFile != "" {
+			args = append(args, "-v", opts.GitOverrideFile+":"+wsFolder+"/.git")
+		}
 	}
 
 	// Add mounts from devcontainer.json
@@ -148,16 +153,9 @@ func (r *Runner) setupGitWorktree(containerName string, info *resolve.GitWorktre
 		return fmt.Errorf("failed to copy worktree metadata: %w", err)
 	}
 
-	// Step 2: Backup and rewrite .git file to point to container-internal worktree-git
-	// Backup is needed because the .git file is on a bind mount and changes affect the host.
-	// DetectGitWorktree will restore from backup on next run if it finds stale container paths.
-	backupCmd := fmt.Sprintf(`cp %s/.git %s/.git.devctl-backup`, wsFolder, wsFolder)
-	_ = r.DockerRun("exec", containerName, "sh", "-c", backupCmd) // best-effort
-
-	gitFileCmd := fmt.Sprintf(`printf 'gitdir: /worktree-git\n' > %s/.git`, wsFolder)
-	if err := r.DockerRun("exec", containerName, "sh", "-c", gitFileCmd); err != nil {
-		return fmt.Errorf("failed to rewrite .git file: %w", err)
-	}
+	// Step 2 (removed): .git file rewrite is no longer needed.
+	// The .git file is now override-mounted via docker run -v,
+	// so the host .git file is never modified.
 
 	// Step 3: Rewrite commondir in the writable copy to point to /repo-git
 	commondirCmd := `printf '/repo-git\n' > /worktree-git/commondir`

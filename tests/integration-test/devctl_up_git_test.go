@@ -15,7 +15,7 @@ func TestDevctlUpGitWorktree(t *testing.T) {
 	cleanupDevctlDown(t)
 
 	// Start container
-	stdout, stderr, code := runDevctl(t, "up", featureName, "--verbose")
+	stdout, stderr, code := runDevctl(t, "up", branchName, featureName, "--verbose")
 	assert.Equal(t, 0, code, "devctl up failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
 
 	// Verify git status works inside the container

@@ -112,3 +112,17 @@ func DetectGitWorktree(worktreePath string) (GitWorktreeInfo, error) {
 		MainGitDir:     mainGitDir,
 	}, nil
 }
+
+// CreateContainerGitFile creates a temporary file on the host containing
+// the container-internal gitdir path, for use as an override mount.
+// The file content is "gitdir: /worktree-git\n" which points to the
+// writable copy of worktree metadata inside the container.
+// Returns the path to the created file.
+func CreateContainerGitFile(tempDir string) (string, error) {
+	filePath := filepath.Join(tempDir, "dot-git-override")
+	content := []byte("gitdir: /worktree-git\n")
+	if err := os.WriteFile(filePath, content, 0644); err != nil {
+		return "", fmt.Errorf("failed to create container git override file: %w", err)
+	}
+	return filePath, nil
+}
