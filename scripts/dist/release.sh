@@ -14,6 +14,7 @@ if [[ $# -lt 2 ]]; then
 fi
 
 TOOL_ID="$1"
+validate_tool_id "$TOOL_ID"
 VERSION="$2"
 
 # ─── Verify built binaries exist ────────────────────────────────────

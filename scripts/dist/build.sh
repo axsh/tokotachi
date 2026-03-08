@@ -14,6 +14,7 @@ if [[ $# -lt 1 ]]; then
 fi
 
 TOOL_ID="$1"
+validate_tool_id "$TOOL_ID"
 
 # ─── Read manifest ──────────────────────────────────────────────────
 MANIFEST="$(manifest_path "$TOOL_ID")"

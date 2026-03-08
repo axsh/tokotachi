@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/axsh/tokotachi/features/tt/internal/state"
@@ -115,11 +114,8 @@ func StartBackground(repoRoot, ttBinary string) error {
 	cmd := exec.Command(ttBinary, "_update-code-status", "--repo-root", repoRoot)
 	cmd.Dir = repoRoot
 
-	// Detach from parent process
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		// On Windows, CREATE_NEW_PROCESS_GROUP detaches the child.
-		CreationFlags: 0x00000200, // CREATE_NEW_PROCESS_GROUP
-	}
+	// Detach child process (platform-specific)
+	cmd.SysProcAttr = detachSysProcAttr()
 
 	// Redirect to null to avoid holding parent's handles
 	cmd.Stdout = nil
