@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -18,6 +19,7 @@ var (
 	scaffoldFlagList     bool
 	scaffoldFlagRepo     string
 	scaffoldFlagLang     string
+	scaffoldFlagCwd      bool
 )
 
 var scaffoldCmd = &cobra.Command{
@@ -34,13 +36,11 @@ func init() {
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagList, "list", false, "List available scaffold templates")
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagRepo, "repo", "", "Override the default template repository URL")
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagLang, "lang", "", "Specify locale for template localization (e.g. ja, en)")
+	scaffoldCmd.Flags().BoolVar(&scaffoldFlagCwd, "cwd", false, "Use current working directory as root instead of auto-detecting Git root")
 }
 
 func runScaffold(cmd *cobra.Command, args []string) error {
-	repoRoot, err := os.Getwd()
-	if err != nil {
-		repoRoot = "."
-	}
+	repoRoot := resolveRepoRoot(scaffoldFlagCwd)
 
 	logger := log.New(os.Stderr, flagVerbose)
 
@@ -116,4 +116,23 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 
 	// Apply
 	return scaffold.Apply(plan, opts)
+}
+
+// resolveRepoRoot determines the target root directory.
+// If useCwd is true, always uses os.Getwd().
+// Otherwise, tries "git rev-parse --show-toplevel" first,
+// falling back to os.Getwd() on failure.
+func resolveRepoRoot(useCwd bool) string {
+	if !useCwd {
+		cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+		out, err := cmd.Output()
+		if err == nil {
+			return strings.TrimSpace(string(out))
+		}
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return wd
 }

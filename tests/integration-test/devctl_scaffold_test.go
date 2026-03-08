@@ -229,6 +229,25 @@ func TestScaffoldDefaultLocaleJa(t *testing.T) {
 	}
 }
 
+// TestScaffoldCwdFlag verifies that --cwd forces the current working
+// directory as the scaffold root, bypassing Git root auto-detection.
+// Uses a non-git temporary directory to confirm CWD override behavior.
+func TestScaffoldCwdFlag(t *testing.T) {
+	requireGitHubReachable(t)
+
+	tmpDir := t.TempDir()
+	// Intentionally NOT calling initGitRepo — this is a non-git directory.
+
+	stdout, stderr, code := runDevctlInDir(t, tmpDir, "scaffold", "--cwd", "--yes")
+	require.Equal(t, 0, code,
+		"devctl scaffold --cwd --yes failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+
+	// Verify template files were created in the CWD (tmpDir)
+	readmePath := filepath.Join(tmpDir, "features", "README.md")
+	_, err := os.Stat(readmePath)
+	assert.NoError(t, err, "Expected features/README.md to be created in CWD with --cwd flag")
+}
+
 // containsJapanese checks if a string contains Japanese characters.
 func containsJapanese(s string) bool {
 	for _, r := range s {

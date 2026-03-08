@@ -221,8 +221,12 @@ post_actions:
 ## devctl scaffold の実行フロー
 
 ```
-devctl scaffold [category] [name]
+devctl scaffold [category] [name] [--cwd]
      │
+     ├─ ルートディレクトリ決定
+     │    ├─ --cwd 指定時: カレントディレクトリを使用
+     │    └─ 未指定時: git rev-parse --show-toplevel で自動検出
+     │         └─ 失敗時: カレントディレクトリにフォールバック
      ├─ catalog.yaml をダウンロード
      ├─ パターン解決（name/category で検索）
      ├─ 前提条件チェック（requirements）
