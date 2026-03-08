@@ -123,6 +123,7 @@ func TestCollectBranches(t *testing.T) {
 func TestFormatTable(t *testing.T) {
 	branches := []listing.BranchInfo{
 		{Branch: "feat-a", Path: "/repo/work/feat-a", Features: []listing.FeatureInfo{{Name: "devctl", Status: "active"}}},
+		{Branch: "feat-b", Path: "/repo/work/feat-b", Features: []listing.FeatureInfo{}},
 		{Branch: "main", Path: "/repo", Features: []listing.FeatureInfo{}, MainWorktree: true},
 	}
 
@@ -130,19 +131,30 @@ func TestFormatTable(t *testing.T) {
 		var buf bytes.Buffer
 		listing.FormatTable(&buf, branches, false)
 		out := buf.String()
+		// Header verification
 		assert.Contains(t, out, "BRANCH")
-		assert.Contains(t, out, "FEATURES")
+		assert.Contains(t, out, "FEATURE")
+		assert.NotContains(t, out, "FEATURES")
+		assert.Contains(t, out, "STATE")
 		assert.NotContains(t, out, "PATH")
-		assert.Contains(t, out, "feat-a")
-		assert.Contains(t, out, "devctl[active]")
+		// Body verification: feature name and state are separated
+		assert.Contains(t, out, "devctl")
+		assert.Contains(t, out, "active")
+		assert.NotContains(t, out, "devctl[active]")
 		assert.Contains(t, out, "(main worktree)")
+		assert.Contains(t, out, "(no state)")
 	})
 
 	t.Run("with path", func(t *testing.T) {
 		var buf bytes.Buffer
 		listing.FormatTable(&buf, branches, true)
 		out := buf.String()
+		// Header verification
+		assert.Contains(t, out, "FEATURE")
+		assert.NotContains(t, out, "FEATURES")
+		assert.Contains(t, out, "STATE")
 		assert.Contains(t, out, "PATH")
+		// Body verification
 		assert.Contains(t, out, "/repo/work/feat-a")
 		assert.Contains(t, out, "/repo")
 	})

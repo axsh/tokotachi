@@ -125,8 +125,22 @@ func CollectBranches(entries []WorktreeEntry, states map[string]state.StateFile)
 	return branches
 }
 
-// featuresLabel builds a display string for the features column.
-func featuresLabel(bi BranchInfo) string {
+// featureColumn builds a display string for the FEATURE column.
+// Returns feature names (comma-separated if multiple), or "-" if none.
+func featureColumn(bi BranchInfo) string {
+	if bi.MainWorktree || len(bi.Features) == 0 {
+		return "-"
+	}
+	parts := make([]string, 0, len(bi.Features))
+	for _, f := range bi.Features {
+		parts = append(parts, f.Name)
+	}
+	return strings.Join(parts, ", ")
+}
+
+// stateColumn builds a display string for the STATE column.
+// Returns the status of features, "(no state)", or "(main worktree)".
+func stateColumn(bi BranchInfo) string {
 	if bi.MainWorktree {
 		return "(main worktree)"
 	}
@@ -135,26 +149,27 @@ func featuresLabel(bi BranchInfo) string {
 	}
 	parts := make([]string, 0, len(bi.Features))
 	for _, f := range bi.Features {
-		parts = append(parts, fmt.Sprintf("%s[%s]", f.Name, f.Status))
+		parts = append(parts, f.Status)
 	}
 	return strings.Join(parts, ", ")
 }
 
 // FormatTable writes branch info as a human-readable table.
-// When showPath is true, the PATH column is appended.
+// Columns: BRANCH, FEATURE, STATE, (PATH if showPath is true).
 func FormatTable(w io.Writer, branches []BranchInfo, showPath bool) {
 	if showPath {
-		fmt.Fprintf(w, "%-24s %-20s %s\n", "BRANCH", "FEATURES", "PATH")
+		fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", "BRANCH", "FEATURE", "STATE", "PATH")
 	} else {
-		fmt.Fprintf(w, "%-24s %s\n", "BRANCH", "FEATURES")
+		fmt.Fprintf(w, "%-24s %-20s %s\n", "BRANCH", "FEATURE", "STATE")
 	}
 
 	for _, bi := range branches {
-		label := featuresLabel(bi)
+		feat := featureColumn(bi)
+		st := stateColumn(bi)
 		if showPath {
-			fmt.Fprintf(w, "%-24s %-20s %s\n", bi.Branch, label, bi.Path)
+			fmt.Fprintf(w, "%-24s %-20s %-20s %s\n", bi.Branch, feat, st, bi.Path)
 		} else {
-			fmt.Fprintf(w, "%-24s %s\n", bi.Branch, label)
+			fmt.Fprintf(w, "%-24s %-20s %s\n", bi.Branch, feat, st)
 		}
 	}
 }
