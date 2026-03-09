@@ -20,6 +20,8 @@ var (
 	scaffoldFlagRepo     string
 	scaffoldFlagLang     string
 	scaffoldFlagCwd      bool
+	scaffoldFlagValues   []string
+	scaffoldFlagDefault  bool
 )
 
 var scaffoldCmd = &cobra.Command{
@@ -37,6 +39,8 @@ func init() {
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagRepo, "repo", "", "Override the default template repository URL")
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagLang, "lang", "", "Specify locale for template localization (e.g. ja, en)")
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagCwd, "cwd", false, "Use current working directory as root instead of auto-detecting Git root")
+	scaffoldCmd.Flags().StringArrayVar(&scaffoldFlagValues, "v", nil, "Set option value directly (key=value), repeatable")
+	scaffoldCmd.Flags().BoolVar(&scaffoldFlagDefault, "default", false, "Use default values for non-required options without prompting")
 }
 
 func runScaffold(cmd *cobra.Command, args []string) error {
@@ -62,17 +66,25 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Parse --v key=value overrides
+	overrides, err := scaffold.ParseOptionOverrides(scaffoldFlagValues)
+	if err != nil {
+		return err
+	}
+
 	// Run scaffold
 	opts := scaffold.RunOptions{
-		Pattern:  args,
-		RepoURL:  scaffoldFlagRepo,
-		RepoRoot: repoRoot,
-		DryRun:   flagDryRun,
-		Yes:      scaffoldFlagYes,
-		Lang:     scaffoldFlagLang,
-		Logger:   logger,
-		Stdout:   os.Stdout,
-		Stdin:    os.Stdin,
+		Pattern:         args,
+		RepoURL:         scaffoldFlagRepo,
+		RepoRoot:        repoRoot,
+		DryRun:          flagDryRun,
+		Yes:             scaffoldFlagYes,
+		Lang:            scaffoldFlagLang,
+		Logger:          logger,
+		Stdout:          os.Stdout,
+		Stdin:           os.Stdin,
+		OptionOverrides: overrides,
+		UseDefaults:     scaffoldFlagDefault,
 	}
 
 	plan, err := scaffold.Run(opts)

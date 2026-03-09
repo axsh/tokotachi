@@ -32,6 +32,7 @@ type Plan struct {
 	PostActions       PostActions
 	PermissionActions []PermissionAction
 	Warnings          []string
+	OptionValues      map[string]string // Collected option values from interactive input
 }
 
 // ApplyFiles places downloaded template files into the target directory.
@@ -281,6 +282,7 @@ func BuildPlan(files []DownloadedFile, placement *Placement,
 	plan := &Plan{
 		ScaffoldName: scaffoldName,
 		PostActions:  placement.PostActions,
+		OptionValues: optionValues,
 	}
 
 	baseDir := placement.BaseDir

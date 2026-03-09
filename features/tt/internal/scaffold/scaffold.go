@@ -16,15 +16,17 @@ const defaultRepoURL = "https://github.com/axsh/tokotachi-scaffolds"
 
 // RunOptions holds parameters for a scaffold execution.
 type RunOptions struct {
-	Pattern  []string // Command arguments [category, name]
-	RepoURL  string   // Template repository URL
-	RepoRoot string   // Target repository root path
-	DryRun   bool
-	Yes      bool
-	Lang     string // Explicit locale (empty = auto-detect)
-	Logger   *log.Logger
-	Stdout   io.Writer // Output writer for plan display
-	Stdin    io.Reader // Input reader for interactive prompts
+	Pattern         []string // Command arguments [category, name]
+	RepoURL         string   // Template repository URL
+	RepoRoot        string   // Target repository root path
+	DryRun          bool
+	Yes             bool
+	Lang            string // Explicit locale (empty = auto-detect)
+	Logger          *log.Logger
+	Stdout          io.Writer         // Output writer for plan display
+	Stdin           io.Reader         // Input reader for interactive prompts
+	OptionOverrides map[string]string // Values from --v key=value flags
+	UseDefaults     bool              // --default flag: auto-apply defaults for non-required options
 }
 
 // Run executes the full scaffold workflow:
@@ -102,7 +104,7 @@ func Run(opts RunOptions) (*Plan, error) {
 	// 5. Collect option values (interactive if needed)
 	var optionValues map[string]string
 	if len(entry.Options) > 0 {
-		optionValues, err = CollectOptionValues(entry.Options, nil, opts.Stdin, opts.Stdout)
+		optionValues, err = CollectOptionValues(entry.Options, opts.OptionOverrides, opts.Stdin, opts.Stdout, opts.UseDefaults)
 		if err != nil {
 			return nil, err
 		}
@@ -140,6 +142,7 @@ func Run(opts RunOptions) (*Plan, error) {
 		return nil, err
 	}
 	plan.PostActions = placement.PostActions
+	plan.OptionValues = optionValues
 
 	return plan, nil
 }
@@ -223,10 +226,8 @@ func Apply(plan *Plan, opts RunOptions) error {
 		return err
 	}
 
-	var optionValues map[string]string
-	if len(entry.Options) > 0 {
-		optionValues, _ = CollectOptionValues(entry.Options, nil, opts.Stdin, opts.Stdout)
-	}
+	// Use option values from the plan (collected during Run, not re-prompted)
+	optionValues := plan.OptionValues
 
 	// 3. Apply files
 	spinner.Start("Applying template files...")
