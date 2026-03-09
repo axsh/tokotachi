@@ -1,6 +1,9 @@
 package codestatus_test
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -89,6 +92,9 @@ func TestIsRunning_NoLock(t *testing.T) {
 func TestAcquireLock_ReleaseLock(t *testing.T) {
 	dir := t.TempDir()
 
+	// Ensure work/ subdirectory exists
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "work"), 0o755))
+
 	err := codestatus.AcquireLock(dir)
 	require.NoError(t, err)
 
@@ -102,11 +108,54 @@ func TestAcquireLock_ReleaseLock(t *testing.T) {
 
 func TestIsRunning_StaleLock(t *testing.T) {
 	dir := t.TempDir()
+	lockDir := filepath.Join(dir, "work", ".codestatus.lock")
 
-	// Write a lock file with a non-existent PID
-	lockPath := dir + "/work/.codestatus.lock"
-	require.NoError(t, writeTestFile(lockPath, "999999999"))
+	// Create lock directory structure manually with stale metadata
+	require.NoError(t, os.MkdirAll(lockDir, 0o755))
+	staleMeta := map[string]any{
+		"pid":        999999999,
+		"created_at": "2020-01-01T00:00:00Z",
+	}
+	data, err := json.Marshal(staleMeta)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(lockDir, "meta.json"), data, 0o644))
 
 	// Should detect stale lock and clean up
 	assert.False(t, codestatus.IsRunning(dir))
+}
+
+func TestStartBackground_AlreadyRunning(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "work"), 0o755))
+
+	// Acquire lock to simulate running process
+	require.NoError(t, codestatus.AcquireLock(dir))
+	defer codestatus.ReleaseLock(dir)
+
+	// StartBackground should return nil (already running)
+	err := codestatus.StartBackground(dir, "nonexistent-binary", nil)
+	assert.NoError(t, err, "StartBackground should return nil when already running")
+}
+
+func TestStartBackground_InvalidBinary(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "work"), 0o755))
+
+	// StartBackground with non-existent binary should return error
+	err := codestatus.StartBackground(dir, "/nonexistent/binary/path", nil)
+	assert.Error(t, err, "StartBackground should error with invalid binary")
+}
+
+func TestStartBackground_WithLogFile(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "work"), 0o755))
+
+	logFile := filepath.Join(dir, "test.log")
+	opts := &codestatus.StartBackgroundOptions{
+		LogFile: logFile,
+	}
+
+	// With a non-existent binary, the command will fail to start
+	err := codestatus.StartBackground(dir, "/nonexistent/binary/path", opts)
+	assert.Error(t, err, "should fail with invalid binary even with log opts")
 }

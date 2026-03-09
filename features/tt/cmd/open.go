@@ -151,6 +151,12 @@ func runOpen(cmd *cobra.Command, args []string) error {
 					SSH: state.SSHConnectivity{Enabled: false},
 				},
 			})
+			// Initialize CodeStatus if not yet set
+			if sf.CodeStatus == nil {
+				sf.CodeStatus = &state.CodeStatus{
+					Status: state.CodeStatusLocal,
+				}
+			}
 			_ = state.Save(statePath, sf)
 		}
 	}

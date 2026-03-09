@@ -183,6 +183,13 @@ func runUp(cmd *cobra.Command, args []string) error {
 		},
 	})
 
+	// Initialize CodeStatus if not yet set (new branch defaults to local)
+	if sf.CodeStatus == nil {
+		sf.CodeStatus = &state.CodeStatus{
+			Status: state.CodeStatusLocal,
+		}
+	}
+
 	// Save state file
 	if err := state.Save(statePath, sf); err != nil {
 		ctx.Logger.Warn("Failed to save state file: %v", err)
