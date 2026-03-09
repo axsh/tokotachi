@@ -5,10 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
+	"github.com/axsh/tokotachi/features/tt/internal/filelock"
 	"github.com/axsh/tokotachi/features/tt/internal/state"
 )
 
@@ -19,8 +18,8 @@ const (
 	// ProcessTimeout is the maximum time the background process may run.
 	ProcessTimeout = 2 * time.Minute
 
-	// LockFileName is the lock file name in the work/ directory.
-	LockFileName = ".codestatus.lock"
+	// LockDirName is the lock directory name in the work/ directory.
+	LockDirName = ".codestatus.lock"
 )
 
 // NeedsUpdate checks if any branch needs a code status update.
@@ -52,61 +51,72 @@ func BranchesNeedingUpdate(states map[string]state.StateFile, now time.Time) []s
 	return branches
 }
 
-// lockPath returns the absolute path to the lock file.
+// lockPath returns the absolute path to the lock directory.
 func lockPath(repoRoot string) string {
-	return filepath.Join(repoRoot, "work", LockFileName)
+	return filepath.Join(repoRoot, "work", LockDirName)
+}
+
+// newLock creates a filelock.Lock for the code status lock path.
+func newLock(repoRoot string) *filelock.Lock {
+	return filelock.New(lockPath(repoRoot))
 }
 
 // IsRunning checks if the background updater is already running.
-// If a stale lock file is found (process not running), it is removed.
+// If a stale lock is found (process not running or timed out), it is removed.
 func IsRunning(repoRoot string) bool {
-	path := lockPath(repoRoot)
-	data, err := os.ReadFile(path)
-	if err != nil {
+	lock := newLock(repoRoot)
+	if !lock.IsLocked() {
 		return false
 	}
-
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		// Corrupted lock file, remove it
-		_ = os.Remove(path)
+	// Try to clean up stale locks
+	forced, _ := lock.ForceUnlockIfStale(ProcessTimeout)
+	if forced {
 		return false
 	}
-
-	if !isProcessAlive(pid) {
-		_ = os.Remove(path)
-		return false
-	}
-
 	return true
 }
 
-// AcquireLock creates the lock file with the current PID.
+// AcquireLock creates the lock directory with metadata.
 // Returns error if the lock is already held by a running process.
 func AcquireLock(repoRoot string) error {
-	if IsRunning(repoRoot) {
+	lock := newLock(repoRoot)
+
+	// Try to clean up stale locks first
+	_, _ = lock.ForceUnlockIfStale(ProcessTimeout)
+
+	// Ensure work/ directory exists
+	if err := os.MkdirAll(filepath.Join(repoRoot, "work"), 0o755); err != nil {
+		return fmt.Errorf("failed to create work directory: %w", err)
+	}
+
+	acquired, err := lock.TryLock()
+	if err != nil {
+		return fmt.Errorf("failed to acquire lock: %w", err)
+	}
+	if !acquired {
 		return fmt.Errorf("lock already held")
 	}
-
-	path := lockPath(repoRoot)
-	// Ensure work/ directory exists
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("failed to create lock directory: %w", err)
-	}
-
-	pid := os.Getpid()
-	return os.WriteFile(path, []byte(strconv.Itoa(pid)), 0o644)
+	return nil
 }
 
-// ReleaseLock removes the lock file.
+// ReleaseLock removes the lock directory.
 func ReleaseLock(repoRoot string) {
-	_ = os.Remove(lockPath(repoRoot))
+	_ = newLock(repoRoot).Unlock()
+}
+
+// StartBackgroundOptions configures background process startup.
+type StartBackgroundOptions struct {
+	// LogFile is the path to write stdout/stderr.
+	// Empty string (default) means silent (nil output).
+	// Used only for testing.
+	LogFile string
 }
 
 // StartBackground starts the background updater process.
 // Spawns `tt _update-code-status` as a detached child process.
 // Returns immediately; does not wait for completion.
-func StartBackground(repoRoot, ttBinary string) error {
+// Pass nil for opts to use default (silent) settings.
+func StartBackground(repoRoot, ttBinary string, opts *StartBackgroundOptions) error {
 	if IsRunning(repoRoot) {
 		return nil // Already running
 	}
@@ -117,15 +127,26 @@ func StartBackground(repoRoot, ttBinary string) error {
 	// Detach child process (platform-specific)
 	cmd.SysProcAttr = detachSysProcAttr()
 
-	// Redirect to null to avoid holding parent's handles
-	cmd.Stdout = nil
-	cmd.Stderr = nil
+	// Set up output: silent by default, log file for testing
 	cmd.Stdin = nil
+	var logFileHandle *os.File
+	if opts != nil && opts.LogFile != "" {
+		f, err := os.OpenFile(opts.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if err == nil {
+			logFileHandle = f
+			cmd.Stdout = f
+			cmd.Stderr = f
+		}
+	}
 
 	if err := cmd.Start(); err != nil {
+		if logFileHandle != nil {
+			_ = logFileHandle.Close()
+		}
 		return fmt.Errorf("failed to start background updater: %w", err)
 	}
 
-	// Do not wait; let the child run independently
+	// Do not wait; let the child run independently.
+	// Log file handle is inherited by child process and closed on exit.
 	return nil
 }

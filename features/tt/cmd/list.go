@@ -107,7 +107,7 @@ func runListBranches() error {
 		if codestatus.NeedsUpdate(states, time.Now()) {
 			exe, err := os.Executable()
 			if err == nil {
-				if bgErr := codestatus.StartBackground(repoRoot, exe); bgErr != nil {
+				if bgErr := codestatus.StartBackground(repoRoot, exe, nil); bgErr != nil {
 					logger.Debug("Failed to start background updater: %v", bgErr)
 				}
 			}
