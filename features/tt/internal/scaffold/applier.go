@@ -128,45 +128,23 @@ func ApplyPostActions(actions PostActions, repoRoot string, baseDir string) erro
 	return nil
 }
 
-// applyGitignoreEntries adds entries to .gitignore, skipping duplicates.
+// applyGitignoreEntries adds entries to .gitignore using the Gitignore utility.
 func applyGitignoreEntries(entries []string, repoRoot string) error {
 	if len(entries) == 0 {
 		return nil
 	}
 
 	gitignorePath := filepath.Join(repoRoot, ".gitignore")
-
-	// Read existing content (may not exist)
-	existing, _ := os.ReadFile(gitignorePath)
-	existingLines := splitLines(string(existing))
-
-	// Build set of existing entries for dedup check
-	entrySet := make(map[string]bool, len(existingLines))
-	for _, line := range existingLines {
-		entrySet[line] = true
+	gi, err := LoadGitignore(gitignorePath)
+	if err != nil {
+		return fmt.Errorf("failed to load .gitignore: %w", err)
 	}
 
-	// Add new entries
-	var newEntries []string
-	for _, entry := range entries {
-		if !entrySet[entry] {
-			newEntries = append(newEntries, entry)
-			entrySet[entry] = true
-		}
-	}
-
-	if len(newEntries) == 0 {
+	if gi.AddEntries(entries) == 0 {
 		return nil
 	}
 
-	// Write back
-	content := string(existing)
-	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-	content += strings.Join(newEntries, "\n") + "\n"
-
-	return os.WriteFile(gitignorePath, []byte(content), 0o644)
+	return gi.Save(gitignorePath)
 }
 
 // applyFilePermissions applies file permission settings based on glob patterns.

@@ -55,7 +55,12 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 
 	// Handle --list
 	if scaffoldFlagList {
-		entries, err := scaffold.List(scaffoldFlagRepo)
+		// If a single arg is provided with --list, treat as category filter
+		var filterCategory string
+		if len(args) == 1 {
+			filterCategory = args[0]
+		}
+		entries, err := scaffold.List(scaffoldFlagRepo, repoRoot, filterCategory)
 		if err != nil {
 			return err
 		}
@@ -64,6 +69,11 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  %-20s %s [%s]\n", entry.Name, entry.Description, entry.Category)
 		}
 		return nil
+	}
+
+	// Category only without --list → error
+	if len(args) == 1 {
+		return fmt.Errorf("scaffold name is required: tt scaffold %s <name>", args[0])
 	}
 
 	// Parse --v key=value overrides
