@@ -18,6 +18,7 @@ type CloseOptions struct {
 	ProjectName string    // for resolving container names
 	Depth       int       // max recursion depth for nested worktrees (default: 10)
 	Yes         bool      // skip [y/N] confirmation prompt
+	Verbose     bool      // show all pending changes without truncation
 	Stdin       io.Reader // input source for confirmation prompt
 }
 
@@ -54,6 +55,12 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 					r.Logger.Warn("State file remove failed: %v", rmErr)
 				}
 				r.Logger.Info("All features closed, deleting worktree and branch...")
+				// Check for pending changes before deletion
+				worktreePath := wm.Path(opts.Branch)
+				if !r.checkPendingChangesAndConfirm(opts, worktreePath) {
+					r.Logger.Info("Aborted.")
+					return nil
+				}
 				deleteOpts := DeleteOptions{
 					Branch:      opts.Branch,
 					Force:       opts.Force,
@@ -106,6 +113,13 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 	// Remove state file before calling Delete to avoid safety guard conflict
 	if rmErr := state.Remove(statePath); rmErr != nil {
 		r.Logger.Warn("State file remove failed: %v", rmErr)
+	}
+
+	// Check for pending changes before deletion
+	worktreePath := wm.Path(opts.Branch)
+	if !r.checkPendingChangesAndConfirm(opts, worktreePath) {
+		r.Logger.Info("Aborted.")
+		return nil
 	}
 
 	// Delegate cleanup to Delete
