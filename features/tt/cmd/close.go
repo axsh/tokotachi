@@ -15,6 +15,7 @@ import (
 var closeFlagForce bool
 var closeFlagDepth int
 var closeFlagYes bool
+var closeFlagVerbose bool
 
 var closeCmd = &cobra.Command{
 	Use:   "close <branch> [feature]",
@@ -28,6 +29,7 @@ func init() {
 	closeCmd.Flags().BoolVar(&closeFlagForce, "force", false, "Force delete even if branch is not merged")
 	closeCmd.Flags().IntVar(&closeFlagDepth, "depth", 10, "Maximum depth for recursive nested worktree close")
 	closeCmd.Flags().BoolVar(&closeFlagYes, "yes", false, "Skip [y/N] confirmation and execute immediately")
+	closeCmd.Flags().BoolVar(&closeFlagVerbose, "verbose", false, "Show all pending changes without truncation")
 }
 
 func runClose(cmd *cobra.Command, args []string) error {
@@ -53,6 +55,7 @@ func runClose(cmd *cobra.Command, args []string) error {
 		ProjectName: projectName,
 		Depth:       closeFlagDepth,
 		Yes:         closeFlagYes,
+		Verbose:     closeFlagVerbose,
 		Stdin:       os.Stdin,
 	}, wm); err != nil {
 		ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Close", Success: false})

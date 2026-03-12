@@ -1,6 +1,7 @@
 package action_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -437,4 +438,118 @@ func TestClose_YesFlag_SkipsConfirmation(t *testing.T) {
 	recs := env.Recorder.Records()
 	assert.True(t, hasRecordContaining(recs, "worktree remove"),
 		"worktree remove should be called with --yes, recs: %v", recs)
+}
+
+// --- Tests for pending changes helpers ---
+
+func TestParseLinesFromOutput(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		expect []string
+	}{
+		{name: "empty string", input: "", expect: nil},
+		{name: "single line", input: "file.go", expect: []string{"file.go"}},
+		{name: "multiple lines", input: "a.go\nb.go\nc.go", expect: []string{"a.go", "b.go", "c.go"}},
+		{name: "trailing newline", input: "a.go\nb.go\n", expect: []string{"a.go", "b.go"}},
+		{name: "blank lines filtered", input: "a.go\n\nb.go\n\n", expect: []string{"a.go", "b.go"}},
+		{name: "whitespace lines filtered", input: "a.go\n  \nb.go", expect: []string{"a.go", "b.go"}},
+		{name: "crlf line endings", input: "a.go\r\nb.go\r\n", expect: []string{"a.go", "b.go"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := action.ParseLinesFromOutput(tt.input)
+			assert.Equal(t, tt.expect, result)
+		})
+	}
+}
+
+func generateItems(n int) []string {
+	items := make([]string, n)
+	for i := range n {
+		items[i] = fmt.Sprintf("item_%03d.go", i+1)
+	}
+	return items
+}
+
+func TestFormatCategory(t *testing.T) {
+	tests := []struct {
+		name              string
+		header            string
+		items             []string
+		verbose           bool
+		expectContains    []string
+		expectNotContains []string
+	}{
+		{
+			name:           "zero items",
+			header:         "Untracked files",
+			items:          nil,
+			verbose:        false,
+			expectContains: []string{"Untracked files (0):", "(none)"},
+		},
+		{
+			name:           "under limit",
+			header:         "Untracked files",
+			items:          generateItems(5),
+			verbose:        false,
+			expectContains: []string{"Untracked files (5):", "item_001.go", "item_005.go"},
+		},
+		{
+			name:           "at limit",
+			header:         "Unstaged changes",
+			items:          generateItems(10),
+			verbose:        false,
+			expectContains: []string{"Unstaged changes (10):", "item_001.go", "item_010.go"},
+		},
+		{
+			name:              "over limit truncated",
+			header:            "Staged changes",
+			items:             generateItems(15),
+			verbose:           false,
+			expectContains:    []string{"Staged changes (15):", "item_001.go", "item_010.go", "... and 5 more (15 total)"},
+			expectNotContains: []string{"item_011.go", "item_015.go"},
+		},
+		{
+			name:           "over limit verbose shows all",
+			header:         "Unpushed commits",
+			items:          generateItems(15),
+			verbose:        true,
+			expectContains: []string{"Unpushed commits (15):", "item_001.go", "item_015.go"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lines := action.FormatCategory(tt.header, tt.items, tt.verbose)
+			joined := strings.Join(lines, "\n")
+			for _, s := range tt.expectContains {
+				assert.Contains(t, joined, s, "output should contain %q, got: %s", s, joined)
+			}
+			for _, s := range tt.expectNotContains {
+				assert.NotContains(t, joined, s, "output should not contain %q, got: %s", s, joined)
+			}
+		})
+	}
+}
+
+func TestPendingChanges_TotalCount(t *testing.T) {
+	tests := []struct {
+		name     string
+		changes  action.PendingChanges
+		expected int
+	}{
+		{name: "all empty", changes: action.PendingChanges{}, expected: 0},
+		{name: "untracked only", changes: action.PendingChanges{UntrackedFiles: []string{"a", "b"}}, expected: 2},
+		{name: "mixed", changes: action.PendingChanges{
+			UntrackedFiles:  []string{"a"},
+			UnstagedChanges: []string{"b", "c"},
+			StagedChanges:   []string{"d"},
+			UnpushedCommits: []string{"e", "f", "g"},
+		}, expected: 7},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.changes.TotalCount())
+		})
+	}
 }
