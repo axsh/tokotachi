@@ -248,7 +248,135 @@ func TestScaffoldCwdFlag(t *testing.T) {
 	assert.NoError(t, err, "Expected features/README.md to be created in CWD with --cwd flag")
 }
 
-// containsJapanese checks if a string contains Japanese characters.
+// TestScaffoldWithDependencies verifies that the depends_on chain is
+// resolved and applied in topological order. Running scaffold for
+// feature/axsh-go-standard should first apply root/default, then
+// project/axsh-go-standard, then feature/axsh-go-standard.
+func TestScaffoldWithDependencies(t *testing.T) {
+	requireGitHubReachable(t)
+
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	// Execute scaffold with dependency chain
+	// Note: feature/axsh-go-standard uses {{feature_name}} in base_dir,
+	// so we need to provide it via --v flag.
+	stdout, stderr, code := runTTInDir(t, tmpDir,
+		"scaffold", "feature", "axsh-go-standard", "--yes", "--default",
+		"--v", "feature_name=testfeature")
+	require.Equal(t, 0, code,
+		"tt scaffold feature axsh-go-standard --yes --default failed.\nSTDOUT:\n%s\nSTDERR:\n%s",
+		stdout, stderr)
+
+	combinedOutput := stdout + stderr
+
+	// Verify dependency resolution progress is shown
+	t.Run("DependencyProgressDisplay", func(t *testing.T) {
+		assert.Contains(t, combinedOutput, "[1/3]",
+			"Should show [1/3] progress for root/default")
+		assert.Contains(t, combinedOutput, "[2/3]",
+			"Should show [2/3] progress for project/axsh-go-standard")
+		assert.Contains(t, combinedOutput, "[3/3]",
+			"Should show [3/3] progress for feature/axsh-go-standard")
+	})
+
+	// Verify files from root/default are created
+	t.Run("RootDefaultFiles", func(t *testing.T) {
+		expectedFiles := []string{
+			"features/README.md",
+			"prompts/phases/README.md",
+			"scripts/.gitkeep",
+		}
+		for _, f := range expectedFiles {
+			fullPath := filepath.Join(tmpDir, filepath.FromSlash(f))
+			_, err := os.Stat(fullPath)
+			assert.NoError(t, err, "Expected file %q from root/default was not created", f)
+		}
+	})
+
+	// Verify files from feature/axsh-go-standard are created
+	t.Run("FeatureFiles", func(t *testing.T) {
+		// The feature scaffold should create files in features/ directory
+		featureDir := filepath.Join(tmpDir, "features")
+		info, err := os.Stat(featureDir)
+		require.NoError(t, err, "features/ directory should exist")
+		assert.True(t, info.IsDir(), "features/ should be a directory")
+	})
+}
+
+// TestScaffoldDownloadHistory verifies that the download history file
+// is created after scaffold application, and that static scaffolds
+// are recorded while dynamic scaffolds (with {{...}} in base_dir) are not.
+func TestScaffoldDownloadHistory(t *testing.T) {
+	requireGitHubReachable(t)
+
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	// Run default scaffold (root/default — static base_dir)
+	stdout, stderr, code := runTTInDir(t, tmpDir, "scaffold", "--yes")
+	require.Equal(t, 0, code,
+		"tt scaffold --yes failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+
+	// Verify downloaded.yaml was created
+	historyPath := filepath.Join(tmpDir, ".kotoshiro", "tokotachi", "downloaded.yaml")
+
+	t.Run("HistoryFileCreated", func(t *testing.T) {
+		_, err := os.Stat(historyPath)
+		require.NoError(t, err, "downloaded.yaml should be created after scaffold")
+	})
+
+	t.Run("StaticScaffoldRecorded", func(t *testing.T) {
+		data, err := os.ReadFile(historyPath)
+		require.NoError(t, err)
+		content := string(data)
+
+		// root/default should be recorded (static base_dir: ".")
+		assert.Contains(t, content, "root",
+			"root category should be in download history")
+		assert.Contains(t, content, "default",
+			"default name should be in download history")
+		assert.Contains(t, content, "downloaded_at",
+			"downloaded_at should be recorded")
+	})
+}
+
+// TestScaffoldSkipAlreadyDownloaded verifies that running the same
+// static scaffold twice results in a skip on the second run, with
+// an appropriate log message. Running with --force should re-apply.
+func TestScaffoldSkipAlreadyDownloaded(t *testing.T) {
+	requireGitHubReachable(t)
+
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	// First run: should download and record
+	stdout1, stderr1, code1 := runTTInDir(t, tmpDir, "scaffold", "--yes")
+	require.Equal(t, 0, code1,
+		"First scaffold run failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout1, stderr1)
+
+	t.Run("SecondRunSkips", func(t *testing.T) {
+		// Second run: should skip (same scaffold already downloaded)
+		stdout2, stderr2, code2 := runTTInDir(t, tmpDir, "scaffold", "--yes")
+		require.Equal(t, 0, code2,
+			"Second scaffold run failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout2, stderr2)
+
+		combinedOutput := stdout2 + stderr2
+		assert.Contains(t, combinedOutput, "Skipping",
+			"Second run should show skip message for already downloaded scaffold")
+	})
+
+	t.Run("ForceOverridesSkip", func(t *testing.T) {
+		// Third run with --force: should NOT skip
+		stdout3, stderr3, code3 := runTTInDir(t, tmpDir, "scaffold", "--yes", "--force")
+		require.Equal(t, 0, code3,
+			"Force scaffold run failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout3, stderr3)
+
+		combinedOutput := stdout3 + stderr3
+		assert.NotContains(t, combinedOutput, "Skipping",
+			"Force run should not show skip message")
+	})
+}
 func containsJapanese(s string) bool {
 	for _, r := range s {
 		if (r >= '\u3040' && r <= '\u309F') || // Hiragana

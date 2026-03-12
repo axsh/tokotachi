@@ -23,6 +23,15 @@ type PermissionAction struct {
 	Mode string // Display format: "0755", "0600", etc.
 }
 
+// DependencyPlan holds plan information for a single scaffold in a dependency chain.
+type DependencyPlan struct {
+	Entry        ScaffoldEntry     // scaffold entry metadata
+	Files        []DownloadedFile  // downloaded template files
+	Placement    *Placement        // placement definition
+	OptionValues map[string]string // option values for this scaffold
+	SubPlan      *Plan             // per-scaffold execution plan
+}
+
 // Plan represents an execution plan for scaffold operations.
 type Plan struct {
 	ScaffoldName      string
@@ -33,6 +42,7 @@ type Plan struct {
 	PermissionActions []PermissionAction
 	Warnings          []string
 	OptionValues      map[string]string // Collected option values from interactive input
+	DependencyPlans   []DependencyPlan  // dependency chain plans (topological order)
 }
 
 // ApplyFiles places downloaded template files into the target directory.

@@ -114,10 +114,10 @@ func TestApplyFiles_WithBaseDir(t *testing.T) {
 func TestApplyFiles_WithTemplateVars(t *testing.T) {
 	tmpDir := t.TempDir()
 	files := []DownloadedFile{
-		{RelativePath: "main.go.tmpl", Content: []byte("package {{.Name}}")},
+		{RelativePath: "main.go.tmpl", Content: []byte("package {{Name}}")},
 	}
 	placement := &Placement{
-		BaseDir:        "features/{{.Name}}",
+		BaseDir:        "features/{{Name}}",
 		ConflictPolicy: "skip",
 		TemplateConfig: TemplateConfig{
 			TemplateExtension: ".tmpl",

@@ -28,10 +28,34 @@ type RunOptions struct {
 	Stdin           io.Reader         // Input reader for interactive prompts
 	OptionOverrides map[string]string // Values from --v key=value flags
 	UseDefaults     bool              // --default flag: auto-apply defaults for non-required options
+	SkipDeps        bool              // --skip-deps flag: skip dependency resolution
+	Force           bool              // --force flag: ignore download history and re-download all
+}
+
+// githubEntryFetcher implements EntryFetcher using the GitHub API.
+type githubEntryFetcher struct {
+	client *github.Client
+}
+
+// FetchEntry retrieves a ScaffoldEntry by computing its shard path.
+func (f *githubEntryFetcher) FetchEntry(category, name string) (*ScaffoldEntry, error) {
+	shardPath := ShardPath(category, name)
+	shardData, err := f.client.FetchFile(shardPath)
+	if err != nil {
+		return nil, fmt.Errorf("scaffold not found: %s/%s (shard: %s): %w",
+			category, name, shardPath, err)
+	}
+
+	detailEntries, err := ParseScaffoldDetail(shardData)
+	if err != nil {
+		return nil, err
+	}
+
+	return findEntry(detailEntries, category, name)
 }
 
 // Run executes the full scaffold workflow:
-// catalog fetch -> pattern resolve -> prerequisite check -> download -> plan.
+// resolve entry -> resolve dependencies -> download templates -> build plan.
 func Run(opts RunOptions) (*Plan, error) {
 	if opts.RepoURL == "" {
 		opts.RepoURL = defaultRepoURL
@@ -61,34 +85,119 @@ func Run(opts RunOptions) (*Plan, error) {
 
 	opts.Logger.Info("Selected template: %s (%s)", entry.Name, entry.Description)
 
-	// 2. Check prerequisites
+	// 2. Resolve dependency chain
+	entries := []ScaffoldEntry{*entry}
+	if !opts.SkipDeps && len(entry.DependsOn) > 0 {
+		fetcher := &githubEntryFetcher{client: downloader}
+		entries, err = ResolveDependencies(fetcher, entry)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve dependencies: %w", err)
+		}
+		// Show dependency resolution to user
+		fmt.Fprintf(os.Stderr, "Resolving dependencies...\n")
+		for i, e := range entries {
+			fmt.Fprintf(os.Stderr, "  [%d/%d] %s/%s\n", i+1, len(entries), e.Category, e.Name)
+		}
+	}
+
+	// 3. Build plans for each scaffold in the dependency chain
+	if len(entries) == 1 {
+		// Single scaffold (no dependencies) - use original flow
+		return buildSinglePlan(downloader, &entries[0], opts, spinner)
+	}
+
+	// Multiple scaffolds - build composite plan
+	return buildCompositePlan(downloader, entries, opts, spinner)
+}
+
+// buildSinglePlan builds a plan for a single scaffold (no dependencies).
+func buildSinglePlan(downloader *github.Client, entry *ScaffoldEntry,
+	opts RunOptions, spinner *Spinner) (*Plan, error) {
+
+	// Check prerequisites
 	if err := CheckRequirements(entry.Requirements, opts.RepoRoot); err != nil {
 		return nil, err
 	}
 
-	// 3. Download and process template (ZIP or directory)
+	// Download and process template (ZIP or directory)
 	templateFiles, placement, err := fetchTemplateAndPlacement(downloader, entry, opts.Lang, opts.Logger, spinner)
 	if err != nil {
 		return nil, err
 	}
 
-	// 4. Collect option values (interactive if needed)
+	// Collect option values (interactive if needed)
 	var optionValues map[string]string
 	options := effectiveOptions(entry)
 	if len(options) > 0 {
+		var err error
 		optionValues, err = CollectOptionValues(options, opts.OptionOverrides, opts.Stdin, opts.Stdout, opts.UseDefaults)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// 5. Build execution plan
+	// Merge overrides not defined in template_params (e.g. base_dir variables)
+	optionValues = mergeOverrides(optionValues, opts.OptionOverrides)
+
+	// Build execution plan
 	plan, err := BuildPlan(templateFiles, placement, opts.RepoRoot, entry.Name, optionValues)
 	if err != nil {
 		return nil, err
 	}
 	plan.PostActions = placement.PostActions
 	plan.OptionValues = optionValues
+
+	return plan, nil
+}
+
+// buildCompositePlan builds a composite plan for a dependency chain.
+func buildCompositePlan(downloader *github.Client, entries []ScaffoldEntry,
+	opts RunOptions, spinner *Spinner) (*Plan, error) {
+
+	plan := &Plan{
+		ScaffoldName: entries[len(entries)-1].Name,
+	}
+
+	for i := range entries {
+		e := &entries[i]
+
+		// Download and process template
+		templateFiles, placement, err := fetchTemplateAndPlacement(downloader, e, opts.Lang, opts.Logger, spinner)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch template for %s/%s: %w", e.Category, e.Name, err)
+		}
+
+		// Collect option values for this scaffold
+		var optionValues map[string]string
+		options := effectiveOptions(e)
+		if len(options) > 0 {
+			fmt.Fprintf(opts.Stdout, "\nOptions for %s/%s:\n", e.Category, e.Name)
+			optionValues, err = CollectOptionValues(options, opts.OptionOverrides, opts.Stdin, opts.Stdout, opts.UseDefaults)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// Merge overrides not defined in template_params (e.g. base_dir variables)
+		optionValues = mergeOverrides(optionValues, opts.OptionOverrides)
+
+		// Build sub-plan
+		subPlan, err := BuildPlan(templateFiles, placement, opts.RepoRoot, e.Name, optionValues)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build plan for %s/%s: %w", e.Category, e.Name, err)
+		}
+
+		// Aggregate warnings
+		plan.Warnings = append(plan.Warnings, subPlan.Warnings...)
+
+		plan.DependencyPlans = append(plan.DependencyPlans, DependencyPlan{
+			Entry:        *e,
+			Files:        templateFiles,
+			Placement:    placement,
+			OptionValues: optionValues,
+			SubPlan:      subPlan,
+		})
+	}
 
 	return plan, nil
 }
@@ -119,24 +228,44 @@ func Apply(plan *Plan, opts RunOptions) error {
 		opts.Logger.Warn("Failed to save checkpoint: %v", err)
 	}
 
-	// 2. Download template files again for application
-	// (we don't store files in the plan, so re-download)
+	// Handle dependency chain apply
+	if len(plan.DependencyPlans) > 0 {
+		return applyDependencyChain(plan, opts)
+	}
+
+	// Single scaffold apply (original flow)
+	return applySingleScaffold(plan, opts)
+}
+
+// applySingleScaffold applies a single scaffold (no dependencies).
+func applySingleScaffold(plan *Plan, opts RunOptions) error {
 	spinner := NewSpinner(os.Stderr)
+
+	// Re-download template files for application
 	downloader, entry, _, err := fetchAndResolveEntry(opts, spinner)
 	if err != nil {
 		return err
 	}
 
-	// 3. Download and process template
 	templateFiles, placement, err := fetchTemplateAndPlacement(downloader, entry, opts.Lang, opts.Logger, spinner)
 	if err != nil {
 		return err
 	}
 
-	// Use option values from the plan (collected during Run, not re-prompted)
+	// Check download history for static scaffolds
+	historyStore := NewDownloadHistoryStore(opts.RepoRoot)
+	isDynamic := IsDynamic(placement)
+
+	if !isDynamic && !opts.Force && historyStore.IsDownloaded(entry.Category, entry.Name) {
+		opts.Logger.Info("Skipping %s/%s (already downloaded)", entry.Category, entry.Name)
+		if err := RemoveCheckpoint(opts.RepoRoot); err != nil {
+			opts.Logger.Warn("Failed to remove checkpoint: %v", err)
+		}
+		return nil
+	}
+
 	optionValues := plan.OptionValues
 
-	// 4. Apply files
 	spinner.Start("Applying template files...")
 	if err := ApplyFiles(templateFiles, placement, opts.RepoRoot, optionValues); err != nil {
 		spinner.Stop()
@@ -144,12 +273,83 @@ func Apply(plan *Plan, opts RunOptions) error {
 	}
 	spinner.Stop()
 
-	// 5. Apply post-actions
 	if err := ApplyPostActions(placement.PostActions, opts.RepoRoot, placement.BaseDir); err != nil {
 		return fmt.Errorf("failed to apply post-actions: %w", err)
 	}
 
-	// 6. Remove checkpoint on success
+	// Record download for static scaffolds
+	if !isDynamic {
+		if err := historyStore.RecordDownload(entry.Category, entry.Name); err != nil {
+			opts.Logger.Warn("Failed to record download: %v", err)
+		}
+	}
+
+	if err := RemoveCheckpoint(opts.RepoRoot); err != nil {
+		opts.Logger.Warn("Failed to remove checkpoint: %v", err)
+	}
+
+	opts.Logger.Info("Scaffold applied successfully!")
+	return nil
+}
+
+// applyDependencyChain applies all scaffolds in the dependency chain in order.
+func applyDependencyChain(plan *Plan, opts RunOptions) error {
+	spinner := NewSpinner(os.Stderr)
+	total := len(plan.DependencyPlans)
+	historyStore := NewDownloadHistoryStore(opts.RepoRoot)
+
+	for i, dp := range plan.DependencyPlans {
+		category := dp.Entry.Category
+		name := dp.Entry.Name
+
+		// Re-download template files to get placement for IsDynamic check
+		downloader, err := github.NewClient(opts.RepoURL)
+		if err != nil {
+			return fmt.Errorf("failed to create downloader: %w", err)
+		}
+
+		templateFiles, placement, err := fetchTemplateAndPlacement(
+			downloader, &dp.Entry, opts.Lang, opts.Logger, spinner)
+		if err != nil {
+			return fmt.Errorf("failed to fetch template for %s/%s: %w",
+				category, name, err)
+		}
+
+		// Check download history for static scaffolds
+		isDynamic := IsDynamic(placement)
+
+		if !isDynamic && !opts.Force && historyStore.IsDownloaded(category, name) {
+			opts.Logger.Info("Skipping %s/%s (already downloaded)", category, name)
+			continue
+		}
+
+		fmt.Fprintf(os.Stderr, "[%d/%d] Applying %s/%s...\n",
+			i+1, total, category, name)
+
+		// Apply files
+		spinner.Start(fmt.Sprintf("Applying %s/%s...", category, name))
+		if err := ApplyFiles(templateFiles, placement, opts.RepoRoot, dp.OptionValues); err != nil {
+			spinner.Stop()
+			return fmt.Errorf("failed to apply files for %s/%s: %w",
+				category, name, err)
+		}
+		spinner.Stop()
+
+		// Apply post-actions
+		if err := ApplyPostActions(placement.PostActions, opts.RepoRoot, placement.BaseDir); err != nil {
+			return fmt.Errorf("failed to apply post-actions for %s/%s: %w",
+				category, name, err)
+		}
+
+		// Record download for static scaffolds
+		if !isDynamic {
+			if err := historyStore.RecordDownload(category, name); err != nil {
+				opts.Logger.Warn("Failed to record download for %s/%s: %v", category, name, err)
+			}
+		}
+	}
+
+	// Remove checkpoint on success
 	if err := RemoveCheckpoint(opts.RepoRoot); err != nil {
 		opts.Logger.Warn("Failed to remove checkpoint: %v", err)
 	}
@@ -501,6 +701,25 @@ func defaultPlacement() *Placement {
 	return &Placement{
 		ConflictPolicy: "skip",
 	}
+}
+
+// mergeOverrides merges option overrides into optionValues.
+// Any keys in overrides that are not already present in optionValues
+// are added. This allows --v flags to provide extra variables
+// not defined in template_params (e.g. base_dir template variables).
+func mergeOverrides(optionValues, overrides map[string]string) map[string]string {
+	if len(overrides) == 0 {
+		return optionValues
+	}
+	if optionValues == nil {
+		optionValues = make(map[string]string)
+	}
+	for k, v := range overrides {
+		if _, exists := optionValues[k]; !exists {
+			optionValues[k] = v
+		}
+	}
+	return optionValues
 }
 
 // effectiveOptions returns the applicable options for a scaffold entry.
