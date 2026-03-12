@@ -10,6 +10,7 @@ import (
 
 	"github.com/axsh/tokotachi/features/tt/internal/github"
 	"github.com/axsh/tokotachi/features/tt/internal/log"
+	"gopkg.in/yaml.v3"
 )
 
 const defaultRepoURL = "https://github.com/axsh/tokotachi-scaffolds"
@@ -44,100 +45,45 @@ func Run(opts RunOptions) (*Plan, error) {
 
 	spinner := NewSpinner(os.Stderr)
 
-	// 1. Download catalog
-	spinner.Start("Fetching catalog...")
-	downloader, err := github.NewClient(opts.RepoURL)
-	if err != nil {
-		spinner.Stop()
-		return nil, fmt.Errorf("failed to create downloader: %w", err)
-	}
-
-	catalogData, err := downloader.FetchFile("catalog.yaml")
-	if err != nil {
-		spinner.Stop()
-		return nil, fmt.Errorf("failed to fetch catalog: %w", err)
-	}
-	spinner.Stop()
-
-	catalog, err := ParseCatalog(catalogData)
+	// 1. Download catalog and resolve entry
+	downloader, entry, multipleEntries, err := fetchAndResolveEntry(opts, spinner)
 	if err != nil {
 		return nil, err
 	}
-
-	// 2. Resolve pattern
-	entries, err := catalog.ResolvePattern(opts.Pattern)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(entries) > 1 {
+	if multipleEntries != nil {
 		// Multiple matches (category search) - show list and return
 		fmt.Fprintln(opts.Stdout, "Multiple templates found. Please specify a name:")
-		for _, entry := range entries {
-			fmt.Fprintf(opts.Stdout, "  - %s: %s\n", entry.Name, entry.Description)
+		for _, e := range multipleEntries {
+			fmt.Fprintf(opts.Stdout, "  - %s: %s\n", e.Name, e.Description)
 		}
 		return nil, nil
 	}
 
-	entry := entries[0]
 	opts.Logger.Info("Selected template: %s (%s)", entry.Name, entry.Description)
 
-	// 3. Check prerequisites
+	// 2. Check prerequisites
 	if err := CheckRequirements(entry.Requirements, opts.RepoRoot); err != nil {
 		return nil, err
 	}
 
-	// 4. Download placement definition
-	spinner.Start("Downloading placement definition...")
-	placementData, err := downloader.FetchFile(entry.PlacementRef)
-	if err != nil {
-		spinner.Stop()
-		return nil, fmt.Errorf("failed to fetch placement: %w", err)
-	}
-	spinner.Stop()
-
-	placement, err := ParsePlacement(placementData)
+	// 3. Download and process template (ZIP or directory)
+	templateFiles, placement, err := fetchTemplateAndPlacement(downloader, entry, opts.Lang, opts.Logger, spinner)
 	if err != nil {
 		return nil, err
 	}
 
-	// 5. Collect option values (interactive if needed)
+	// 4. Collect option values (interactive if needed)
 	var optionValues map[string]string
-	if len(entry.Options) > 0 {
-		optionValues, err = CollectOptionValues(entry.Options, opts.OptionOverrides, opts.Stdin, opts.Stdout, opts.UseDefaults)
+	options := effectiveOptions(entry)
+	if len(options) > 0 {
+		optionValues, err = CollectOptionValues(options, opts.OptionOverrides, opts.Stdin, opts.Stdout, opts.UseDefaults)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// 6. Download template files (with locale overlay)
-	spinner.Start("Downloading template...")
-	baseFiles, err := downloader.FetchDirectory(entry.TemplateRef + "/base")
-	if err != nil {
-		spinner.Stop()
-		return nil, fmt.Errorf("failed to fetch template: %w", err)
-	}
-
-	// Detect and apply locale overlay
-	locale := DetectLocale(opts.Lang)
-	var mergedFiles []DownloadedFile
-	if locale != "" {
-		localePath := fmt.Sprintf("%s/locale.%s", entry.TemplateRef, locale)
-		spinner.UpdateMessage(fmt.Sprintf("Downloading locale overlay (%s)...", locale))
-		localeFiles, localeErr := downloader.FetchDirectory(localePath)
-		if localeErr == nil && len(localeFiles) > 0 {
-			mergedFiles = MergeLocaleFiles(baseFiles, localeFiles)
-			opts.Logger.Info("Applied locale overlay: %s (%d files)", locale, len(localeFiles))
-		} else {
-			mergedFiles = baseFiles
-		}
-	} else {
-		mergedFiles = baseFiles
-	}
-	spinner.Stop()
-
-	// 7. Build execution plan
-	plan, err := BuildPlan(mergedFiles, placement, opts.RepoRoot, entry.Name, optionValues)
+	// 5. Build execution plan
+	plan, err := BuildPlan(templateFiles, placement, opts.RepoRoot, entry.Name, optionValues)
 	if err != nil {
 		return nil, err
 	}
@@ -175,53 +121,14 @@ func Apply(plan *Plan, opts RunOptions) error {
 
 	// 2. Download template files again for application
 	// (we don't store files in the plan, so re-download)
-	downloader, err := github.NewClient(opts.RepoURL)
-	if err != nil {
-		return err
-	}
-
 	spinner := NewSpinner(os.Stderr)
-	spinner.Start("Downloading template for application...")
-
-	catalogData, err := downloader.FetchFile("catalog.yaml")
-	if err != nil {
-		spinner.Stop()
-		return err
-	}
-	catalog, err := ParseCatalog(catalogData)
-	if err != nil {
-		spinner.Stop()
-		return err
-	}
-	entries, _ := catalog.ResolvePattern(opts.Pattern)
-	entry := entries[0]
-
-	baseFiles, err := downloader.FetchDirectory(entry.TemplateRef + "/base")
-	if err != nil {
-		spinner.Stop()
-		return err
-	}
-
-	locale := DetectLocale(opts.Lang)
-	var mergedFiles []DownloadedFile
-	if locale != "" {
-		localePath := fmt.Sprintf("%s/locale.%s", entry.TemplateRef, locale)
-		localeFiles, localeErr := downloader.FetchDirectory(localePath)
-		if localeErr == nil && len(localeFiles) > 0 {
-			mergedFiles = MergeLocaleFiles(baseFiles, localeFiles)
-		} else {
-			mergedFiles = baseFiles
-		}
-	} else {
-		mergedFiles = baseFiles
-	}
-	spinner.Stop()
-
-	placementData, err := downloader.FetchFile(entry.PlacementRef)
+	downloader, entry, _, err := fetchAndResolveEntry(opts, spinner)
 	if err != nil {
 		return err
 	}
-	placement, err := ParsePlacement(placementData)
+
+	// 3. Download and process template
+	templateFiles, placement, err := fetchTemplateAndPlacement(downloader, entry, opts.Lang, opts.Logger, spinner)
 	if err != nil {
 		return err
 	}
@@ -229,20 +136,20 @@ func Apply(plan *Plan, opts RunOptions) error {
 	// Use option values from the plan (collected during Run, not re-prompted)
 	optionValues := plan.OptionValues
 
-	// 3. Apply files
+	// 4. Apply files
 	spinner.Start("Applying template files...")
-	if err := ApplyFiles(mergedFiles, placement, opts.RepoRoot, optionValues); err != nil {
+	if err := ApplyFiles(templateFiles, placement, opts.RepoRoot, optionValues); err != nil {
 		spinner.Stop()
 		return fmt.Errorf("failed to apply files: %w", err)
 	}
 	spinner.Stop()
 
-	// 4. Apply post-actions
+	// 5. Apply post-actions
 	if err := ApplyPostActions(placement.PostActions, opts.RepoRoot, placement.BaseDir); err != nil {
 		return fmt.Errorf("failed to apply post-actions: %w", err)
 	}
 
-	// 5. Remove checkpoint on success
+	// 6. Remove checkpoint on success
 	if err := RemoveCheckpoint(opts.RepoRoot); err != nil {
 		opts.Logger.Warn("Failed to remove checkpoint: %v", err)
 	}
@@ -285,8 +192,16 @@ func Rollback(repoRoot string, logger *log.Logger) error {
 	return nil
 }
 
+// MetaYAML represents the meta.yaml file at the repository root.
+type MetaYAML struct {
+	Version         string `yaml:"version"`
+	DefaultScaffold string `yaml:"default_scaffold"`
+	UpdatedAt       string `yaml:"updated_at"`
+}
+
 // List fetches the catalog and returns all available scaffolds.
-func List(repoURL string) ([]ScaffoldEntry, error) {
+// Uses cache (via meta.yaml updated_at) when available.
+func List(repoURL string, repoRoot string, filterCategory string) ([]ScaffoldEntry, error) {
 	if repoURL == "" {
 		repoURL = defaultRepoURL
 	}
@@ -296,17 +211,305 @@ func List(repoURL string) ([]ScaffoldEntry, error) {
 		return nil, err
 	}
 
-	catalogData, err := downloader.FetchFile("catalog.yaml")
+	// Fetch meta.yaml for cache validation
+	metaData, err := downloader.FetchFile("meta.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch meta.yaml: %w", err)
+	}
+
+	var meta MetaYAML
+	if err := yaml.Unmarshal(metaData, &meta); err != nil {
+		return nil, fmt.Errorf("failed to parse meta.yaml: %w", err)
+	}
+
+	// Try cache
+	var catalogData []byte
+	if repoRoot != "" {
+		cache := NewCacheStore(repoRoot)
+		if cache.IsValid(meta.UpdatedAt) {
+			cached, err := cache.Load()
+			if err == nil && cached != nil {
+				catalogData = cached.CatalogData
+			}
+		}
+	}
+
+	// Fetch if not cached
+	if catalogData == nil {
+		catalogData, err = downloader.FetchFile("catalog.yaml")
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch catalog.yaml: %w", err)
+		}
+		// Save to cache
+		if repoRoot != "" {
+			cache := NewCacheStore(repoRoot)
+			_ = cache.Save(&CachedCatalog{
+				UpdatedAt:   meta.UpdatedAt,
+				CatalogData: catalogData,
+			})
+		}
+	}
+
+	catalogIdx, err := ParseCatalogIndex(catalogData)
 	if err != nil {
 		return nil, err
 	}
 
-	catalog, err := ParseCatalog(catalogData)
-	if err != nil {
-		return nil, err
+	// Collect all entries
+	var allEntries []ScaffoldEntry
+	for category, entries := range catalogIdx.Scaffolds {
+		if filterCategory != "" && category != filterCategory {
+			continue
+		}
+		for _, ref := range entries {
+			detailData, fetchErr := downloader.FetchFile(ref)
+			if fetchErr != nil {
+				continue
+			}
+			detailEntries, parseErr := ParseScaffoldDetail(detailData)
+			if parseErr != nil {
+				continue
+			}
+			allEntries = append(allEntries, detailEntries...)
+		}
 	}
 
-	return catalog.ListScaffolds(), nil
+	return allEntries, nil
+}
+
+// --- Helper functions ---
+
+// fetchAndResolveEntry resolves the pattern to a single scaffold entry
+// using Method A (shard path computation) for direct access.
+func fetchAndResolveEntry(opts RunOptions, spinner *Spinner) (
+	*github.Client, *ScaffoldEntry, []ScaffoldEntry, error) {
+
+	downloader, err := github.NewClient(opts.RepoURL)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create downloader: %w", err)
+	}
+
+	category, name := resolveArgs(opts.Pattern)
+
+	// Category only without --list → error
+	if name == "" {
+		return nil, nil, nil, fmt.Errorf(
+			"scaffold name is required: tt scaffold %s <name>", category)
+	}
+
+	// Method A: compute shard path directly
+	shardPath := ShardPath(category, name)
+
+	spinner.Start("Fetching template details...")
+	shardData, err := downloader.FetchFile(shardPath)
+	if err != nil {
+		spinner.Stop()
+		return nil, nil, nil, fmt.Errorf("scaffold not found: %s/%s (shard: %s): %w",
+			category, name, shardPath, err)
+	}
+	spinner.Stop()
+
+	detailEntries, err := ParseScaffoldDetail(shardData)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	entry, err := findEntry(detailEntries, category, name)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return downloader, entry, nil, nil
+}
+
+// resolveArgs resolves command arguments into category and name.
+// Pattern is positional: [category] [name]
+func resolveArgs(pattern []string) (category, name string) {
+	switch len(pattern) {
+	case 0:
+		return DefaultCategory, DefaultName
+	case 1:
+		return pattern[0], "" // category only
+	default:
+		return pattern[0], pattern[1]
+	}
+}
+
+// findEntry finds a scaffold entry matching both category and name
+// from a list of entries (which may contain multiple due to hash collisions).
+func findEntry(entries []ScaffoldEntry, category, name string) (*ScaffoldEntry, error) {
+	for i, e := range entries {
+		if e.Category == category && e.Name == name {
+			return &entries[i], nil
+		}
+	}
+	return nil, fmt.Errorf("scaffold entry not found: %s/%s", category, name)
+}
+
+// ZipScaffoldMeta represents the scaffold.yaml metadata file inside a ZIP template.
+type ZipScaffoldMeta struct {
+	Name        string    `yaml:"name"`
+	Category    string    `yaml:"category"`
+	Description string    `yaml:"description"`
+	OriginalRef string    `yaml:"original_ref"`
+	Placement   Placement `yaml:"placement"`
+}
+
+// fetchTemplateAndPlacement downloads template files and extracts placement.
+// For ZIP templates, it parses scaffold.yaml from the archive, separates
+// base files from locale files, and applies locale overlay.
+// For legacy directory-based templates, it uses FetchDirectory + FetchFile.
+func fetchTemplateAndPlacement(downloader *github.Client, entry *ScaffoldEntry,
+	lang string, logger *log.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
+
+	if strings.HasSuffix(entry.TemplateRef, ".zip") {
+		return fetchZipTemplateAndPlacement(downloader, entry, lang, logger, spinner)
+	}
+	return fetchLegacyTemplateAndPlacement(downloader, entry, lang, logger, spinner)
+}
+
+// fetchZipTemplateAndPlacement handles ZIP-based template archives.
+func fetchZipTemplateAndPlacement(downloader *github.Client, entry *ScaffoldEntry,
+	lang string, logger *log.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
+
+	spinner.Start("Downloading template...")
+	zipData, err := downloader.FetchFile(entry.TemplateRef)
+	if err != nil {
+		spinner.Stop()
+		return nil, nil, fmt.Errorf("failed to fetch template zip: %w", err)
+	}
+
+	allFiles, err := ExtractZip(zipData)
+	if err != nil {
+		spinner.Stop()
+		return nil, nil, fmt.Errorf("failed to extract template zip: %w", err)
+	}
+	spinner.Stop()
+
+	// Parse scaffold.yaml from the archive for placement info
+	placement := defaultPlacement()
+	for _, f := range allFiles {
+		if f.RelativePath == "scaffold.yaml" {
+			var meta ZipScaffoldMeta
+			if yamlErr := yaml.Unmarshal(f.Content, &meta); yamlErr == nil {
+				placement = &meta.Placement
+			}
+			break
+		}
+	}
+
+	// Separate files by prefix: base/, locale.XX/
+	var baseFiles []DownloadedFile
+	localePrefix := ""
+	locale := DetectLocale(lang)
+	if locale != "" {
+		localePrefix = "locale." + locale + "/"
+	}
+	var localeFiles []DownloadedFile
+
+	for _, f := range allFiles {
+		switch {
+		case f.RelativePath == "scaffold.yaml":
+			// Skip metadata file
+			continue
+		case strings.HasPrefix(f.RelativePath, "base/"):
+			// Strip "base/" prefix
+			stripped := strings.TrimPrefix(f.RelativePath, "base/")
+			if stripped != "" {
+				baseFiles = append(baseFiles, DownloadedFile{
+					RelativePath: stripped,
+					Content:      f.Content,
+				})
+			}
+		case localePrefix != "" && strings.HasPrefix(f.RelativePath, localePrefix):
+			// Strip locale prefix (e.g. "locale.ja/")
+			stripped := strings.TrimPrefix(f.RelativePath, localePrefix)
+			if stripped != "" {
+				localeFiles = append(localeFiles, DownloadedFile{
+					RelativePath: stripped,
+					Content:      f.Content,
+				})
+			}
+			// Ignore other locale directories (e.g. locale.en/ when lang=ja)
+		}
+	}
+
+	// Apply locale overlay if available
+	if len(localeFiles) > 0 {
+		baseFiles = MergeLocaleFiles(baseFiles, localeFiles)
+		logger.Info("Applied locale overlay: %s (%d files)", locale, len(localeFiles))
+	}
+
+	return baseFiles, placement, nil
+}
+
+// fetchLegacyTemplateAndPlacement handles legacy directory-based templates.
+func fetchLegacyTemplateAndPlacement(downloader *github.Client, entry *ScaffoldEntry,
+	lang string, logger *log.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
+
+	// Fetch placement definition
+	var placement *Placement
+	if entry.PlacementRef != "" {
+		spinner.Start("Downloading placement definition...")
+		placementData, err := downloader.FetchFile(entry.PlacementRef)
+		if err != nil {
+			spinner.Stop()
+			return nil, nil, fmt.Errorf("failed to fetch placement: %w", err)
+		}
+		spinner.Stop()
+
+		p, err := ParsePlacement(placementData)
+		if err != nil {
+			return nil, nil, err
+		}
+		placement = p
+	} else {
+		placement = defaultPlacement()
+	}
+
+	// Fetch template files
+	spinner.Start("Downloading template...")
+	baseFiles, err := downloader.FetchDirectory(entry.TemplateRef + "/base")
+	if err != nil {
+		spinner.Stop()
+		return nil, nil, fmt.Errorf("failed to fetch template: %w", err)
+	}
+
+	// Detect and apply locale overlay
+	locale := DetectLocale(lang)
+	var mergedFiles []DownloadedFile
+	if locale != "" {
+		localePath := fmt.Sprintf("%s/locale.%s", entry.TemplateRef, locale)
+		spinner.UpdateMessage(fmt.Sprintf("Downloading locale overlay (%s)...", locale))
+		localeFiles, localeErr := downloader.FetchDirectory(localePath)
+		if localeErr == nil && len(localeFiles) > 0 {
+			mergedFiles = MergeLocaleFiles(baseFiles, localeFiles)
+			logger.Info("Applied locale overlay: %s (%d files)", locale, len(localeFiles))
+		} else {
+			mergedFiles = baseFiles
+		}
+	} else {
+		mergedFiles = baseFiles
+	}
+	spinner.Stop()
+
+	return mergedFiles, placement, nil
+}
+
+// defaultPlacement returns a default Placement for new-format scaffolds.
+func defaultPlacement() *Placement {
+	return &Placement{
+		ConflictPolicy: "skip",
+	}
+}
+
+// effectiveOptions returns the applicable options for a scaffold entry.
+// TemplateParams (new format) take precedence over Options (legacy format).
+func effectiveOptions(entry *ScaffoldEntry) []Option {
+	if len(entry.TemplateParams) > 0 {
+		return entry.TemplateParams
+	}
+	return entry.Options
 }
 
 // getHeadCommit returns the current HEAD commit hash.

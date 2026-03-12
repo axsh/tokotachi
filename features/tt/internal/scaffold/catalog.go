@@ -18,10 +18,14 @@ type Catalog struct {
 
 // ScaffoldEntry represents a single scaffold template entry in the catalog.
 type ScaffoldEntry struct {
-	Name         string       `yaml:"name"`
-	Category     string       `yaml:"category"`
-	Description  string       `yaml:"description"`
-	TemplateRef  string       `yaml:"template_ref"`
+	Name           string       `yaml:"name"`
+	Category       string       `yaml:"category"`
+	Description    string       `yaml:"description"`
+	TemplateRef    string       `yaml:"template_ref"`
+	OriginalRef    string       `yaml:"original_ref"`
+	DependsOn      []Dependency `yaml:"depends_on"`
+	TemplateParams []Option     `yaml:"template_params"`
+	// Legacy fields (old catalog format)
 	PlacementRef string       `yaml:"placement_ref"`
 	Requirements Requirements `yaml:"requirements"`
 	Options      []Option     `yaml:"options"`
@@ -148,4 +152,108 @@ func CheckRequirements(reqs Requirements, repoRoot string) error {
 // ListScaffolds returns all scaffold entries in the catalog.
 func (c *Catalog) ListScaffolds() []ScaffoldEntry {
 	return c.Scaffolds
+}
+
+// --- New catalog index format support ---
+
+// CatalogIndex represents the new index-style catalog.yaml.
+// The top-level scaffolds field is a nested map: category -> name -> ref path.
+type CatalogIndex struct {
+	Scaffolds map[string]map[string]string `yaml:"scaffolds"`
+}
+
+// IndexRef represents a resolved reference from the catalog index.
+type IndexRef struct {
+	Category string
+	Name     string
+	Ref      string // Path to the individual scaffold YAML file
+}
+
+// Dependency represents a scaffold dependency.
+type Dependency struct {
+	Category string `yaml:"category"`
+	Name     string `yaml:"name"`
+}
+
+// ScaffoldDetail represents the wrapper for individual scaffold YAML files.
+type ScaffoldDetail struct {
+	Scaffolds []ScaffoldEntry `yaml:"scaffolds"`
+}
+
+// ParseCatalogIndex parses the new index-style catalog.yaml into a CatalogIndex.
+func ParseCatalogIndex(data []byte) (*CatalogIndex, error) {
+	var idx CatalogIndex
+	if err := yaml.Unmarshal(data, &idx); err != nil {
+		return nil, fmt.Errorf("failed to parse catalog index: %w", err)
+	}
+	if len(idx.Scaffolds) == 0 {
+		return nil, fmt.Errorf("catalog index has no scaffolds")
+	}
+	return &idx, nil
+}
+
+// ParseScaffoldDetail parses an individual scaffold YAML file.
+func ParseScaffoldDetail(data []byte) ([]ScaffoldEntry, error) {
+	var detail ScaffoldDetail
+	if err := yaml.Unmarshal(data, &detail); err != nil {
+		return nil, fmt.Errorf("failed to parse scaffold detail: %w", err)
+	}
+	return detail.Scaffolds, nil
+}
+
+// ResolveFromIndex resolves command arguments to matching index refs.
+//
+// Resolution rules:
+//   - nil/empty pattern: return the "root"/"default" entry
+//   - 1 arg: try exact name match across all categories, then category match
+//   - 2 args: match by category (arg[0]) and name (arg[1])
+func (idx *CatalogIndex) ResolveFromIndex(pattern []string) ([]IndexRef, error) {
+	if len(pattern) == 0 {
+		return idx.resolveIndexDefault()
+	}
+	if len(pattern) == 1 {
+		return idx.resolveIndexSingle(pattern[0])
+	}
+	return idx.resolveIndexCategoryAndName(pattern[0], pattern[1])
+}
+
+// resolveIndexDefault returns the default scaffold (root/default).
+func (idx *CatalogIndex) resolveIndexDefault() ([]IndexRef, error) {
+	if rootEntries, ok := idx.Scaffolds["root"]; ok {
+		if ref, ok := rootEntries["default"]; ok {
+			return []IndexRef{{Category: "root", Name: "default", Ref: ref}}, nil
+		}
+	}
+	return nil, fmt.Errorf("no default scaffold found (expected root/default in catalog index)")
+}
+
+// resolveIndexSingle tries to match by name first, then by category.
+func (idx *CatalogIndex) resolveIndexSingle(nameOrCategory string) ([]IndexRef, error) {
+	// Try exact name match across all categories
+	for category, entries := range idx.Scaffolds {
+		if ref, ok := entries[nameOrCategory]; ok {
+			return []IndexRef{{Category: category, Name: nameOrCategory, Ref: ref}}, nil
+		}
+	}
+
+	// Try category match
+	if entries, ok := idx.Scaffolds[nameOrCategory]; ok {
+		var refs []IndexRef
+		for name, ref := range entries {
+			refs = append(refs, IndexRef{Category: nameOrCategory, Name: name, Ref: ref})
+		}
+		return refs, nil
+	}
+
+	return nil, fmt.Errorf("no scaffold found matching %q", nameOrCategory)
+}
+
+// resolveIndexCategoryAndName finds an entry matching both category and name.
+func (idx *CatalogIndex) resolveIndexCategoryAndName(category, name string) ([]IndexRef, error) {
+	if entries, ok := idx.Scaffolds[category]; ok {
+		if ref, ok := entries[name]; ok {
+			return []IndexRef{{Category: category, Name: name, Ref: ref}}, nil
+		}
+	}
+	return nil, fmt.Errorf("no scaffold found matching category=%q name=%q", category, name)
 }
