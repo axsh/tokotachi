@@ -2,26 +2,20 @@ package scaffold
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"strings"
-	"text/template"
 )
 
-// ProcessTemplate renders a Go template string with the given values.
+// ProcessTemplate replaces {{key}} placeholders in tmplContent with
+// the corresponding values from the values map.
+// Only simple {{key}} syntax is supported (no Go template features).
 func ProcessTemplate(tmplContent string, values map[string]string) (string, error) {
-	t, err := template.New("scaffold").Option("missingkey=zero").Parse(tmplContent)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse template: %w", err)
+	result := tmplContent
+	for k, v := range values {
+		result = strings.ReplaceAll(result, "{{"+k+"}}", v)
 	}
-
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, values); err != nil {
-		return "", fmt.Errorf("failed to execute template: %w", err)
-	}
-
-	return buf.String(), nil
+	return result, nil
 }
 
 // ProcessTemplatePath renders template variables in a file path string.

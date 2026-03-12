@@ -9,7 +9,7 @@ import (
 )
 
 func TestProcessTemplate_Simple(t *testing.T) {
-	result, err := ProcessTemplate("Hello {{.Name}}", map[string]string{"Name": "world"})
+	result, err := ProcessTemplate("Hello {{Name}}", map[string]string{"Name": "world"})
 	require.NoError(t, err)
 	assert.Equal(t, "Hello world", result)
 }
@@ -21,7 +21,7 @@ func TestProcessTemplate_NoVars(t *testing.T) {
 }
 
 func TestProcessTemplate_MultipleVars(t *testing.T) {
-	tmpl := "module {{.GoModule}}\nname: {{.Name}}"
+	tmpl := "module {{GoModule}}\nname: {{Name}}"
 	values := map[string]string{
 		"GoModule": "github.com/example/foo",
 		"Name":     "foo",
@@ -33,7 +33,7 @@ func TestProcessTemplate_MultipleVars(t *testing.T) {
 }
 
 func TestProcessTemplatePath(t *testing.T) {
-	result, err := ProcessTemplatePath("features/{{.Name}}", map[string]string{"Name": "my-feature"})
+	result, err := ProcessTemplatePath("features/{{Name}}", map[string]string{"Name": "my-feature"})
 	require.NoError(t, err)
 	assert.Equal(t, "features/my-feature", result)
 }

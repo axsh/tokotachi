@@ -22,6 +22,8 @@ var (
 	scaffoldFlagCwd      bool
 	scaffoldFlagValues   []string
 	scaffoldFlagDefault  bool
+	scaffoldFlagSkipDeps bool
+	scaffoldFlagForce    bool
 )
 
 var scaffoldCmd = &cobra.Command{
@@ -41,6 +43,8 @@ func init() {
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagCwd, "cwd", false, "Use current working directory as root instead of auto-detecting Git root")
 	scaffoldCmd.Flags().StringArrayVar(&scaffoldFlagValues, "v", nil, "Set option value directly (key=value), repeatable")
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagDefault, "default", false, "Use default values for non-required options without prompting")
+	scaffoldCmd.Flags().BoolVar(&scaffoldFlagSkipDeps, "skip-deps", false, "Skip dependency resolution and apply only the specified scaffold")
+	scaffoldCmd.Flags().BoolVar(&scaffoldFlagForce, "force", false, "Force re-download all scaffolds, ignoring download history")
 }
 
 func runScaffold(cmd *cobra.Command, args []string) error {
@@ -95,6 +99,8 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 		Stdin:           os.Stdin,
 		OptionOverrides: overrides,
 		UseDefaults:     scaffoldFlagDefault,
+		SkipDeps:        scaffoldFlagSkipDeps,
+		Force:           scaffoldFlagForce,
 	}
 
 	plan, err := scaffold.Run(opts)
