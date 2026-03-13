@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/tt/internal/codestatus"
-	"github.com/axsh/tokotachi/features/tt/internal/log"
-	"github.com/axsh/tokotachi/features/tt/internal/state"
+	"github.com/axsh/tokotachi/internal/cmdexec"
+	"github.com/axsh/tokotachi/pkg/codestatus"
+	"github.com/axsh/tokotachi/internal/log"
+	"github.com/axsh/tokotachi/pkg/state"
 )
 
 var flagUpdateRepoRoot string

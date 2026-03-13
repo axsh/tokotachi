@@ -17,7 +17,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "tt",
 	Short: "Tokotachi - Development environment orchestrator",
-	Long:  "tt (Tokotachi) manages feature-level development environments with matrix-driven subcommands.",
+	Long:  "Tokotachi (tt) is a tool designed to maximize parallel development using AI agents and support personal development workflows.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Store start time for report
 		cmd.SetContext(cmd.Context())

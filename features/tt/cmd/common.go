@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/axsh/tokotachi/features/tt/internal/action"
-	"github.com/axsh/tokotachi/features/tt/internal/cmdexec"
-	"github.com/axsh/tokotachi/features/tt/internal/detect"
-	"github.com/axsh/tokotachi/features/tt/internal/log"
-	"github.com/axsh/tokotachi/features/tt/internal/matrix"
-	"github.com/axsh/tokotachi/features/tt/internal/report"
-	"github.com/axsh/tokotachi/features/tt/internal/resolve"
+	"github.com/axsh/tokotachi/pkg/action"
+	"github.com/axsh/tokotachi/internal/cmdexec"
+	"github.com/axsh/tokotachi/pkg/detect"
+	"github.com/axsh/tokotachi/internal/log"
+	"github.com/axsh/tokotachi/pkg/matrix"
+	"github.com/axsh/tokotachi/internal/report"
+	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
 // AppContext holds shared state for all subcommands.

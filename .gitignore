@@ -1,6 +1,7 @@
 # Build output
 bin/
 build/
+*.exe
 
 # Distribution artifacts
 /dist/
@@ -14,6 +15,3 @@ work/*
 # OS files
 .DS_Store
 Thumbs.db
-
-# devctl worktree backup files
-.git.devctl-backup
