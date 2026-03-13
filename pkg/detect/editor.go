@@ -36,7 +36,7 @@ func ParseEditor(s string) (Editor, error) {
 //  1. CLI flag (cliFlag)
 //  2. Environment variable (envValue, from TT_EDITOR)
 //  3. Feature-level config (featureConfig)
-//  4. Global config (globalConfig, from .devrc.yaml)
+//  4. Default value ("cursor")
 //  5. Default: "cursor"
 func ResolveEditor(cliFlag, envValue, featureConfig, globalConfig string) (Editor, error) {
 	sources := []string{cliFlag, envValue, featureConfig, globalConfig}

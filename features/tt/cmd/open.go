@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/axsh/tokotachi/internal/report"
 	"github.com/axsh/tokotachi/pkg/action"
 	"github.com/axsh/tokotachi/pkg/editor"
 	"github.com/axsh/tokotachi/pkg/plan"
-	"github.com/axsh/tokotachi/internal/report"
 	"github.com/axsh/tokotachi/pkg/resolve"
 	"github.com/axsh/tokotachi/pkg/state"
 	"github.com/axsh/tokotachi/pkg/worktree"
@@ -46,8 +46,7 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	projectName := globalCfg.ProjectName
+	projectName := "tt"
 	if projectName == "" {
 		projectName = "tt"
 	}

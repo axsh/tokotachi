@@ -31,8 +31,7 @@ func runDown(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("feature is required for 'down' command (container operation)")
 	}
 
-	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	projectName := globalCfg.ProjectName
+	projectName := "tt"
 	if projectName == "" {
 		projectName = "tt"
 	}

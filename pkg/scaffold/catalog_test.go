@@ -234,12 +234,12 @@ func TestCheckRequirements_MissingFile(t *testing.T) {
 
 	reqs := Requirements{
 		Directories: []string{},
-		Files:       []string{".devrc.yaml"},
+		Files:       []string{"nonexistent.yaml"},
 	}
 
 	err := CheckRequirements(reqs, tmpDir)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), ".devrc.yaml")
+	assert.Contains(t, err.Error(), "nonexistent.yaml")
 }
 
 func TestCheckRequirements_Empty(t *testing.T) {

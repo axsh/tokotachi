@@ -106,7 +106,7 @@ func TestReport_PrintText(t *testing.T) {
 		Results: []CheckResult{
 			{Category: "Tools", Name: "git", Status: StatusPass, Message: "git version 2.43.0"},
 			{Category: "Tools", Name: "gh", Status: StatusWarn, Message: "not found", FixHint: "Install GitHub CLI"},
-			{Category: "Config", Name: ".devrc.yaml", Status: StatusFail, Message: "parse error", Expected: "valid YAML", FixHint: "Fix YAML syntax"},
+			{Category: "Config", Name: "config.yaml", Status: StatusFail, Message: "parse error", Expected: "valid YAML", FixHint: "Fix YAML syntax"},
 		},
 	}
 
@@ -175,7 +175,7 @@ func TestReport_PrintJSON(t *testing.T) {
 func TestReport_PrintText_Fixed(t *testing.T) {
 	r := &Report{
 		Results: []CheckResult{
-			{Category: "Config", Name: ".devrc.yaml", Status: StatusPass, Message: "created with default settings", Fixed: true},
+			{Category: "Config", Name: "config.yaml", Status: StatusPass, Message: "created with default settings", Fixed: true},
 			{Category: "Tools", Name: "git", Status: StatusPass, Message: "git version 2.43.0"},
 		},
 	}
@@ -207,7 +207,7 @@ func TestSummary_Fixed(t *testing.T) {
 func TestReport_PrintJSON_Fixed(t *testing.T) {
 	r := &Report{
 		Results: []CheckResult{
-			{Category: "Config", Name: ".devrc.yaml", Status: StatusPass, Message: "created with defaults", Fixed: true},
+			{Category: "Config", Name: "config.yaml", Status: StatusPass, Message: "created with defaults", Fixed: true},
 		},
 	}
 
