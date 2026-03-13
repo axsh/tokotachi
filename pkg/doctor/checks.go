@@ -7,15 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 const categoryTools = "External Tools"
 const categoryRepo = "Repository Structure"
-const categoryConfig = "Global Config (.devrc.yaml)"
 
 // ToolChecker abstracts external command execution for testability.
 type ToolChecker interface {
@@ -130,138 +126,6 @@ func checkRepoStructure(repoRoot string) []CheckResult {
 	return results
 }
 
-// validEditors lists accepted editor values.
-var validEditors = []string{"code", "vscode", "cursor", "ag", "antigravity", "claude"}
-
-// validContainerModes lists accepted container mode values.
-var validContainerModes = []string{"none", "devcontainer", "docker-local", "docker-ssh"}
-
-// globalConfig mirrors resolve.GlobalConfig for YAML parsing within doctor.
-type globalConfig struct {
-	ProjectName          string `yaml:"project_name"`
-	DefaultEditor        string `yaml:"default_editor"`
-	DefaultContainerMode string `yaml:"default_container_mode"`
-}
-
-// checkGlobalConfig checks .devrc.yaml existence and validity.
-func checkGlobalConfig(repoRoot string) []CheckResult {
-	var results []CheckResult
-	path := filepath.Join(repoRoot, ".devrc.yaml")
-
-	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     ".devrc.yaml",
-			Status:   StatusWarn,
-			Message:  "file not found (defaults will be used)",
-			FixHint:  "Create .devrc.yaml with: project_name, default_editor, default_container_mode",
-		})
-		return results
-	}
-	if err != nil {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     ".devrc.yaml",
-			Status:   StatusFail,
-			Message:  fmt.Sprintf("read error: %v", err),
-		})
-		return results
-	}
-
-	var cfg globalConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     ".devrc.yaml",
-			Status:   StatusFail,
-			Message:  fmt.Sprintf("YAML parse error: %v", err),
-			Expected: "valid YAML",
-			FixHint:  "Fix YAML syntax in .devrc.yaml",
-		})
-		return results
-	}
-
-	results = append(results, CheckResult{
-		Category: categoryConfig,
-		Name:     ".devrc.yaml",
-		Status:   StatusPass,
-		Message:  "file exists and is valid YAML",
-	})
-
-	// project_name
-	if cfg.ProjectName == "" {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     "project_name",
-			Status:   StatusWarn,
-			Message:  "empty (default 'tt' will be used)",
-			FixHint:  "Set project_name in .devrc.yaml",
-		})
-	} else {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     "project_name",
-			Status:   StatusPass,
-			Message:  fmt.Sprintf("%q", cfg.ProjectName),
-		})
-	}
-
-	// default_editor
-	if cfg.DefaultEditor == "" {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     "default_editor",
-			Status:   StatusPass,
-			Message:  "empty (default 'cursor' will be used)",
-		})
-	} else if !slices.Contains(validEditors, cfg.DefaultEditor) {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     "default_editor",
-			Status:   StatusWarn,
-			Message:  fmt.Sprintf("unknown value %q", cfg.DefaultEditor),
-			Expected: fmt.Sprintf("one of: %s", strings.Join(validEditors, ", ")),
-			FixHint:  "Set default_editor to a supported value",
-		})
-	} else {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     "default_editor",
-			Status:   StatusPass,
-			Message:  fmt.Sprintf("%q", cfg.DefaultEditor),
-		})
-	}
-
-	// default_container_mode
-	if cfg.DefaultContainerMode == "" {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     "default_container_mode",
-			Status:   StatusPass,
-			Message:  "empty (default 'docker-local' will be used)",
-		})
-	} else if !slices.Contains(validContainerModes, cfg.DefaultContainerMode) {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     "default_container_mode",
-			Status:   StatusWarn,
-			Message:  fmt.Sprintf("unknown value %q", cfg.DefaultContainerMode),
-			Expected: fmt.Sprintf("one of: %s", strings.Join(validContainerModes, ", ")),
-			FixHint:  "Set default_container_mode to a supported value",
-		})
-	} else {
-		results = append(results, CheckResult{
-			Category: categoryConfig,
-			Name:     "default_container_mode",
-			Status:   StatusPass,
-			Message:  fmt.Sprintf("%q", cfg.DefaultContainerMode),
-		})
-	}
-
-	return results
-}
-
 // featureCategoryPrefix returns the category name for a feature.
 func featureCategoryPrefix(name string) string {
 	return fmt.Sprintf("Feature: %s", name)
@@ -313,13 +177,6 @@ func checkFeature(repoRoot, featureName string) []CheckResult {
 	}
 
 	return results
-}
-
-// fixGlobalConfig creates .devrc.yaml with default settings.
-func fixGlobalConfig(repoRoot string) error {
-	path := filepath.Join(repoRoot, ".devrc.yaml")
-	content := "project_name: \"\"\ndefault_editor: cursor\ndefault_container_mode: docker-local\n"
-	return os.WriteFile(path, []byte(content), 0o644)
 }
 
 // fixDirectory creates a directory if it doesn't exist.

@@ -11,11 +11,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
-	"github.com/axsh/tokotachi/pkg/codestatus"
 	"github.com/axsh/tokotachi/internal/listing"
 	"github.com/axsh/tokotachi/internal/log"
 	"github.com/axsh/tokotachi/internal/report"
-	"github.com/axsh/tokotachi/pkg/resolve"
+	"github.com/axsh/tokotachi/pkg/codestatus"
 	"github.com/axsh/tokotachi/pkg/state"
 )
 
@@ -170,9 +169,6 @@ func runListFeatures(args []string) error {
 		return err
 	}
 	defer finalizeReport(ctx)
-
-	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	_ = globalCfg
 
 	statePath := state.StatePath(ctx.RepoRoot, branch)
 	sf, err := state.Load(statePath)

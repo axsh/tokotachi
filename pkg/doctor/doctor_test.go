@@ -17,8 +17,6 @@ func TestRun_AllPass(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "features", "myfeature", ".devcontainer"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "work"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "scripts"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, ".devrc.yaml"),
-		[]byte("project_name: test\ndefault_editor: cursor\ndefault_container_mode: docker-local\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "features", "myfeature", ".devcontainer", "devcontainer.json"),
 		[]byte(`{"name":"myfeature"}`), 0o644))
 
@@ -44,13 +42,9 @@ func TestRun_AllPass(t *testing.T) {
 func TestRun_WithFailure(t *testing.T) {
 	root := t.TempDir()
 
-	// Create structure with invalid .devrc.yaml
-	require.NoError(t, os.MkdirAll(filepath.Join(root, "features", "broken"), 0o755))
+	// Create structure without features/ (required dir missing = FAIL)
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "work"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "scripts"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, ".devrc.yaml"),
-		[]byte("key: [unterminated\n\t: bad:\nindent"), 0o644))
-	// feature.yaml missing is now WARN, but .devrc.yaml parse error is FAIL
 
 	checker := &mockToolChecker{
 		results: map[string]toolResult{
@@ -65,7 +59,7 @@ func TestRun_WithFailure(t *testing.T) {
 		ToolChecker: checker,
 	})
 	require.NoError(t, err)
-	assert.True(t, report.HasFailures(), "expected failures with invalid config")
+	assert.True(t, report.HasFailures(), "expected failures with missing required dir")
 }
 
 func TestRun_FeatureFilter(t *testing.T) {
@@ -76,8 +70,6 @@ func TestRun_FeatureFilter(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "features", "beta"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "work"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "scripts"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, ".devrc.yaml"),
-		[]byte("project_name: test\ndefault_editor: cursor\ndefault_container_mode: docker-local\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "features", "alpha", "feature.yaml"),
 		[]byte("name: alpha\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(root, "features", "beta", "feature.yaml"),
@@ -118,8 +110,6 @@ func TestRun_FeatureFilterNotFound(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "features"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "work"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "scripts"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, ".devrc.yaml"),
-		[]byte("project_name: test\ndefault_editor: cursor\ndefault_container_mode: docker-local\n"), 0o644))
 
 	checker := &mockToolChecker{
 		results: map[string]toolResult{
@@ -140,10 +130,9 @@ func TestRun_FeatureFilterNotFound(t *testing.T) {
 func TestRun_WithFix(t *testing.T) {
 	root := t.TempDir()
 
-	// Create minimal structure without .devrc.yaml
+	// Create minimal structure without work/ dir
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "features", "myfeature", ".devcontainer"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "scripts"), 0o755))
-	// No work/ dir, no .devrc.yaml
 	require.NoError(t, os.WriteFile(filepath.Join(root, "features", "myfeature", ".devcontainer", "devcontainer.json"),
 		[]byte(`{"name":"myfeature"}`), 0o644))
 
@@ -163,10 +152,6 @@ func TestRun_WithFix(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, report.HasFailures(), "expected no failures after fix")
 
-	// Check that .devrc.yaml was created
-	_, err = os.Stat(filepath.Join(root, ".devrc.yaml"))
-	assert.NoError(t, err, ".devrc.yaml should have been created")
-
 	// Check that work/ was created
 	_, err = os.Stat(filepath.Join(root, "work"))
 	assert.NoError(t, err, "work/ directory should have been created")
@@ -178,20 +163,7 @@ func TestRun_WithFix(t *testing.T) {
 			fixedCount++
 		}
 	}
-	assert.GreaterOrEqual(t, fixedCount, 2, "at least 2 items should be fixed (.devrc.yaml and work/)")
-}
-
-func TestFixGlobalConfig(t *testing.T) {
-	root := t.TempDir()
-
-	err := fixGlobalConfig(root)
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(filepath.Join(root, ".devrc.yaml"))
-	require.NoError(t, err)
-	content := string(data)
-	assert.Contains(t, content, "default_editor: cursor")
-	assert.Contains(t, content, "default_container_mode: docker-local")
+	assert.GreaterOrEqual(t, fixedCount, 1, "at least 1 item should be fixed (work/)")
 }
 
 func TestFixDirectory(t *testing.T) {

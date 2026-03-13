@@ -6,9 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/pkg/action"
 	"github.com/axsh/tokotachi/internal/report"
-	"github.com/axsh/tokotachi/pkg/resolve"
+	"github.com/axsh/tokotachi/pkg/action"
 	"github.com/axsh/tokotachi/pkg/worktree"
 )
 
@@ -39,8 +38,7 @@ func runClose(cmd *cobra.Command, args []string) error {
 	}
 	defer finalizeReport(ctx)
 
-	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	projectName := globalCfg.ProjectName
+	projectName := "tt"
 	if projectName == "" {
 		projectName = "tt"
 	}

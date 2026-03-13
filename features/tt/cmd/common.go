@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/axsh/tokotachi/pkg/action"
 	"github.com/axsh/tokotachi/internal/cmdexec"
-	"github.com/axsh/tokotachi/pkg/detect"
 	"github.com/axsh/tokotachi/internal/log"
-	"github.com/axsh/tokotachi/pkg/matrix"
 	"github.com/axsh/tokotachi/internal/report"
+	"github.com/axsh/tokotachi/pkg/action"
+	"github.com/axsh/tokotachi/pkg/detect"
+	"github.com/axsh/tokotachi/pkg/matrix"
 	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
@@ -114,10 +114,6 @@ func (ctx *AppContext) ResolveEnvironment(editorFlag string) (detect.OS, detect.
 	ctx.Logger.Debug("OS=%s", currentOS)
 	ctx.Report.OS = string(currentOS)
 
-	globalCfg, err := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	if err != nil {
-		ctx.Logger.Warn("Failed to load .devrc.yaml: %v", err)
-	}
 	featureCfg, err := resolve.LoadFeatureConfig(ctx.RepoRoot, ctx.Feature)
 	if err != nil {
 		ctx.Logger.Warn("Failed to load feature.yaml: %v", err)
@@ -127,7 +123,7 @@ func (ctx *AppContext) ResolveEnvironment(editorFlag string) (detect.OS, detect.
 		editorFlag,
 		os.Getenv(detect.EnvKeyEditor),
 		featureCfg.Dev.EditorDefault,
-		globalCfg.DefaultEditor,
+		"cursor",
 	)
 	if err != nil {
 		return "", "", "", fmt.Errorf("editor resolution failed: %w", err)
@@ -135,7 +131,7 @@ func (ctx *AppContext) ResolveEnvironment(editorFlag string) (detect.OS, detect.
 	ctx.Logger.Debug("Editor=%s", ed)
 	ctx.Report.Editor = string(ed)
 
-	containerMode := matrix.ContainerMode(globalCfg.DefaultContainerMode)
+	containerMode := matrix.ContainerMode("docker-local")
 	ctx.Report.ContainerMode = string(containerMode)
 
 	return currentOS, ed, containerMode, nil

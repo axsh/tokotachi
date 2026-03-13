@@ -54,8 +54,7 @@ func runExec(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no command specified after --")
 	}
 
-	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	projectName := globalCfg.ProjectName
+	projectName := "tt"
 	if projectName == "" {
 		projectName = "tt"
 	}
