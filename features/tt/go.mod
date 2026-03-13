@@ -3,6 +3,7 @@ module github.com/axsh/tokotachi/features/tt
 go 1.24.0
 
 require (
+	github.com/axsh/tokotachi v0.0.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
@@ -15,3 +16,5 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 )
+
+replace github.com/axsh/tokotachi => ../..

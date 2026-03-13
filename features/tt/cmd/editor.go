@@ -5,10 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/tt/internal/editor"
-	"github.com/axsh/tokotachi/features/tt/internal/plan"
-	"github.com/axsh/tokotachi/features/tt/internal/report"
-	"github.com/axsh/tokotachi/features/tt/internal/resolve"
+	"github.com/axsh/tokotachi/pkg/editor"
+	"github.com/axsh/tokotachi/pkg/plan"
+	"github.com/axsh/tokotachi/internal/report"
+	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
 var (

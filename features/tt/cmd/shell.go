@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/axsh/tokotachi/features/tt/internal/report"
-	"github.com/axsh/tokotachi/features/tt/internal/resolve"
+	"github.com/axsh/tokotachi/internal/report"
+	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
 var shellCmd = &cobra.Command{
