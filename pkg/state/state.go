@@ -66,6 +66,7 @@ type CodeStatus struct {
 // Features map holds per-feature state entries.
 type StateFile struct {
 	Branch     string                  `yaml:"branch"`
+	BaseBranch string                  `yaml:"base_branch,omitempty"`
 	CreatedAt  time.Time               `yaml:"created_at"`
 	Features   map[string]FeatureState `yaml:"features,omitempty"`
 	CodeStatus *CodeStatus             `yaml:"code_status,omitempty"`

@@ -308,3 +308,69 @@ func TestStateFile_CodeStatus_OmitEmpty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, loaded.CodeStatus)
 }
+
+func TestSave_Load_WithBaseBranch(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.state.yaml")
+
+	original := state.StateFile{
+		Branch:     "feat-xxx",
+		BaseBranch: "main",
+		CreatedAt:  time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC),
+	}
+
+	err := state.Save(path, original)
+	require.NoError(t, err)
+
+	loaded, err := state.Load(path)
+	require.NoError(t, err)
+	assert.Equal(t, "feat-xxx", loaded.Branch)
+	assert.Equal(t, "main", loaded.BaseBranch)
+}
+
+func TestStateFile_BaseBranch_OmitEmpty(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.state.yaml")
+
+	original := state.StateFile{
+		Branch:    "no-base-branch",
+		CreatedAt: time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC),
+		// BaseBranch is empty
+	}
+
+	err := state.Save(path, original)
+	require.NoError(t, err)
+
+	// Read raw YAML and verify base_branch key is absent
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "base_branch")
+
+	// Load should still work
+	loaded, err := state.Load(path)
+	require.NoError(t, err)
+	assert.Equal(t, "", loaded.BaseBranch)
+}
+
+func TestStateFile_BackwardCompat_NoBaseBranch(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.state.yaml")
+
+	// Save a StateFile without BaseBranch (simulating an existing old file)
+	original := state.StateFile{
+		Branch:    "legacy-branch",
+		CreatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		Features: map[string]state.FeatureState{
+			"tt": {Status: state.StatusActive},
+		},
+	}
+
+	err := state.Save(path, original)
+	require.NoError(t, err)
+
+	loaded, err := state.Load(path)
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-branch", loaded.Branch)
+	assert.Equal(t, "", loaded.BaseBranch) // Should be empty, not cause error
+	require.Contains(t, loaded.Features, "tt")
+}
