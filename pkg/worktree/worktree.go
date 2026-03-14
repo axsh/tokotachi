@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
 )
@@ -56,16 +57,25 @@ func (m *Manager) Create(branch string) error {
 	}
 	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 
-	// Check if branch already exists
+	// Check if branch already exists locally
 	_, err := m.CmdRunner.RunWithOpts(cmdexec.CheckOpt(), gitCmd, "rev-parse", "--verify", branch)
 	branchExists := err == nil
 
 	var args []string
 	if branchExists {
-		// Branch exists: attach worktree to existing branch (force in case already checked out)
+		// Local branch exists: attach worktree to existing branch (force in case already checked out)
 		args = []string{"worktree", "add", "--force", wtPath, branch}
+	} else if m.RemoteBranchExists(branch) {
+		// Remote branch exists: fetch and create worktree from remote tracking branch
+		if fetchErr := m.FetchBranch(branch); fetchErr != nil {
+			// Fetch failed: fallback to creating new local branch
+			args = []string{"worktree", "add", "-b", branch, wtPath}
+		} else {
+			// Fetch succeeded: create worktree from fetched branch
+			args = []string{"worktree", "add", wtPath, branch}
+		}
 	} else {
-		// Branch does not exist: create new branch
+		// No local or remote branch: create new branch
 		args = []string{"worktree", "add", "-b", branch, wtPath}
 	}
 
@@ -133,6 +143,34 @@ func (m *Manager) FindNestedWorktrees(branch string) []string {
 		}
 	}
 	return result
+}
+
+// RemoteBranchExists checks if a branch exists on the remote (origin).
+// Uses "git ls-remote --heads origin <branch>" to check.
+// Returns true if the remote has a matching ref.
+// In dry-run mode, this always returns true since the command succeeds with empty output.
+func (m *Manager) RemoteBranchExists(branch string) bool {
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
+	output, err := m.CmdRunner.RunWithOpts(cmdexec.CheckOpt(), gitCmd, "ls-remote", "--heads", "origin", branch)
+	if err != nil {
+		return false
+	}
+	// In dry-run mode, output is "" and err is nil, so this returns true.
+	// In real mode, ls-remote outputs "<hash>\trefs/heads/<branch>" if branch exists.
+	// If the branch does not exist, ls-remote succeeds but outputs empty string.
+	if !m.CmdRunner.DryRun && strings.TrimSpace(output) == "" {
+		return false
+	}
+	return true
+}
+
+// FetchBranch fetches a specific branch from the remote (origin).
+func (m *Manager) FetchBranch(branch string) error {
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
+	if _, err := m.CmdRunner.Run(gitCmd, "fetch", "origin", branch); err != nil {
+		return fmt.Errorf("git fetch failed: %w", err)
+	}
+	return nil
 }
 
 // Prune runs 'git worktree prune' to clean up stale worktree metadata

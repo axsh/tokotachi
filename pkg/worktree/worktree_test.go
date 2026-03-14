@@ -176,3 +176,27 @@ func TestPrune(t *testing.T) {
 	require.Len(t, recs, 1)
 	assert.Contains(t, recs[0].Command, "worktree prune")
 }
+
+func TestRemoteBranchExists_DryRun(t *testing.T) {
+	m := newTestManager(t, true)
+	// In dry-run mode, ls-remote returns ("", nil) which means success.
+	// RemoteBranchExists should return true in dry-run mode.
+	result := m.RemoteBranchExists("test-remote-branch")
+	assert.True(t, result, "dry-run should treat ls-remote success as remote branch exists")
+
+	recs := m.CmdRunner.Recorder.Records()
+	require.Len(t, recs, 1)
+	assert.Contains(t, recs[0].Command, "ls-remote")
+	assert.Contains(t, recs[0].Command, "origin")
+	assert.Contains(t, recs[0].Command, "test-remote-branch")
+}
+
+func TestFetchBranch_DryRun(t *testing.T) {
+	m := newTestManager(t, true)
+	err := m.FetchBranch("test-remote-branch")
+	require.NoError(t, err)
+
+	recs := m.CmdRunner.Recorder.Records()
+	require.Len(t, recs, 1)
+	assert.Contains(t, recs[0].Command, "fetch origin test-remote-branch")
+}
