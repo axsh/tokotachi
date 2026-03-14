@@ -41,6 +41,7 @@ func init() {
 	rootCmd.AddCommand(shellCmd)
 	rootCmd.AddCommand(execCmd)
 	rootCmd.AddCommand(prCmd)
+	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(scaffoldCmd)

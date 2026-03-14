@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/axsh/tokotachi/internal/cmdexec"
 	"github.com/axsh/tokotachi/internal/report"
 	"github.com/axsh/tokotachi/pkg/action"
 	"github.com/axsh/tokotachi/pkg/editor"
@@ -51,6 +53,11 @@ func runOpen(cmd *cobra.Command, args []string) error {
 		projectName = "tt"
 	}
 
+	// Capture current HEAD branch name before creating worktree (for BaseBranch recording)
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
+	baseBranch, _ := ctx.CmdRunner.RunWithOpts(cmdexec.CheckOpt(), gitCmd, "rev-parse", "--abbrev-ref", "HEAD")
+	baseBranch = strings.TrimSpace(baseBranch)
+
 	// Step 1: Create worktree if not exists
 	wm := &worktree.Manager{CmdRunner: ctx.CmdRunner, RepoRoot: ctx.RepoRoot}
 	if !wm.Exists(ctx.Branch) {
@@ -61,6 +68,25 @@ func runOpen(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("worktree creation failed: %w", err)
 		}
 		ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "Worktree creation", Success: true})
+	}
+
+	// Record BaseBranch in state file
+	{
+		statePath := state.StatePath(ctx.RepoRoot, ctx.Branch)
+		sf, _ := state.Load(statePath)
+		if sf.Branch == "" {
+			sf.Branch = ctx.Branch
+			sf.CreatedAt = time.Now()
+		}
+		if sf.BaseBranch == "" && baseBranch != "" {
+			sf.BaseBranch = baseBranch
+		}
+		if sf.CodeStatus == nil {
+			sf.CodeStatus = &state.CodeStatus{
+				Status: state.CodeStatusLocal,
+			}
+		}
+		_ = state.Save(statePath, sf)
 	}
 
 	// Step 2: Start container if feature is specified
