@@ -427,9 +427,9 @@ func List(repoURL string, repoRoot string, filterCategory string) ([]ScaffoldEnt
 	if repoRoot != "" {
 		cache := NewCacheStore(repoRoot)
 		if cache.IsValid(meta.UpdatedAt) {
-			cached, err := cache.Load()
-			if err == nil && cached != nil {
-				catalogData = cached.CatalogData
+			_, data, loadErr := cache.Load()
+			if loadErr == nil && data != nil {
+				catalogData = data
 			}
 		}
 	}
@@ -443,10 +443,7 @@ func List(repoURL string, repoRoot string, filterCategory string) ([]ScaffoldEnt
 		// Save to cache
 		if repoRoot != "" {
 			cache := NewCacheStore(repoRoot)
-			_ = cache.Save(&CachedCatalog{
-				UpdatedAt:   meta.UpdatedAt,
-				CatalogData: catalogData,
-			})
+			_ = cache.Save(meta.UpdatedAt, catalogData)
 		}
 	}
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 // requireGitHubReachable verifies that the GitHub API is accessible.
@@ -229,23 +230,24 @@ func TestScaffoldDefaultLocaleJa(t *testing.T) {
 	}
 }
 
-// TestScaffoldCwdFlag verifies that --cwd forces the current working
-// directory as the scaffold root, bypassing Git root auto-detection.
-// Uses a non-git temporary directory to confirm CWD override behavior.
-func TestScaffoldCwdFlag(t *testing.T) {
+// TestScaffoldRootFlag verifies that --root forces the specified directory
+// as the scaffold root, bypassing Git root auto-detection.
+// Uses a non-git temporary directory to confirm --root override behavior.
+func TestScaffoldRootFlag(t *testing.T) {
 	requireGitHubReachable(t)
 
 	tmpDir := t.TempDir()
 	// Intentionally NOT calling initGitRepo — this is a non-git directory.
 
-	stdout, stderr, code := runTTInDir(t, tmpDir, "scaffold", "--cwd", "--yes")
+	// Run from a different directory, but target tmpDir via --root
+	stdout, stderr, code := runTTInDir(t, os.TempDir(), "scaffold", "--root", tmpDir, "--yes")
 	require.Equal(t, 0, code,
-		"tt scaffold --cwd --yes failed.\nSTDOUT:\n%s\nSTDERR:\n%s", stdout, stderr)
+		"tt scaffold --root %s --yes failed.\nSTDOUT:\n%s\nSTDERR:\n%s", tmpDir, stdout, stderr)
 
-	// Verify template files were created in the CWD (tmpDir)
+	// Verify template files were created in the --root target directory
 	readmePath := filepath.Join(tmpDir, "features", "README.md")
 	_, err := os.Stat(readmePath)
-	assert.NoError(t, err, "Expected features/README.md to be created in CWD with --cwd flag")
+	assert.NoError(t, err, "Expected features/README.md to be created in --root target directory")
 }
 
 // TestScaffoldWithDependencies verifies that the depends_on chain is
@@ -301,6 +303,37 @@ func TestScaffoldWithDependencies(t *testing.T) {
 		info, err := os.Stat(featureDir)
 		require.NoError(t, err, "features/ directory should exist")
 		assert.True(t, info.IsDir(), "features/ should be a directory")
+	})
+
+	// Verify download history records static scaffolds but not dynamic ones
+	t.Run("DownloadHistoryRecording", func(t *testing.T) {
+		historyPath := filepath.Join(tmpDir, ".kotoshiro", "tokotachi", "downloaded.yaml")
+		data, err := os.ReadFile(historyPath)
+		require.NoError(t, err, "downloaded.yaml should exist after dependency chain scaffold")
+
+		content := string(data)
+
+		// Static scaffolds should be recorded
+		assert.Contains(t, content, "root",
+			"root category (static) should be in download history")
+		assert.Contains(t, content, "default",
+			"default name (static) should be in download history")
+		assert.Contains(t, content, "project",
+			"project category (static) should be in download history")
+		assert.Contains(t, content, "axsh-go-standard",
+			"axsh-go-standard name should be in download history")
+
+		// Dynamic scaffold (feature/axsh-go-standard with {{feature_name}}) should NOT be recorded
+		// The "feature" category key should not exist in the history.
+		// Note: We check that the content does NOT contain the feature category as a top-level key.
+		// Since "feature" could appear in other contexts, we use YAML parsing for precise check.
+		var history map[string]any
+		require.NoError(t, yaml.Unmarshal(data, &history))
+		historyMap, ok := history["history"].(map[string]any)
+		require.True(t, ok, "history should be a map")
+		_, hasFeature := historyMap["feature"]
+		assert.False(t, hasFeature,
+			"feature category (dynamic, uses {{feature_name}} in base_dir) should NOT be in download history")
 	})
 }
 

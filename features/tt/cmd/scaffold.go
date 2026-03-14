@@ -19,7 +19,7 @@ var (
 	scaffoldFlagList     bool
 	scaffoldFlagRepo     string
 	scaffoldFlagLang     string
-	scaffoldFlagCwd      bool
+	scaffoldFlagRoot     string
 	scaffoldFlagValues   []string
 	scaffoldFlagDefault  bool
 	scaffoldFlagSkipDeps bool
@@ -40,7 +40,7 @@ func init() {
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagList, "list", false, "List available scaffold templates")
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagRepo, "repo", "", "Override the default template repository URL")
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagLang, "lang", "", "Specify locale for template localization (e.g. ja, en)")
-	scaffoldCmd.Flags().BoolVar(&scaffoldFlagCwd, "cwd", false, "Use current working directory as root instead of auto-detecting Git root")
+	scaffoldCmd.Flags().StringVar(&scaffoldFlagRoot, "root", "", "Specify root directory path instead of auto-detecting Git root")
 	scaffoldCmd.Flags().StringArrayVar(&scaffoldFlagValues, "v", nil, "Set option value directly (key=value), repeatable")
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagDefault, "default", false, "Use default values for non-required options without prompting")
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagSkipDeps, "skip-deps", false, "Skip dependency resolution and apply only the specified scaffold")
@@ -48,7 +48,7 @@ func init() {
 }
 
 func runScaffold(cmd *cobra.Command, args []string) error {
-	repoRoot := resolveRepoRoot(scaffoldFlagCwd)
+	repoRoot := resolveRepoRoot(scaffoldFlagRoot)
 
 	logger := log.New(os.Stderr, flagVerbose)
 
@@ -147,16 +147,17 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 }
 
 // resolveRepoRoot determines the target root directory.
-// If useCwd is true, always uses os.Getwd().
+// If rootPath is non-empty, uses that path directly.
 // Otherwise, tries "git rev-parse --show-toplevel" first,
 // falling back to os.Getwd() on failure.
-func resolveRepoRoot(useCwd bool) string {
-	if !useCwd {
-		cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-		out, err := cmd.Output()
-		if err == nil {
-			return strings.TrimSpace(string(out))
-		}
+func resolveRepoRoot(rootPath string) string {
+	if rootPath != "" {
+		return rootPath
+	}
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	out, err := cmd.Output()
+	if err == nil {
+		return strings.TrimSpace(string(out))
 	}
 	wd, err := os.Getwd()
 	if err != nil {
