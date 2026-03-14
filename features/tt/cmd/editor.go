@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/axsh/tokotachi/internal/report"
 	"github.com/axsh/tokotachi/pkg/editor"
 	"github.com/axsh/tokotachi/pkg/plan"
-	"github.com/axsh/tokotachi/internal/report"
 	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
@@ -41,8 +41,7 @@ func runEditor(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	projectName := globalCfg.ProjectName
+	projectName := "tt"
 	if projectName == "" {
 		projectName = "tt"
 	}

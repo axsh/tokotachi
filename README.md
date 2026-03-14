@@ -19,12 +19,14 @@ The project is designed to work seamlessly with AI coding agents, enabling a spe
 ### Key Highlights
 
 - **Feature-based monorepo** — isolated modules under `features/`, each independently buildable and testable
-- **`tt` CLI** — a matrix-driven development environment orchestrator written in Go
+- **`tt` CLI** — a development environment orchestrator written in Go
 - **Template catalog** — version-pinned feature templates for reproducible scaffolding
 - **Agent workflows** — structured AI-assisted specification, planning, and implementation processes
 - **Multi-platform support** — Linux, macOS, and Windows with multiple editor/container combinations
 
 ## Repository Structure
+
+`tt` is built with `tt` itself.
 
 ```
 tokotachi/
@@ -53,6 +55,38 @@ tokotachi/
 ### tt — Development Environment Orchestrator
 
 The core feature of this repository. `tt` is a CLI tool that manages feature-level development environments across different **OS × Editor × Container** combinations.
+
+#### Quick Start
+
+```bash
+# 1. Generate a new feature from a template
+tt scaffold feature axsh-go-standard
+...(snip)...
+Options for feature/axsh-go-standard:
+? Feature name (feature_name) (myprog): 
+? Go module path (module_path) (github.com/axsh/tokotachi/features): 
+...(snip)
+
+# 2. Start working — creates worktree, starts container, opens editor
+tt open bug-fix-branch myprog
+
+# 3. Done — stops containers and deletes worktree
+tt close bug-fix-branch myprog
+```
+
+**`tt open`** is a syntax sugar that runs `create → up → editor` in sequence. If the container is already running, the `up` step is automatically skipped.
+
+**`tt close`** is a syntax sugar that runs `down → delete` in sequence with a safety confirmation prompt for uncommitted changes.
+
+#### Editor Selection
+
+The editor is resolved in the following priority order:
+
+1. `--editor` flag (e.g. `tt open mybranch tt --editor code`)
+2. `TT_EDITOR` environment variable
+3. Default: **cursor**
+
+Supported editors: `code` (VSCode), `cursor`, `ag` (Antigravity), `claude` (Claude Code).
 
 #### Primitive Commands
 
@@ -166,6 +200,27 @@ sudo mv tt /usr/local/bin/
 
 #### Windows
 
+**Option A: Installer Script (Recommended)**
+
+Installs to `%LOCALAPPDATA%\Axsh\Tokotachi\bin` and configures user PATH. No admin privileges required.
+
+```powershell
+# Clone and install
+git clone https://github.com/axsh/tokotachi.git
+cd tokotachi
+powershell -ExecutionPolicy Bypass -File .\scripts\dist\install.ps1
+```
+
+Open a new terminal and verify with `tt --help`.
+
+To uninstall:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dist\uninstall.ps1
+```
+
+**Option B: Manual Install**
+
 1. Download `tt_windows_amd64.zip` from [Releases](https://github.com/axsh/tokotachi/releases)
 2. Extract the zip file
 3. Move `tt.exe` to a directory in your `PATH`
@@ -222,23 +277,6 @@ This project uses an **AI-assisted development workflow** with structured phases
 
 Each phase includes a **human review checkpoint** before progressing to the next.
 
-### Configuration
-
-#### Project-level (`.devrc.yaml`)
-
-```yaml
-project_name: myproject
-default_editor: cursor
-default_container_mode: docker-local
-```
-
-#### Feature-level (`feature.yaml`)
-
-```yaml
-dev:
-  editor_default: code
-  container_mode: devcontainer
-```
 
 ## Contributing
 

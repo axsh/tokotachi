@@ -27,6 +27,8 @@ package managers.
 | `dev.sh` | Launch development environments | `./scripts/dist/dev.sh <feature-name>` |
 | `install-tools.sh` | Install developer tools locally | `./scripts/dist/install-tools.sh [--all \| <tool-id>...]` |
 | `bootstrap-tools.sh` | Initial setup for new developers | `./scripts/dist/bootstrap-tools.sh` |
+| `install.ps1` | Install tt to user-local directory (Windows) | `powershell -ExecutionPolicy Bypass -File .\scripts\dist\install.ps1` |
+| `uninstall.ps1` | Uninstall tt (Windows) | `powershell -ExecutionPolicy Bypass -File .\scripts\dist\uninstall.ps1` |
 
 ## Release Workflow
 

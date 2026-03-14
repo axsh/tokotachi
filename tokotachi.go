@@ -80,13 +80,26 @@ func (c *Client) newContext() (*log.Logger, *cmdexec.Runner, *action.Runner) {
 	return logger, runner, actionRunner
 }
 
-// resolveProjectName loads the project name from .devrc.yaml, defaulting to "tt".
-func (c *Client) resolveProjectName() string {
-	globalCfg, _ := resolve.LoadGlobalConfig(c.RepoRoot)
-	if globalCfg.ProjectName != "" {
-		return globalCfg.ProjectName
+// opContext holds shared objects for a single operation.
+type opContext struct {
+	logger       *log.Logger
+	runner       *cmdexec.Runner
+	actionRunner *action.Runner
+	wm           *worktree.Manager
+	projectName  string
+}
+
+// newOpContext builds a shared context for an operation.
+func (c *Client) newOpContext() *opContext {
+	logger, runner, actionRunner := c.newContext()
+	wm := &worktree.Manager{CmdRunner: runner, RepoRoot: c.RepoRoot}
+	return &opContext{
+		logger:       logger,
+		runner:       runner,
+		actionRunner: actionRunner,
+		wm:           wm,
+		projectName:  "tokotachi",
 	}
-	return "tt"
 }
 
 // reservedBranchNames that cannot be used.
@@ -106,21 +119,23 @@ func validateBranch(branch string) error {
 type CreateOptions struct{}
 
 // Create creates a new git branch and worktree.
-func (c *Client) Create(branch string, _ CreateOptions) error {
+func (c *Client) Create(branch string, opts CreateOptions) error {
 	if err := validateBranch(branch); err != nil {
 		return err
 	}
+	ctx := c.newOpContext()
+	return c.doCreate(ctx, branch, opts)
+}
 
-	logger, _, _ := c.newContext()
-	wm := &worktree.Manager{CmdRunner: &cmdexec.Runner{Logger: logger, DryRun: c.DryRun, Recorder: cmdexec.NewRecorder()}, RepoRoot: c.RepoRoot}
-
-	if wm.Exists(branch) {
-		logger.Info("Worktree already exists for branch %s", branch)
+// doCreate is the internal implementation of Create.
+func (c *Client) doCreate(ctx *opContext, branch string, _ CreateOptions) error {
+	if ctx.wm.Exists(branch) {
+		ctx.logger.Info("Worktree already exists for branch %s", branch)
 		return nil
 	}
 
-	logger.Info("Creating worktree for branch %s...", branch)
-	if err := wm.Create(branch); err != nil {
+	ctx.logger.Info("Creating worktree for branch %s...", branch)
+	if err := ctx.wm.Create(branch); err != nil {
 		return fmt.Errorf("worktree creation failed: %w", err)
 	}
 	return nil
@@ -136,6 +151,9 @@ type UpOptions struct {
 
 	// NoBuild skips image building.
 	NoBuild bool
+
+	// SkipIfRunning skips Up if the container is already running.
+	SkipIfRunning bool
 }
 
 // Up starts the development container for the given branch and feature.
@@ -146,25 +164,41 @@ func (c *Client) Up(branch, feature string, opts UpOptions) error {
 	if feature == "" {
 		return fmt.Errorf("feature is required for 'up' operation")
 	}
+	ctx := c.newOpContext()
+	return c.doUp(ctx, branch, feature, opts)
+}
 
-	logger, _, actionRunner := c.newContext()
-	projectName := c.resolveProjectName()
+// doUp is the internal implementation of Up.
+func (c *Client) doUp(ctx *opContext, branch, feature string, opts UpOptions) error {
+	containerName := resolve.ContainerName(ctx.projectName, feature)
+	imageName := resolve.ImageName(ctx.projectName, feature)
 
-	containerName := resolve.ContainerName(projectName, feature)
-	imageName := resolve.ImageName(projectName, feature)
-
-	rec := cmdexec.NewRecorder()
-	runner := &cmdexec.Runner{Logger: logger, DryRun: c.DryRun, Recorder: rec}
-	wm := &worktree.Manager{CmdRunner: runner, RepoRoot: c.RepoRoot}
-
-	if !wm.Exists(branch) {
+	if !ctx.wm.Exists(branch) {
 		return fmt.Errorf("worktree not found for branch %s. Use Create() first", branch)
+	}
+
+	// Resolve worktree path
+	worktreePath, err := resolve.Worktree(c.RepoRoot, branch)
+	if err != nil {
+		if c.DryRun {
+			worktreePath = ctx.wm.Path(branch)
+		} else {
+			return fmt.Errorf("worktree resolution failed: %w", err)
+		}
+	}
+
+	// SkipIfRunning: check container status first
+	if opts.SkipIfRunning {
+		containerState := ctx.actionRunner.Status(containerName, worktreePath)
+		if containerState == action.StateContainerRunning {
+			ctx.logger.Info("Container already running, skipping up")
+			return nil
+		}
 	}
 
 	// Build execution plan
 	currentOS := detect.CurrentOS()
-	globalCfg2, _ := resolve.LoadGlobalConfig(c.RepoRoot)
-	containerMode := matrix.ContainerMode(globalCfg2.DefaultContainerMode)
+	containerMode := matrix.ContainerMode("docker-local")
 
 	p := plan.Build(plan.Input{
 		Feature:       feature,
@@ -176,16 +210,6 @@ func (c *Client) Up(branch, feature string, opts UpOptions) error {
 		NoBuild:       opts.NoBuild,
 	})
 	_ = p
-
-	// Resolve worktree path
-	worktreePath, err := resolve.Worktree(c.RepoRoot, branch)
-	if err != nil {
-		if c.DryRun {
-			worktreePath = wm.Path(branch)
-		} else {
-			return fmt.Errorf("worktree resolution failed: %w", err)
-		}
-	}
 
 	// Load devcontainer.json
 	dcCfg, _ := resolve.LoadDevcontainerConfig(c.RepoRoot, feature, branch)
@@ -230,7 +254,7 @@ func (c *Client) Up(branch, feature string, opts UpOptions) error {
 		}
 	}
 
-	if err := actionRunner.Up(upOpts); err != nil {
+	if err := ctx.actionRunner.Up(upOpts); err != nil {
 		return fmt.Errorf("up failed: %w", err)
 	}
 
@@ -267,19 +291,22 @@ func (c *Client) Up(branch, feature string, opts UpOptions) error {
 type DownOptions struct{}
 
 // Down stops the development container for the given branch and feature.
-func (c *Client) Down(branch, feature string, _ DownOptions) error {
+func (c *Client) Down(branch, feature string, opts DownOptions) error {
 	if err := validateBranch(branch); err != nil {
 		return err
 	}
 	if feature == "" {
 		return fmt.Errorf("feature is required for 'down' operation")
 	}
+	ctx := c.newOpContext()
+	return c.doDown(ctx, branch, feature, opts)
+}
 
-	_, _, actionRunner := c.newContext()
-	projectName := c.resolveProjectName()
-	containerName := resolve.ContainerName(projectName, feature)
+// doDown is the internal implementation of Down.
+func (c *Client) doDown(ctx *opContext, branch, feature string, _ DownOptions) error {
+	containerName := resolve.ContainerName(ctx.projectName, feature)
 
-	if err := actionRunner.Down(containerName); err != nil {
+	if err := ctx.actionRunner.Down(containerName); err != nil {
 		return fmt.Errorf("down failed: %w", err)
 	}
 
@@ -306,121 +333,41 @@ func (c *Client) Open(branch, feature string, opts OpenOptions) error {
 	if err := validateBranch(branch); err != nil {
 		return err
 	}
+	ctx := c.newOpContext()
 
-	logger, _, actionRunner := c.newContext()
-	projectName := c.resolveProjectName()
-
-	rec := cmdexec.NewRecorder()
-	runner := &cmdexec.Runner{Logger: logger, DryRun: c.DryRun, Recorder: rec}
-	wm := &worktree.Manager{CmdRunner: runner, RepoRoot: c.RepoRoot}
-
-	// Step 1: Create worktree if not exists
-	if !wm.Exists(branch) {
-		logger.Info("Worktree not found, creating %s...", wm.Path(branch))
-		if err := wm.Create(branch); err != nil {
-			return fmt.Errorf("worktree creation failed: %w", err)
-		}
+	// Step 1: Create worktree
+	if err := c.doCreate(ctx, branch, CreateOptions{}); err != nil {
+		return err
 	}
 
-	// Step 2: Start container if feature is specified
+	// Step 2: Up container (if feature specified)
 	if feature != "" {
-		containerName := resolve.ContainerName(projectName, feature)
-		imageName := resolve.ImageName(projectName, feature)
-
-		worktreePath, wpErr := resolve.Worktree(c.RepoRoot, branch)
-		if wpErr != nil {
-			worktreePath = wm.Path(branch)
-		}
-
-		containerState := actionRunner.Status(containerName, worktreePath)
-		if containerState != action.StateContainerRunning {
-			logger.Info("Starting container...")
-
-			upOpts := action.UpOptions{
-				ContainerName: containerName,
-				ImageName:     imageName,
-				WorktreePath:  worktreePath,
-				FeaturePath:   filepath.Join(c.RepoRoot, "features", feature),
-			}
-
-			dcCfg, _ := resolve.LoadDevcontainerConfig(c.RepoRoot, feature, branch)
-			if !dcCfg.IsEmpty() {
-				if dcCfg.HasDockerfile() {
-					configDir := dcCfg.ConfigDir()
-					upOpts.DockerfilePath = filepath.Join(configDir, dcCfg.Build.Dockerfile)
-					if dcCfg.Build.Context != "" {
-						upOpts.BuildContext = filepath.Join(configDir, dcCfg.Build.Context)
-					} else {
-						upOpts.BuildContext = configDir
-					}
-				}
-				if dcCfg.Image != "" && !dcCfg.HasDockerfile() {
-					upOpts.ImageName = dcCfg.Image
-					upOpts.NoBuild = true
-				}
-				upOpts.WorkspaceFolder = dcCfg.WorkspaceFolder
-				upOpts.Mounts = dcCfg.Mounts
-				upOpts.ContainerEnv = dcCfg.ContainerEnv
-				upOpts.RemoteUser = dcCfg.RemoteUser
-			}
-
-			gitInfo, gitErr := resolve.DetectGitWorktree(worktreePath)
-			if gitErr == nil && gitInfo.IsWorktree {
-				upOpts.GitWorktree = &gitInfo
-				overrideFile, oErr := resolve.CreateContainerGitFile(os.TempDir())
-				if oErr == nil {
-					upOpts.GitOverrideFile = overrideFile
-				}
-			}
-
-			if err := actionRunner.Up(upOpts); err != nil {
-				return fmt.Errorf("up failed: %w", err)
-			}
-
-			// Save state
-			statePath := state.StatePath(c.RepoRoot, branch)
-			sf, _ := state.Load(statePath)
-			if sf.Branch == "" {
-				sf.Branch = branch
-				sf.CreatedAt = time.Now()
-			}
-			sf.SetFeature(feature, state.FeatureState{
-				Status:    state.StatusActive,
-				StartedAt: time.Now(),
-				Connectivity: state.Connectivity{
-					Docker: state.DockerConnectivity{
-						Enabled:       true,
-						ContainerName: containerName,
-						Devcontainer:  !dcCfg.IsEmpty(),
-					},
-				},
-			})
-			if sf.CodeStatus == nil {
-				sf.CodeStatus = &state.CodeStatus{
-					Status: state.CodeStatusLocal,
-				}
-			}
-			_ = state.Save(statePath, sf)
+		if err := c.doUp(ctx, branch, feature, UpOptions{SkipIfRunning: true}); err != nil {
+			return err
 		}
 	}
 
 	// Step 3: Open editor
+	return c.doEditor(ctx, branch, feature, opts.Editor)
+}
+
+// doEditor opens the editor for the given branch and feature.
+func (c *Client) doEditor(ctx *opContext, branch, feature, editorFlag string) error {
 	worktreePath, err := resolve.Worktree(c.RepoRoot, branch)
 	if err != nil {
 		if c.DryRun {
-			worktreePath = wm.Path(branch)
+			worktreePath = ctx.wm.Path(branch)
 		} else {
 			return fmt.Errorf("worktree resolution failed: %w", err)
 		}
 	}
 
 	currentOS := detect.CurrentOS()
-	editorName := detect.Editor(opts.Editor)
+	editorName := detect.Editor(editorFlag)
 	if editorName == "" {
 		editorName = detect.EditorCursor
 	}
-	globalCfg3, _ := resolve.LoadGlobalConfig(c.RepoRoot)
-	containerMode := matrix.ContainerMode(globalCfg3.DefaultContainerMode)
+	containerMode := matrix.ContainerMode("docker-local")
 
 	p := plan.Build(plan.Input{
 		Feature:       feature,
@@ -437,18 +384,18 @@ func (c *Client) Open(branch, feature string, opts OpenOptions) error {
 
 	var containerName string
 	if feature != "" {
-		containerName = resolve.ContainerName(projectName, feature)
+		containerName = resolve.ContainerName(ctx.projectName, feature)
 	}
 	tryDevcontainer := p.TryDevcontainerAttach && feature != ""
 
-	if _, err := actionRunner.Open(launcher, editor.LaunchOptions{
+	if _, err := ctx.actionRunner.Open(launcher, editor.LaunchOptions{
 		WorktreePath:    worktreePath,
 		ContainerName:   containerName,
 		NewWindow:       true,
 		TryDevcontainer: tryDevcontainer,
-		Logger:          logger,
+		Logger:          ctx.logger,
 		DryRun:          c.DryRun,
-		CmdRunner:       runner,
+		CmdRunner:       ctx.runner,
 	}); err != nil {
 		return fmt.Errorf("open failed: %w", err)
 	}
@@ -476,14 +423,12 @@ func (c *Client) Close(branch string, opts CloseOptions) error {
 	if err := validateBranch(branch); err != nil {
 		return err
 	}
+	ctx := c.newOpContext()
+	return c.doClose(ctx, branch, opts)
+}
 
-	logger, _, actionRunner := c.newContext()
-	projectName := c.resolveProjectName()
-
-	rec := cmdexec.NewRecorder()
-	runner := &cmdexec.Runner{Logger: logger, DryRun: c.DryRun, Recorder: rec}
-	wm := &worktree.Manager{CmdRunner: runner, RepoRoot: c.RepoRoot}
-
+// doClose is the internal implementation of Close.
+func (c *Client) doClose(ctx *opContext, branch string, opts CloseOptions) error {
 	stdin := c.Stdin
 	if stdin == nil {
 		stdin = os.Stdin
@@ -494,16 +439,16 @@ func (c *Client) Close(branch string, opts CloseOptions) error {
 		depth = 10
 	}
 
-	if err := actionRunner.Close(action.CloseOptions{
+	if err := ctx.actionRunner.Close(action.CloseOptions{
 		Branch:      branch,
 		Force:       opts.Force,
 		RepoRoot:    c.RepoRoot,
-		ProjectName: projectName,
+		ProjectName: ctx.projectName,
 		Depth:       depth,
 		Yes:         opts.Yes,
 		Verbose:     opts.Verbose,
 		Stdin:       stdin,
-	}, wm); err != nil {
+	}, ctx.wm); err != nil {
 		return fmt.Errorf("close failed: %w", err)
 	}
 	return nil
@@ -632,15 +577,12 @@ func (c *Client) Status(branch string, _ StatusOptions) (*StatusResult, error) {
 		return nil, err
 	}
 
-	logger, _, _ := c.newContext()
-	rec := cmdexec.NewRecorder()
-	runner := &cmdexec.Runner{Logger: logger, DryRun: c.DryRun, Recorder: rec}
-	wm := &worktree.Manager{CmdRunner: runner, RepoRoot: c.RepoRoot}
+	ctx := c.newOpContext()
 
 	result := &StatusResult{
 		Branch:         branch,
-		WorktreeExists: wm.Exists(branch),
-		WorktreePath:   wm.Path(branch),
+		WorktreeExists: ctx.wm.Exists(branch),
+		WorktreePath:   ctx.wm.Path(branch),
 	}
 
 	statePath := state.StatePath(c.RepoRoot, branch)
@@ -668,12 +610,10 @@ type ListOptions struct{}
 
 // List returns all worktree branches.
 func (c *Client) List(_ ListOptions) ([]ListEntry, error) {
-	logger, _, _ := c.newContext()
-	rec := cmdexec.NewRecorder()
-	runner := &cmdexec.Runner{Logger: logger, DryRun: c.DryRun, Recorder: rec}
+	ctx := c.newOpContext()
 
 	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
-	output, err := runner.Run(gitCmd, "worktree", "list", "--porcelain")
+	output, err := ctx.runner.Run(gitCmd, "worktree", "list", "--porcelain")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list worktrees: %w", err)
 	}

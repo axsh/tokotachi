@@ -25,10 +25,7 @@ func Run(opts Options) (*Report, error) {
 	// 2. Repository structure
 	report.Results = append(report.Results, checkRepoStructure(opts.RepoRoot)...)
 
-	// 3. Global config
-	report.Results = append(report.Results, checkGlobalConfig(opts.RepoRoot)...)
-
-	// 4. Features
+	// 3. Features
 	var featureNames []string
 	if opts.FeatureFilter != "" {
 		// Validate that the feature exists
@@ -70,11 +67,6 @@ func applyFixes(repoRoot string, report *Report) {
 		var fixMsg string
 
 		switch {
-		// .devrc.yaml not found
-		case res.Category == categoryConfig && res.Name == ".devrc.yaml" && res.Status == StatusWarn:
-			fixErr = fixGlobalConfig(repoRoot)
-			fixMsg = "created with default settings"
-
 		// Directory not found (work/, scripts/)
 		case res.Category == categoryRepo && (res.Status == StatusWarn || res.Status == StatusFail):
 			dirName := strings.TrimSuffix(res.Name, "/")

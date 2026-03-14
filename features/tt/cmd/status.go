@@ -24,8 +24,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 	defer finalizeReport(ctx)
 
-	globalCfg, _ := resolve.LoadGlobalConfig(ctx.RepoRoot)
-	projectName := globalCfg.ProjectName
+	projectName := "tt"
 	if projectName == "" {
 		projectName = "tt"
 	}
