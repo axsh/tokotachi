@@ -38,7 +38,7 @@ if [[ ! -d "$RELEASE_DIR" ]] || [[ -z "$(ls -A "$RELEASE_DIR" 2>/dev/null)" ]]; 
 fi
 
 # ─── Create GitHub Release ──────────────────────────────────────────
-TAG="${TOOL_ID}-${VERSION}"
+TAG="${VERSION}"
 TITLE="${TOOL_ID} ${VERSION}"
 
 # Release notes
