@@ -1,0 +1,6 @@
+# Global Application Configuration
+credentials_path: "./secrets/credential.yaml"
+
+llm:
+  provider: "openai"
+  model: "gpt-4.1"

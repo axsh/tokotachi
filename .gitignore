@@ -12,6 +12,9 @@ tmp/
 # Worktrees
 work/*
 
+# Secrets
+features/release-note/settings/secrets/
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -226,6 +226,46 @@ build_tt() {
 }
 
 # ============================================================
+# release-note Build & Unit Test
+# ============================================================
+build_release_note() {
+    step "release-note (Go): Build & Unit Test"
+
+    local rn_dir="$PROJECT_ROOT/features/release-note"
+
+    if [[ ! -f "$rn_dir/go.mod" ]]; then
+        warn "features/release-note/go.mod not found — skipping release-note build."
+        return 0
+    fi
+
+    cd "$rn_dir"
+
+    # --- Build ---
+    info "Building release-note..."
+    if go build .; then
+        success "release-note build succeeded."
+    else
+        fail "release-note build failed."
+        FAILED=true
+        cd "$PROJECT_ROOT"
+        return 1
+    fi
+
+    # --- Unit Tests ---
+    info "Running release-note unit tests..."
+    if go test -v -count=1 ./...; then
+        success "All release-note unit tests passed."
+    else
+        fail "release-note unit tests failed."
+        FAILED=true
+        cd "$PROJECT_ROOT"
+        return 1
+    fi
+
+    cd "$PROJECT_ROOT"
+}
+
+# ============================================================
 # Main
 # ============================================================
 main() {
@@ -242,6 +282,9 @@ main() {
 
     # Build tt
     build_tt
+
+    # Build release-note
+    build_release_note
 
     # Run frontend unless --backend-only
     if [[ "$BACKEND_ONLY" == "false" ]]; then

@@ -1,4 +1,4 @@
-module github.com/axsh/tokotachi/tests/integration-test
+module github.com/axsh/tokotachi/tests/tt
 
 go 1.24.0
 
