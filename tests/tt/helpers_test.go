@@ -23,7 +23,7 @@ func projectRoot() string {
 	if !ok {
 		panic("failed to get caller information")
 	}
-	// helpers_test.go is in tests/integration-test/
+	// helpers_test.go is in tests/tt/
 	dir := filepath.Dir(filename)
 	root, err := filepath.Abs(filepath.Join(dir, "..", ".."))
 	if err != nil {

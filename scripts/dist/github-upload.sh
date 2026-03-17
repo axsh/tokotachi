@@ -164,20 +164,38 @@ echo ""
 
 # ─── Step 1: Build ──────────────────────────────────────────────────
 
-info "=== Step 1/3: Build ==="
+info "=== Step 1/4: Build ==="
 "${SCRIPT_DIR}/build.sh" "$TOOL_ID"
 
-# ─── Step 2: Release ───────────────────────────────────────────────
+# ─── Step 2: Generate Release Notes ────────────────────────────────
 
-info "=== Step 2/3: Release ==="
+info "=== Step 2/4: Generate Release Notes ==="
+RELEASE_NOTE_DIR="${REPO_ROOT}/features/release-note"
+if [[ -f "${RELEASE_NOTE_DIR}/go.mod" ]]; then
+  if (cd "$RELEASE_NOTE_DIR" && go run . \
+        --tool-id "$TOOL_ID" \
+        --version "$NEW_VERSION" \
+        --repo-root "$REPO_ROOT"); then
+    pass "Release notes generated."
+  else
+    warn "Release note generation failed. Continuing with auto-generated notes."
+  fi
+else
+  warn "Release note generator not found. Skipping."
+fi
+
+# ─── Step 3: Release ───────────────────────────────────────────────
+
+info "=== Step 3/4: Release ==="
 "${SCRIPT_DIR}/release.sh" "$TOOL_ID" "$NEW_VERSION"
 
-# ─── Step 3: Publish ───────────────────────────────────────────────
+# ─── Step 4: Publish ───────────────────────────────────────────────
 
-info "=== Step 3/3: Publish ==="
+info "=== Step 4/4: Publish ==="
 "${SCRIPT_DIR}/publish.sh" "$TOOL_ID" "$NEW_VERSION"
 
 # ─── Done ───────────────────────────────────────────────────────────
 
 echo ""
 pass "Successfully uploaded ${TOOL_ID} ${NEW_VERSION} to GitHub!"
+
