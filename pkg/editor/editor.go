@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
-	"github.com/axsh/tokotachi/internal/log"
+	pkglog "github.com/axsh/tokotachi/pkg/log"
 )
 
 // LaunchOptions holds parameters for launching an editor.
@@ -14,7 +14,7 @@ type LaunchOptions struct {
 	ContainerName   string
 	NewWindow       bool
 	TryDevcontainer bool
-	Logger          *log.Logger
+	Logger          pkglog.Logger
 	DryRun          bool
 	CmdRunner       *cmdexec.Runner
 }

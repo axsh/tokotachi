@@ -23,6 +23,7 @@ import (
 	"github.com/axsh/tokotachi/pkg/action"
 	"github.com/axsh/tokotachi/pkg/detect"
 	"github.com/axsh/tokotachi/pkg/editor"
+	pkglog "github.com/axsh/tokotachi/pkg/log"
 	"github.com/axsh/tokotachi/pkg/matrix"
 	"github.com/axsh/tokotachi/pkg/plan"
 	"github.com/axsh/tokotachi/pkg/resolve"
@@ -42,6 +43,10 @@ type Client struct {
 
 	// DryRun enables dry-run mode (actions are logged but not executed).
 	DryRun bool
+
+	// Logger is the logger for output. If nil, a default logger is created.
+	// External projects can inject their own Logger implementation.
+	Logger pkglog.Logger
 
 	// Stdout is the writer for standard output. Defaults to os.Stdout if nil.
 	Stdout io.Writer
@@ -64,12 +69,17 @@ func NewClient(repoRoot string) *Client {
 }
 
 // newContext builds internal context objects from Client settings.
-func (c *Client) newContext() (*log.Logger, *cmdexec.Runner, *action.Runner) {
+func (c *Client) newContext() (pkglog.Logger, *cmdexec.Runner, *action.Runner) {
 	stderr := c.Stderr
 	if stderr == nil {
 		stderr = os.Stderr
 	}
-	logger := log.New(stderr, c.Verbose)
+	var logger pkglog.Logger
+	if c.Logger != nil {
+		logger = c.Logger
+	} else {
+		logger = log.New(stderr, c.Verbose)
+	}
 	rec := cmdexec.NewRecorder()
 	runner := &cmdexec.Runner{Logger: logger, DryRun: c.DryRun, Recorder: rec}
 	actionRunner := &action.Runner{
@@ -82,7 +92,7 @@ func (c *Client) newContext() (*log.Logger, *cmdexec.Runner, *action.Runner) {
 
 // opContext holds shared objects for a single operation.
 type opContext struct {
-	logger       *log.Logger
+	logger       pkglog.Logger
 	runner       *cmdexec.Runner
 	actionRunner *action.Runner
 	wm           *worktree.Manager
@@ -496,7 +506,12 @@ func (c *Client) Scaffold(category, name string, opts ScaffoldOptions) error {
 		stdin = os.Stdin
 	}
 
-	logger := log.New(stderr, c.Verbose)
+	var logger pkglog.Logger
+	if c.Logger != nil {
+		logger = c.Logger
+	} else {
+		logger = log.New(stderr, c.Verbose)
+	}
 
 	overrides, err := scaffold.ParseOptionOverrides(opts.Values)
 	if err != nil {

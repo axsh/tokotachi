@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
-	"github.com/axsh/tokotachi/internal/log"
+	pkglog "github.com/axsh/tokotachi/pkg/log"
 )
 
 const maxDisplayLines = 10
@@ -82,7 +82,7 @@ func collectPendingChanges(cmdRunner *cmdexec.Runner, worktreePath string) Pendi
 		Dir:          worktreePath,
 		QuietCmd:     true,
 		FailLevelSet: true,
-		FailLevel:    log.LevelDebug,
+		FailLevel:    pkglog.LevelDebug,
 		FailLabel:    "SKIP",
 	}
 
@@ -112,7 +112,7 @@ func collectPendingChanges(cmdRunner *cmdexec.Runner, worktreePath string) Pendi
 }
 
 // displayPendingChanges formats and prints pending changes via logger.
-func displayPendingChanges(logger *log.Logger, changes PendingChanges, verbose bool) {
+func displayPendingChanges(logger pkglog.Logger, changes PendingChanges, verbose bool) {
 	logger.Info("== Pending changes in worktree ==")
 
 	categories := []struct {

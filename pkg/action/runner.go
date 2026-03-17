@@ -2,12 +2,12 @@ package action
 
 import (
 	"github.com/axsh/tokotachi/internal/cmdexec"
-	"github.com/axsh/tokotachi/internal/log"
+	pkglog "github.com/axsh/tokotachi/pkg/log"
 )
 
 // Runner executes container and editor actions via cmdexec.
 type Runner struct {
-	Logger    *log.Logger
+	Logger    pkglog.Logger
 	DryRun    bool
 	CmdRunner *cmdexec.Runner
 }
