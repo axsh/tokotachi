@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/axsh/tokotachi/internal/log"
+	pkglog "github.com/axsh/tokotachi/pkg/log"
 )
 
 // ExecRecord stores one command execution history.
@@ -49,19 +49,19 @@ func (r *Recorder) Add(rec ExecRecord) {
 
 // RunOption controls logging behavior for command execution.
 type RunOption struct {
-	FailLevel    log.Level // Log level on failure
-	FailLevelSet bool      // If true, use FailLevel; if false, default to LevelError
-	FailLabel    string    // Label tag on failure (default: "FAIL")
-	QuietCmd     bool      // If true, [CMD] log uses LevelDebug instead of LevelInfo
-	Dir          string    // Working directory for command execution (empty = inherit process cwd)
+	FailLevel    pkglog.Level // Log level on failure
+	FailLevelSet bool         // If true, use FailLevel; if false, default to LevelError
+	FailLabel    string       // Label tag on failure (default: "FAIL")
+	QuietCmd     bool         // If true, [CMD] log uses LevelDebug instead of LevelInfo
+	Dir          string       // Working directory for command execution (empty = inherit process cwd)
 }
 
 // effectiveFailLevel returns the log level to use on failure.
-func (o RunOption) effectiveFailLevel() log.Level {
+func (o RunOption) effectiveFailLevel() pkglog.Level {
 	if o.FailLevelSet {
 		return o.FailLevel
 	}
-	return log.LevelError
+	return pkglog.LevelError
 }
 
 // effectiveFailLabel returns the label tag to use on failure.
@@ -76,18 +76,18 @@ func (o RunOption) effectiveFailLabel() string {
 // Failures are logged at DEBUG level with [SKIP] label.
 // Command execution itself is also logged at DEBUG level.
 func CheckOpt() RunOption {
-	return RunOption{FailLevel: log.LevelDebug, FailLevelSet: true, FailLabel: "SKIP", QuietCmd: true}
+	return RunOption{FailLevel: pkglog.LevelDebug, FailLevelSet: true, FailLabel: "SKIP", QuietCmd: true}
 }
 
 // ToleratedOpt returns a RunOption for tolerated-failure commands.
 // Failures are logged at WARN level.
 func ToleratedOpt() RunOption {
-	return RunOption{FailLevel: log.LevelWarn, FailLevelSet: true, FailLabel: "FAIL", QuietCmd: false}
+	return RunOption{FailLevel: pkglog.LevelWarn, FailLevelSet: true, FailLabel: "FAIL", QuietCmd: false}
 }
 
 // Runner executes external commands with logging and recording.
 type Runner struct {
-	Logger   *log.Logger
+	Logger   pkglog.Logger
 	DryRun   bool
 	Recorder *Recorder
 }

@@ -3,16 +3,20 @@ package log
 import (
 	"fmt"
 	"io"
+
+	pkglog "github.com/axsh/tokotachi/pkg/log"
 )
 
-// Level represents log severity.
-type Level int
+// Level is an alias for pkg/log.Level, ensuring compatibility
+// between internal and public packages.
+type Level = pkglog.Level
 
+// Re-export level constants from pkg/log for internal use.
 const (
-	LevelDebug Level = iota
-	LevelInfo
-	LevelWarn
-	LevelError
+	LevelDebug = pkglog.LevelDebug
+	LevelInfo  = pkglog.LevelInfo
+	LevelWarn  = pkglog.LevelWarn
+	LevelError = pkglog.LevelError
 )
 
 // Logger provides leveled logging output.

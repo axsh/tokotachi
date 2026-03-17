@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/axsh/tokotachi/internal/github"
-	"github.com/axsh/tokotachi/internal/log"
+	pkglog "github.com/axsh/tokotachi/pkg/log"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,7 +23,7 @@ type RunOptions struct {
 	DryRun          bool
 	Yes             bool
 	Lang            string // Explicit locale (empty = auto-detect)
-	Logger          *log.Logger
+	Logger          pkglog.Logger
 	Stdout          io.Writer         // Output writer for plan display
 	Stdin           io.Reader         // Input reader for interactive prompts
 	OptionOverrides map[string]string // Values from --v key=value flags
@@ -359,7 +359,7 @@ func applyDependencyChain(plan *Plan, opts RunOptions) error {
 }
 
 // Rollback undoes the last scaffold operation.
-func Rollback(repoRoot string, logger *log.Logger) error {
+func Rollback(repoRoot string, logger pkglog.Logger) error {
 	info, err := LoadCheckpoint(repoRoot)
 	if err != nil {
 		return fmt.Errorf("no scaffold checkpoint found to rollback: %w", err)
@@ -557,7 +557,7 @@ type ZipScaffoldMeta struct {
 // base files from locale files, and applies locale overlay.
 // For legacy directory-based templates, it uses FetchDirectory + FetchFile.
 func fetchTemplateAndPlacement(downloader *github.Client, entry *ScaffoldEntry,
-	lang string, logger *log.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
+	lang string, logger pkglog.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
 
 	if strings.HasSuffix(entry.TemplateRef, ".zip") {
 		return fetchZipTemplateAndPlacement(downloader, entry, lang, logger, spinner)
@@ -567,7 +567,7 @@ func fetchTemplateAndPlacement(downloader *github.Client, entry *ScaffoldEntry,
 
 // fetchZipTemplateAndPlacement handles ZIP-based template archives.
 func fetchZipTemplateAndPlacement(downloader *github.Client, entry *ScaffoldEntry,
-	lang string, logger *log.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
+	lang string, logger pkglog.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
 
 	spinner.Start("Downloading template...")
 	zipData, err := downloader.FetchFile(entry.TemplateRef)
@@ -642,7 +642,7 @@ func fetchZipTemplateAndPlacement(downloader *github.Client, entry *ScaffoldEntr
 
 // fetchLegacyTemplateAndPlacement handles legacy directory-based templates.
 func fetchLegacyTemplateAndPlacement(downloader *github.Client, entry *ScaffoldEntry,
-	lang string, logger *log.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
+	lang string, logger pkglog.Logger, spinner *Spinner) ([]DownloadedFile, *Placement, error) {
 
 	// Fetch placement definition
 	var placement *Placement
