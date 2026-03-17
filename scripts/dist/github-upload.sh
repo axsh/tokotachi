@@ -43,13 +43,12 @@ get_current_version() {
 
   local tag
   tag=$(gh release list --limit 100 --json tagName --jq \
-    "[.[] | select(.tagName | startswith(\"${tool_id}-v\"))] | sort_by(.tagName) | last | .tagName // empty")
+    "[.[] | select(.tagName | test(\"^v[0-9]\"))] | sort_by(.tagName) | last | .tagName // empty")
 
   if [[ -z "$tag" ]]; then
     echo "v0.0.0"
   else
-    # Strip tool-id prefix: "tt-v1.0.0" → "v1.0.0"
-    echo "${tag#${tool_id}-}"
+    echo "$tag"
   fi
 }
 

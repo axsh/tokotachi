@@ -30,7 +30,7 @@ func (m *mockProvider) Summarize(_ context.Context, systemPrompt string, userCon
 
 func TestSummarizeBranch(t *testing.T) {
 	mock := &mockProvider{
-		responses: []string{"【新規】Feature A was added.\n【変更】Feature B was changed."},
+		responses: []string{"[New] Feature A was added.\n[Changed] Feature B was changed."},
 	}
 
 	s := summarizer.New(mock)
@@ -47,19 +47,19 @@ func TestSummarizeBranch(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result != "【新規】Feature A was added.\n【変更】Feature B was changed." {
+	if result != "[New] Feature A was added.\n[Changed] Feature B was changed." {
 		t.Errorf("unexpected result: %s", result)
 	}
 
 	// Verify system prompt mentions the three categories
-	if !strings.Contains(mock.lastSys, "新規") {
-		t.Error("system prompt should mention 新規")
+	if !strings.Contains(mock.lastSys, "New") {
+		t.Error("system prompt should mention New")
 	}
-	if !strings.Contains(mock.lastSys, "変更") {
-		t.Error("system prompt should mention 変更")
+	if !strings.Contains(mock.lastSys, "Changed") {
+		t.Error("system prompt should mention Changed")
 	}
-	if !strings.Contains(mock.lastSys, "削除") {
-		t.Error("system prompt should mention 削除")
+	if !strings.Contains(mock.lastSys, "Removed") {
+		t.Error("system prompt should mention Removed")
 	}
 }
 
@@ -71,8 +71,8 @@ func TestConsolidate(t *testing.T) {
 	s := summarizer.New(mock)
 
 	summaries := []string{
-		"【新規】Feature A was added.",
-		"【変更】Feature B was changed.",
+		"[New] Feature A was added.",
+		"[Changed] Feature B was changed.",
 	}
 
 	result, err := s.Consolidate(context.Background(), summaries)
@@ -85,7 +85,7 @@ func TestConsolidate(t *testing.T) {
 	}
 
 	// Verify system prompt mentions consolidation rules
-	if !strings.Contains(mock.lastSys, "統合") || !strings.Contains(mock.lastSys, "最終") {
+	if !strings.Contains(mock.lastSys, "consolidat") || !strings.Contains(mock.lastSys, "final") {
 		t.Error("system prompt should mention consolidation rules")
 	}
 }

@@ -9,29 +9,33 @@ import (
 	"github.com/axsh/tokotachi/features/release-note/internal/scanner"
 )
 
-const branchSummarySystemPrompt = `あなたはリリースノートの作成者です。以下の仕様書ファイルの内容を読み、
-ユーザー（プログラムの利用者）が受ける影響に着目して、変更を以下の3カテゴリに分類してください:
+const branchSummarySystemPrompt = `You are a release note author. Read the specification files below and
+classify the changes into the following three categories, focusing on
+the impact to the end user (the person using the program):
 
-(1)【新規】: 新しい機能、新しい設定などの登場
-(2)【変更】: 既存の機能・設定がどう変わるのか（Before → After）
-(3)【削除】: 廃止される機能、設定など
+(1) [New]: New features, new settings, etc.
+(2) [Changed]: How existing features/settings have changed (Before → After)
+(3) [Removed]: Deprecated features, settings, etc.
 
-各カテゴリごとに箇条書きで記述し、該当しないカテゴリは省略してください。
-ユーザーにとっての「差分」を簡潔に表現してください。`
+List items as bullet points under each category. Omit any category that
+has no items. Describe the "diff" from the user's perspective concisely.`
 
-const consolidateSystemPrompt = `以下は複数の変更の要約です。これらを統合し、最終的なリリースノートを作成してください。
+const consolidateSystemPrompt = `Below are summaries of multiple changes. Consolidate them into a final
+release note.
 
-統合ルール:
-- 中間状態を除去し、最終状態のみ記述する（例: 「AがBになった」「BがCになった」→「AがCになった」）
-- 同じ項目への重複した変更は最終状態のみ記述する
-- 削除と追加が同名の場合は「新しい挙動になった」等に統合する
-- 関連項目はグルーピングしてまとめる
-- 「結局最終的にどうなったのか」に着目すること
-- 冗長な変更履歴の列挙ではなく、利用者にとって分かりやすい最終差分を記述すること
+Consolidation rules:
+- Remove intermediate states and describe only the final state
+  (e.g. "A became B" + "B became C" → "A became C")
+- For duplicate changes to the same item, describe only the final state
+- If a removal and an addition share the same name, consolidate into
+  "behavior changed" or similar
+- Group related items together
+- Focus on "what is the final outcome"
+- Provide a clear final diff for the user, not a verbose change history
 
-出力フォーマット:
-(1)【新規】【変更】【削除】のカテゴリに分類して箇条書きで記述してください。
-該当しないカテゴリは省略してください。`
+Output format:
+Classify items under (1) [New], (2) [Changed], (3) [Removed] as bullet
+points. Omit any category that has no items.`
 
 // Summarizer orchestrates LLM-based summarization.
 type Summarizer struct {
