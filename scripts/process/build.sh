@@ -195,8 +195,14 @@ build_tt() {
     cd "$tt_dir"
 
     # --- Build ---
+    # Determine binary output name based on OS
+    local binary_name="tt"
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+        binary_name="tt.exe"
+    fi
+
     info "Building tt..."
-    if go build -o "$PROJECT_ROOT/bin/tt" .; then
+    if go build -o "$PROJECT_ROOT/bin/$binary_name" .; then
         success "tt build succeeded."
     else
         fail "tt build failed."

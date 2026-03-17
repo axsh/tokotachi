@@ -273,7 +273,16 @@ func applySingleScaffold(plan *Plan, opts RunOptions) error {
 	}
 	spinner.Stop()
 
-	if err := ApplyPostActions(placement.PostActions, opts.RepoRoot, placement.BaseDir); err != nil {
+	// Resolve template variables in baseDir for post-actions (same as ApplyFiles)
+	postActionsBaseDir := placement.BaseDir
+	if optionValues != nil && strings.Contains(postActionsBaseDir, "{{") {
+		var tmplErr error
+		postActionsBaseDir, tmplErr = ProcessTemplatePath(postActionsBaseDir, optionValues)
+		if tmplErr != nil {
+			return fmt.Errorf("failed to process base_dir template for post-actions: %w", tmplErr)
+		}
+	}
+	if err := ApplyPostActions(placement.PostActions, opts.RepoRoot, postActionsBaseDir); err != nil {
 		return fmt.Errorf("failed to apply post-actions: %w", err)
 	}
 
@@ -335,8 +344,17 @@ func applyDependencyChain(plan *Plan, opts RunOptions) error {
 		}
 		spinner.Stop()
 
-		// Apply post-actions
-		if err := ApplyPostActions(placement.PostActions, opts.RepoRoot, placement.BaseDir); err != nil {
+		// Resolve template variables in baseDir for post-actions
+		postActionsBaseDir := placement.BaseDir
+		if dp.OptionValues != nil && strings.Contains(postActionsBaseDir, "{{") {
+			var tmplErr error
+			postActionsBaseDir, tmplErr = ProcessTemplatePath(postActionsBaseDir, dp.OptionValues)
+			if tmplErr != nil {
+				return fmt.Errorf("failed to process base_dir template for post-actions %s/%s: %w",
+					category, name, tmplErr)
+			}
+		}
+		if err := ApplyPostActions(placement.PostActions, opts.RepoRoot, postActionsBaseDir); err != nil {
 			return fmt.Errorf("failed to apply post-actions for %s/%s: %w",
 				category, name, err)
 		}

@@ -329,6 +329,46 @@ func TestApplyPostActions_WithFilePermissions(t *testing.T) {
 	}
 }
 
+func TestApplyFilePermissions_WithTemplateBaseDir_Unexpanded(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Create files under the expanded path
+	scriptsDir := filepath.Join(tmpDir, "features", "myapp", "scripts")
+	require.NoError(t, os.MkdirAll(scriptsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(scriptsDir, "run.sh"), []byte("#!/bin/bash"), 0o644))
+
+	perms := []FilePermission{
+		{Pattern: "scripts/**/*.sh", Executable: boolPtr(true)},
+	}
+
+	// Unexpanded template variable in baseDir should cause an error
+	// because the directory "features/{{feature_name}}" does not exist.
+	err := applyFilePermissions(perms, tmpDir, "features/{{feature_name}}")
+	assert.Error(t, err)
+}
+
+func TestApplyFilePermissions_WithTemplateBaseDir_Expanded(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Create files under the expanded path
+	scriptsDir := filepath.Join(tmpDir, "features", "myapp", "scripts")
+	require.NoError(t, os.MkdirAll(scriptsDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(scriptsDir, "run.sh"), []byte("#!/bin/bash"), 0o644))
+
+	perms := []FilePermission{
+		{Pattern: "scripts/**/*.sh", Executable: boolPtr(true)},
+	}
+
+	// Expanded baseDir should work correctly
+	err := applyFilePermissions(perms, tmpDir, "features/myapp")
+	require.NoError(t, err)
+
+	// Verify permission was applied (platform-specific)
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(filepath.Join(scriptsDir, "run.sh"))
+		require.NoError(t, err)
+		assert.True(t, info.Mode()&0o111 != 0, "run.sh should be executable")
+	}
+}
+
 func TestBuildPlan_WithPermissionActions(t *testing.T) {
 	tmpDir := t.TempDir()
 	scriptsDir := filepath.Join(tmpDir, "scripts")

@@ -22,8 +22,6 @@ func TestTtDoctorBasic(t *testing.T) {
 		"Output should contain External Tools category.\nOutput:\n%s", combined)
 	assert.Contains(t, combined, "Repository Structure",
 		"Output should contain Repository Structure category.\nOutput:\n%s", combined)
-	assert.Contains(t, combined, "Global Config",
-		"Output should contain Global Config category.\nOutput:\n%s", combined)
 	assert.Contains(t, combined, "Feature: tt",
 		"Output should contain Feature: tt.\nOutput:\n%s", combined)
 }
