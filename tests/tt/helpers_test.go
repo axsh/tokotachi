@@ -113,6 +113,38 @@ func runTT(t *testing.T, args ...string) (stdout, stderr string, exitCode int) {
 	return stdout, stderr, exitCode
 }
 
+// runTTWithInput executes the tt binary with stdin content.
+// Returns stdout, stderr, and exit code.
+func runTTWithInput(t *testing.T, input string, args ...string) (stdout, stderr string, exitCode int) {
+	t.Helper()
+	binary := ttBinary(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, binary, args...)
+	cmd.Dir = projectRoot()
+	cmd.Stdin = strings.NewReader(input)
+
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	err := cmd.Run()
+	stdout = outBuf.String()
+	stderr = errBuf.String()
+
+	if err != nil {
+		if cmd.ProcessState != nil {
+			exitCode = cmd.ProcessState.ExitCode()
+		} else {
+			exitCode = -1
+		}
+	}
+
+	return stdout, stderr, exitCode
+}
+
 // ensureWorktree ensures that the worktree exists for the branch.
 // This is required because 'tt up' no longer creates worktrees automatically.
 // Does not fail on errors (the worktree may already exist).

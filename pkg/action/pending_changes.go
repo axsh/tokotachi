@@ -3,6 +3,7 @@ package action
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -11,6 +12,12 @@ import (
 )
 
 const maxDisplayLines = 10
+
+// PendingChangesDecision is the result of pending-changes confirmation.
+type PendingChangesDecision struct {
+	Approved    bool // true when deletion may continue
+	ForceDelete bool // true when deletion must use force flags
+}
 
 // PendingChanges holds categorized pending changes in a worktree.
 type PendingChanges struct {
@@ -132,35 +139,72 @@ func displayPendingChanges(logger pkglog.Logger, changes PendingChanges, verbose
 	}
 }
 
-// checkPendingChangesAndConfirm checks for pending changes and prompts
-// for confirmation. Returns true if the user confirms or there are no
-// pending changes or --yes is set. Returns false if user aborts.
-func (r *Runner) checkPendingChangesAndConfirm(opts CloseOptions, worktreePath string) bool {
-	if opts.Yes {
-		return true
-	}
-
-	changes := collectPendingChanges(r.CmdRunner, worktreePath)
+func decidePendingChangesWithInput(
+	logger pkglog.Logger,
+	changes PendingChanges,
+	yes bool,
+	verbose bool,
+	stdin io.Reader,
+	emptyPrompt string,
+) PendingChangesDecision {
 	total := changes.TotalCount()
+	forceDelete := total > 0
+
+	if yes {
+		if forceDelete {
+			logger.Info("Pending changes were accepted; using force deletion.")
+		}
+		return PendingChangesDecision{Approved: true, ForceDelete: forceDelete}
+	}
+
 	if total == 0 {
-		return true
+		if emptyPrompt == "" {
+			return PendingChangesDecision{Approved: true, ForceDelete: false}
+		}
+		fmt.Fprint(os.Stderr, emptyPrompt)
+	} else {
+		displayPendingChanges(logger, changes, verbose)
+		fmt.Fprintf(os.Stderr, "WARNING: Found %d pending change(s) in worktree. Are you sure you want to delete? [y/N]: ", total)
 	}
 
-	displayPendingChanges(r.Logger, changes, opts.Verbose)
-
-	fmt.Fprintf(os.Stderr, "WARNING: Found %d pending change(s) in worktree. Are you sure you want to delete? [y/N]: ", total)
-
-	if opts.Stdin == nil {
-		r.Logger.Info("Aborted (no input source for confirmation).")
-		return false
+	if stdin == nil {
+		logger.Info("Aborted (no input source for confirmation).")
+		return PendingChangesDecision{Approved: false, ForceDelete: false}
 	}
 
-	scanner := bufio.NewScanner(opts.Stdin)
+	scanner := bufio.NewScanner(stdin)
 	if scanner.Scan() {
 		response := strings.TrimSpace(strings.ToLower(scanner.Text()))
 		if response == "y" || response == "yes" {
-			return true
+			if forceDelete {
+				logger.Info("Pending changes were accepted; using force deletion.")
+			}
+			return PendingChangesDecision{Approved: true, ForceDelete: forceDelete}
 		}
 	}
-	return false
+	return PendingChangesDecision{Approved: false, ForceDelete: false}
+}
+
+func (r *Runner) checkPendingChangesAndDecide(opts CloseOptions, worktreePath string) PendingChangesDecision {
+	changes := collectPendingChanges(r.CmdRunner, worktreePath)
+	return decidePendingChangesWithInput(
+		r.Logger,
+		changes,
+		opts.Yes,
+		opts.Verbose,
+		opts.Stdin,
+		"Proceed? [y/N]: ",
+	)
+}
+
+func (r *Runner) checkPendingChangesAndDecideForDelete(opts DeleteOptions, worktreePath string) PendingChangesDecision {
+	changes := collectPendingChanges(r.CmdRunner, worktreePath)
+	return decidePendingChangesWithInput(
+		r.Logger,
+		changes,
+		opts.Yes,
+		false,
+		opts.Stdin,
+		"Proceed? [y/N]: ",
+	)
 }

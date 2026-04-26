@@ -1,7 +1,11 @@
 package integration_test
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -74,4 +78,48 @@ func TestTtDelete_ReservedBranch(t *testing.T) {
 		"tt delete main should fail")
 	assert.Contains(t, stderr, "reserved",
 		"error should mention reserved branch: %q", stderr)
+}
+
+func TestTtDelete_PendingChanges_Yes_UsesForceRemove(t *testing.T) {
+	branch := fmt.Sprintf("pending-yes-%d", time.Now().UnixNano())
+	worktreePath := filepath.Join(projectRoot(), "work", branch)
+
+	_, _, createExit := runTT(t, "create", branch)
+	require.Equal(t, 0, createExit, "tt create should succeed")
+
+	t.Cleanup(func() {
+		_, _, _ = runTT(t, "delete", "--force", "--yes", branch)
+	})
+
+	require.NoError(t, os.MkdirAll(worktreePath, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(worktreePath, "pending-untracked.txt"), []byte("pending"), 0o644))
+
+	stdout, stderr, exitCode := runTTWithInput(t, "yes\n", "delete", branch)
+	combined := stdout + stderr
+
+	assert.Equal(t, 0, exitCode, "tt delete should succeed with yes confirmation")
+	assert.NotContains(t, combined, "contains modified or untracked files",
+		"delete should not fail with missing --force: %s", combined)
+}
+
+func TestTtDelete_PendingChanges_No_Aborts(t *testing.T) {
+	branch := fmt.Sprintf("pending-no-%d", time.Now().UnixNano())
+	worktreePath := filepath.Join(projectRoot(), "work", branch)
+
+	_, _, createExit := runTT(t, "create", branch)
+	require.Equal(t, 0, createExit, "tt create should succeed")
+
+	t.Cleanup(func() {
+		_, _, _ = runTT(t, "delete", "--force", "--yes", branch)
+	})
+
+	require.NoError(t, os.MkdirAll(worktreePath, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(worktreePath, "pending-untracked.txt"), []byte("pending"), 0o644))
+
+	_, stderr, exitCode := runTTWithInput(t, "n\n", "delete", branch)
+	assert.Equal(t, 0, exitCode, "abort should not be treated as error")
+	assert.Contains(t, stderr, "Aborted", "stderr should contain abort message: %s", stderr)
+
+	_, statErr := os.Stat(worktreePath)
+	assert.NoError(t, statErr, "worktree should remain after abort")
 }

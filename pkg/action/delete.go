@@ -1,11 +1,9 @@
 package action
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/axsh/tokotachi/pkg/state"
 	"github.com/axsh/tokotachi/pkg/worktree"
@@ -61,9 +59,9 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 		}
 	}
 
-	// Phase 2: Confirmation prompt (skip for recursive child calls where Yes=true)
+	// Phase 2: Confirmation + pending changes decision.
+	// If pending changes are confirmed, use force deletion.
 	if !opts.Yes {
-		// Display preview
 		r.Logger.Info("Delete preview for branch: %s", opts.Branch)
 		if len(nested) > 0 {
 			r.Logger.Info("  Nested worktrees to delete first: %v", nested)
@@ -71,24 +69,15 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 		if hasDepthWarning {
 			r.Logger.Warn("  Depth limit (%d) may leave deeper nested worktrees behind.", opts.Depth)
 		}
-
-		// Ask for confirmation
-		if opts.Stdin == nil {
-			r.Logger.Info("Aborted (no input source for confirmation).")
-			return nil
-		}
-		fmt.Fprint(os.Stderr, "Proceed? [y/N]: ")
-		scanner := bufio.NewScanner(opts.Stdin)
-		if scanner.Scan() {
-			response := strings.TrimSpace(strings.ToLower(scanner.Text()))
-			if response != "y" && response != "yes" {
-				r.Logger.Info("Aborted.")
-				return nil
-			}
-		} else {
+	}
+	effectiveForce := opts.Force
+	if wm.Exists(opts.Branch) {
+		decision := r.checkPendingChangesAndDecideForDelete(opts, wm.Path(opts.Branch))
+		if !decision.Approved {
 			r.Logger.Info("Aborted.")
 			return nil
 		}
+		effectiveForce = effectiveForce || decision.ForceDelete
 	}
 
 	// Phase 3: Recursively delete nested worktrees (children first)
@@ -99,7 +88,7 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 			childRepoRoot := wm.Path(opts.Branch)
 			childOpts := DeleteOptions{
 				Branch:      childBranch,
-				Force:       opts.Force,
+				Force:       effectiveForce,
 				RepoRoot:    childRepoRoot,
 				ProjectName: opts.ProjectName,
 				Depth:       opts.Depth - 1,
@@ -120,7 +109,7 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 	// Phase 4: Remove worktree, branch, and state file
 	if wm.Exists(opts.Branch) {
 		r.Logger.Info("Removing worktree work/%s...", opts.Branch)
-		if err := wm.Remove(opts.Branch, opts.Force); err != nil {
+		if err := wm.Remove(opts.Branch, effectiveForce); err != nil {
 			r.Logger.Warn("Worktree remove failed: %v", err)
 			// Fallback: remove directory directly
 			wtPath := wm.Path(opts.Branch)
@@ -133,7 +122,7 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 	}
 
 	r.Logger.Info("Deleting branch %s...", opts.Branch)
-	if err := wm.DeleteBranch(opts.Branch, opts.Force); err != nil {
+	if err := wm.DeleteBranch(opts.Branch, effectiveForce); err != nil {
 		r.Logger.Warn("Branch delete failed: %v", err)
 	}
 
@@ -142,7 +131,7 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 	}
 
 	r.Logger.Info("Delete completed for branch %s", opts.Branch)
-	if opts.Force {
+	if effectiveForce {
 		r.Logger.Info("Pruning stale worktree metadata...")
 		if err := wm.Prune(); err != nil {
 			r.Logger.Warn("Worktree prune failed: %v", err)

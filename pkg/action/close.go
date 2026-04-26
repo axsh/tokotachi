@@ -55,20 +55,22 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 					r.Logger.Warn("State file remove failed: %v", rmErr)
 				}
 				r.Logger.Info("All features closed, deleting worktree and branch...")
-				// Check for pending changes before deletion
+				// Check for pending changes before deletion.
+				// If approved and pending changes exist, force deletion is enabled.
 				worktreePath := wm.Path(opts.Branch)
-				if !r.checkPendingChangesAndConfirm(opts, worktreePath) {
+				decision := r.checkPendingChangesAndDecide(opts, worktreePath)
+				if !decision.Approved {
 					r.Logger.Info("Aborted.")
 					return nil
 				}
 				deleteOpts := DeleteOptions{
 					Branch:      opts.Branch,
-					Force:       opts.Force,
+					Force:       opts.Force || decision.ForceDelete,
 					RepoRoot:    opts.RepoRoot,
 					ProjectName: opts.ProjectName,
 					Depth:       opts.Depth,
-					Yes:         opts.Yes,
-					Stdin:       opts.Stdin,
+					Yes:         true, // already confirmed here
+					Stdin:       nil,
 				}
 				return r.Delete(deleteOpts, wm)
 			}
@@ -115,9 +117,11 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 		r.Logger.Warn("State file remove failed: %v", rmErr)
 	}
 
-	// Check for pending changes before deletion
+	// Check for pending changes before deletion.
+	// If approved and pending changes exist, force deletion is enabled.
 	worktreePath := wm.Path(opts.Branch)
-	if !r.checkPendingChangesAndConfirm(opts, worktreePath) {
+	decision := r.checkPendingChangesAndDecide(opts, worktreePath)
+	if !decision.Approved {
 		r.Logger.Info("Aborted.")
 		return nil
 	}
@@ -125,12 +129,12 @@ func (r *Runner) Close(opts CloseOptions, wm *worktree.Manager) error {
 	// Delegate cleanup to Delete
 	deleteOpts := DeleteOptions{
 		Branch:      opts.Branch,
-		Force:       opts.Force,
+		Force:       opts.Force || decision.ForceDelete,
 		RepoRoot:    opts.RepoRoot,
 		ProjectName: opts.ProjectName,
 		Depth:       opts.Depth,
-		Yes:         opts.Yes,
-		Stdin:       opts.Stdin,
+		Yes:         true, // already confirmed here
+		Stdin:       nil,
 	}
 	return r.Delete(deleteOpts, wm)
 }
