@@ -28,7 +28,11 @@ func ParseEditor(s string) (Editor, error) {
 	case "claude":
 		return EditorClaude, nil
 	default:
-		return "", fmt.Errorf("unknown editor: %q (supported: code, cursor, ag, claude)", s)
+		if s == "" {
+			return "", fmt.Errorf("editor name cannot be empty")
+		}
+		// Allow custom editor names dynamically
+		return Editor(s), nil
 	}
 }
 

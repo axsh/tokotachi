@@ -31,11 +31,11 @@ The project is designed to work seamlessly with AI coding agents, enabling a spe
 ```
 tokotachi/
 ├── features/              # All feature implementations
-│   ├── tt/            # Development environment orchestrator (Go)
+│   ├── tt/                # Development environment orchestrator (Go)
 │   └── integration-test/  # Integration test suite (Python)
 ├── shared/                # Shared resources (libs, schemas, testdata)
 ├── tests/                 # Project-level test suites
-│   └── integration-test/  # Integration tests (Go)
+│   └── tt/                # tt integration tests (Go)
 ├── scripts/               # Build and test automation
 │   ├── dist/              # Distribution pipeline (build, release, publish)
 │   ├── process/           # build.sh, integration_test.sh
@@ -61,11 +61,7 @@ The core feature of this repository. `tt` is a CLI tool that manages feature-lev
 ```bash
 # 1. Generate a new feature from a template
 tt scaffold feature axsh-go-standard
-...(snip)...
-Options for feature/axsh-go-standard:
-? Feature name (feature_name) (myprog): 
-? Go module path (module_path) (github.com/axsh/tokotachi/features): 
-...(snip)
+# ... (answer prompts) ...
 
 # 2. Start working — creates worktree, starts container, opens editor
 tt open bug-fix-branch myprog
@@ -84,9 +80,9 @@ The editor is resolved in the following priority order:
 
 1. `--editor` flag (e.g. `tt open mybranch tt --editor code`)
 2. `TT_EDITOR` environment variable
-3. Default: **cursor**
+3. Default configured value in settings (falls back to **cursor** if unset)
 
-Supported editors: `code` (VSCode), `cursor`, `ag` (Antigravity), `claude` (Claude Code).
+You can dynamically customize editor commands and arguments via the [editor.yaml](file:///c:/Users/yamya/myprog/tokotachi/work/fix-antigravity-ide/pkg/editor/config.go#L118) configuration file, supporting custom environments such as `code` (VSCode), `cursor`, `ag` (Antigravity IDE), and `claude` (Claude Code).
 
 #### Primitive Commands
 
@@ -101,8 +97,8 @@ tt delete <branch> --depth 5 --yes           # Recursive nested worktree deletio
 
 # Container management
 tt up <branch> <feature>                     # Start the development container
-tt up <branch> <feature> --ssh              # Start with SSH mode
-tt up <branch> <feature> --rebuild          # Rebuild the container image
+tt up <branch> <feature> --ssh               # Start with SSH mode
+tt up <branch> <feature> --rebuild           # Rebuild the container image
 tt down <branch> <feature>                   # Stop and remove the container
 
 # Editor management
@@ -154,22 +150,6 @@ tt scaffold --rollback                       # Rollback last scaffold operation
 --report FILE  # Write execution report to Markdown file
 --env          # Show environment variables in report
 ```
-
-#### Supported Environments
-
-| OS | Editors | Container Modes |
-|---|---|---|
-| Linux, macOS, Windows | VSCode, Cursor, Antigravity, Claude Code | `none`, `docker-local`, `docker-ssh`, `devcontainer` |
-
-#### Architecture
-
-```
-detect → resolve → plan → execute → report
-```
-
-The processing pipeline detects the environment, resolves configuration, builds an execution plan, runs actions, and generates a report.
-
-See [`features/tt/README.md`](features/tt/README.md) for full documentation.
 
 ## Installation
 
@@ -225,40 +205,107 @@ powershell -ExecutionPolicy Bypass -File .\scripts\dist\uninstall.ps1
 2. Extract the zip file
 3. Move `tt.exe` to a directory in your `PATH`
 
-#### Verify Installation
+---
+
+## Build and Developer Tools
+
+To build from source, you need **Go 1.24+**, **Docker**, **Git**, and **Bash** (Git Bash on Windows).
+
+### Bootstrapping Development Environment
+To build and install all CLI developer tools defined under the `features/` directory:
 
 ```bash
-tt --help
+./scripts/dist/bootstrap-tools.sh
 ```
 
-### Build from Source
-
-Requires **Go 1.24+**, **Docker**, **Git**, and **Bash** (Git Bash on Windows).
+### Building and Installing Tools Individually
+You can build and install a specific tool (such as `tt`) using individual pipeline scripts:
 
 ```bash
-# Clone the repository
-git clone https://github.com/axsh/tokotachi.git
-cd tokotachi
-
-# Bootstrap: build and install all tools
-./scripts/dist/bootstrap-tools.sh
-
-# Or build individually
+# Build the binary (outputs to bin/tt)
 ./scripts/dist/build.sh tt
+
+# Install the built tool to your user PATH
 ./scripts/dist/install-tools.sh tt
 ```
 
-The compiled binary is output to `bin/tt`.
+---
 
-### Run Tests
+## Running Tests
+
+Test automation scripts are located in the [scripts/process/](file:///c:/Users/yamya/myprog/tokotachi/work/fix-antigravity-ide/scripts/process) directory.
+
+### 1. Build & Unit Tests
+To compile all modules and run Go package unit tests (excluding the `tests/` directory):
 
 ```bash
-# Full build + unit tests
 ./scripts/process/build.sh
-
-# Integration tests
-./scripts/process/integration_test.sh
 ```
+
+- If this script fails (Exit Code != 0), do not proceed to integration tests. Fix all compilation and unit test errors first.
+
+### 2. Integration & E2E Tests
+To run integration tests in the `tests/` directory (supporting Go test suites and Python test setups):
+
+```bash
+# Run all integration tests
+./scripts/process/integration_test.sh
+
+# Run tests under a specific category (e.g., tests/tt/)
+./scripts/process/integration_test.sh --categories "tt"
+
+# Run a specific test case name (passed to Go's -run filter)
+./scripts/process/integration_test.sh --categories "tt" --specify "TestEditor_CustomEditorDynamicLaunch"
+
+# Resume from the last failed test category
+./scripts/process/integration_test.sh --resume
+```
+
+---
+
+## Release and GitHub Distribution
+
+Release and publishing pipelines are automated via scripts located in the [scripts/dist/](file:///c:/Users/yamya/myprog/tokotachi/work/fix-antigravity-ide/scripts/dist) directory. Note that publishing requires GitHub CLI (`gh`) credentials.
+
+### 1. All-in-One Quick Release (Recommended)
+This runs the full build, packages the binaries, creates a GitHub Release, and publishes update manifests to Scoop/Homebrew.
+
+```bash
+# A. Release by incrementing patch version (e.g., v2.0.0 -> v2.0.1)
+./scripts/dist/github-upload.sh tt
+
+# B. Release with a specific version name
+./scripts/dist/github-upload.sh tt v2.1.0
+
+# C. Release by incrementing minor version (e.g., +v0.1.0)
+./scripts/dist/github-upload.sh tt +v0.1.0
+```
+
+### 2. Manual Step-by-Step Release Flow
+You can trigger each step of the release pipeline individually for fine-grained control:
+
+#### Step 1: Build cross-platform binaries
+Cross-compiles the binary for all target OS/arch combinations defined in `tools/manifests/tt.yaml`.
+
+```bash
+./scripts/dist/build.sh tt
+```
+
+#### Step 2: Packaging release artifacts
+Compresses compiled binaries into archives (`.tar.gz` / `.zip`) and generates SHA256 checksums under `dist/tt/<version>/`.
+
+```bash
+./scripts/dist/release.sh tt v2.0.0
+```
+
+#### Step 3: Publish to distribution channels
+Publishes archives to GitHub Releases and pushes updates to the Scoop bucket and Homebrew tap manifests.
+
+```bash
+./scripts/dist/publish.sh tt v2.0.0
+```
+
+---
 
 ## Development Workflow
 
@@ -270,13 +317,12 @@ This project uses an **AI-assisted development workflow** with structured phases
 
 ### Workflow Phases
 
-1. **Specification** — Capture requirements in `prompts/phases/` using [`create-specification`](.agent/workflows/create-specification.md)
-2. **Implementation Plan** — Generate detailed plans using [`create-implementation-plan`](.agent/workflows/create-implementation-plan.md)
-3. **Execution** — Implement code and tests using [`execute-implementation-plan`](.agent/workflows/execute-implementation-plan.md)
-4. **Verification** — Build and test using [`build-pipeline`](.agent/workflows/build-pipeline.md)
+1. **Specification** — Capture requirements in `prompts/phases/` using [create-specification](.agent/workflows/create-specification.md)
+2. **Implementation Plan** — Generate detailed plans using [create-implementation-plan](.agent/workflows/create-implementation-plan.md)
+3. **Execution** — Implement code and tests using [execute-implementation-plan](.agent/workflows/execute-implementation-plan.md)
+4. **Verification** — Build and test using [build-pipeline](.agent/workflows/build-pipeline.md)
 
 Each phase includes a **human review checkpoint** before progressing to the next.
-
 
 ## Contributing
 
@@ -287,14 +333,6 @@ New features are generated from templates using the `scaffold` command and place
 ```bash
 tt scaffold [category] [name]
 ```
-
-### Collaboration Model
-
-Multiple developers or AI agents can work on different features simultaneously using:
-
-- **Git worktrees** — isolated working directories per feature/branch
-- **Dev Containers** — consistent, reproducible development environments
-- **Independent environments** — per-feature isolation
 
 ### Rules and Standards
 

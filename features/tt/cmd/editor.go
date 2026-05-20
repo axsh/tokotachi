@@ -66,7 +66,12 @@ func runEditor(cmd *cobra.Command, args []string) error {
 		Attach:        editorFlagAttach,
 	})
 
-	launcher, err := editor.NewLauncher(ed)
+	cfg, cfgErr := editor.LoadConfig()
+	if cfgErr != nil {
+		ctx.Logger.Warn("WARNING: Failed to load editor.yaml (%v). Using built-in fallback configuration.", cfgErr)
+	}
+
+	launcher, err := editor.NewLauncher(ed, cfg)
 	if err != nil {
 		return fmt.Errorf("editor launcher creation failed: %w", err)
 	}

@@ -1,4 +1,4 @@
-package editor_test
+package editor
 
 import (
 	"bytes"
@@ -6,13 +6,13 @@ import (
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
 	"github.com/axsh/tokotachi/pkg/detect"
-	"github.com/axsh/tokotachi/pkg/editor"
 	"github.com/axsh/tokotachi/internal/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewLauncher(t *testing.T) {
+	cfg := defaultConfig()
 	tests := []struct {
 		ed   detect.Editor
 		name string
@@ -24,7 +24,7 @@ func TestNewLauncher(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l, err := editor.NewLauncher(tt.ed)
+			l, err := NewLauncher(tt.ed, cfg)
 			require.NoError(t, err)
 			assert.Equal(t, tt.name, l.Name())
 		})
@@ -32,11 +32,13 @@ func TestNewLauncher(t *testing.T) {
 }
 
 func TestNewLauncher_Invalid(t *testing.T) {
-	_, err := editor.NewLauncher(detect.Editor("vim"))
+	cfg := defaultConfig()
+	_, err := NewLauncher(detect.Editor("vim"), cfg)
 	require.Error(t, err)
 }
 
 func TestLauncher_DryRun(t *testing.T) {
+	cfg := defaultConfig()
 	editors := []detect.Editor{
 		detect.EditorVSCode, detect.EditorCursor,
 		detect.EditorAG, detect.EditorClaude,
@@ -47,10 +49,10 @@ func TestLauncher_DryRun(t *testing.T) {
 			logger := log.New(&buf, true)
 			rec := cmdexec.NewRecorder()
 			runner := &cmdexec.Runner{Logger: logger, DryRun: true, Recorder: rec}
-			l, err := editor.NewLauncher(ed)
+			l, err := NewLauncher(ed, cfg)
 			require.NoError(t, err)
 
-			result, err := l.Launch(editor.LaunchOptions{
+			result, err := l.Launch(LaunchOptions{
 				WorktreePath: "/tmp/test-worktree",
 				DryRun:       true,
 				Logger:       logger,
@@ -64,12 +66,12 @@ func TestLauncher_DryRun(t *testing.T) {
 }
 
 func TestResolveCommand_Default(t *testing.T) {
-	got := editor.ResolveCommand("TT_TEST_NONEXISTENT_VAR_12345", "fallback-cmd")
+	got := ResolveCommand("TT_TEST_NONEXISTENT_VAR_12345", "fallback-cmd")
 	assert.Equal(t, "fallback-cmd", got)
 }
 
 func TestResolveCommand_EnvOverride(t *testing.T) {
 	t.Setenv("TT_TEST_CMD_OVERRIDE", "/custom/path/myeditor")
-	got := editor.ResolveCommand("TT_TEST_CMD_OVERRIDE", "default-cmd")
+	got := ResolveCommand("TT_TEST_CMD_OVERRIDE", "default-cmd")
 	assert.Equal(t, "/custom/path/myeditor", got)
 }
