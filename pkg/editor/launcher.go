@@ -3,6 +3,8 @@ package editor
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -32,8 +34,9 @@ func (l *CustomLauncher) Name() string { return l.name }
 
 // Launch opens the editor using CustomLauncher configuration.
 func (l *CustomLauncher) Launch(opts LaunchOptions) (LaunchResult, error) {
-	// 1. Resolve cmd and launchType
+	// 1. Resolve cmd, cmds and launchType
 	cmd := l.cfg.Cmd
+	cmds := l.cfg.Cmds
 	launchType := l.cfg.Type
 
 	// OS-specific override
@@ -50,6 +53,9 @@ func (l *CustomLauncher) Launch(opts LaunchOptions) (LaunchResult, error) {
 	if platCfg != nil {
 		if platCfg.Cmd != nil && *platCfg.Cmd != "" {
 			cmd = *platCfg.Cmd
+		}
+		if len(platCfg.Cmds) > 0 {
+			cmds = platCfg.Cmds
 		}
 		if platCfg.Type != nil && *platCfg.Type != "" {
 			launchType = *platCfg.Type
@@ -71,8 +77,12 @@ func (l *CustomLauncher) Launch(opts LaunchOptions) (LaunchResult, error) {
 	if envKey != "" {
 		if envCmd := os.Getenv(envKey); envCmd != "" {
 			cmd = envCmd
+			cmds = nil // Clear cmds since env overrides everything
 		}
 	}
+
+	// Resolve final executable command path by evaluating placeholders and fallbacks
+	cmd = l.resolveCommand(cmd, cmds)
 
 	// 2. Determine if devcontainer attach should be attempted
 	isDevcontainer := opts.TryDevcontainer && opts.ContainerName != "" && launchType == "vscode"
@@ -165,4 +175,42 @@ func (l *CustomLauncher) Launch(opts LaunchOptions) (LaunchResult, error) {
 	}
 
 	return LaunchResult{Method: method, EditorCmd: cmd}, nil
+}
+
+func (l *CustomLauncher) resolveCommand(cmd string, cmds []string) string {
+	var candidates []string
+	if len(cmds) > 0 {
+		candidates = cmds
+	} else if cmd != "" {
+		candidates = []string{cmd}
+	}
+
+	if len(candidates) == 0 {
+		return cmd
+	}
+
+	for _, c := range candidates {
+		resolved := l.bindPlaceholders(c)
+		// Check if executable is in PATH
+		if _, err := exec.LookPath(resolved); err == nil {
+			return resolved
+		}
+		// Check if file exists directly (e.g. absolute or relative path)
+		if _, err := os.Stat(resolved); err == nil {
+			return resolved
+		}
+	}
+
+	// If no candidate is found, fallback to the first candidate with placeholders bound
+	return l.bindPlaceholders(candidates[0])
+}
+
+func (l *CustomLauncher) bindPlaceholders(c string) string {
+	if home, err := os.UserHomeDir(); err == nil {
+		c = strings.ReplaceAll(c, "{home}", home)
+	}
+	if localappdata := os.Getenv("LOCALAPPDATA"); localappdata != "" {
+		c = strings.ReplaceAll(c, "{localappdata}", localappdata)
+	}
+	return filepath.Clean(c)
 }
