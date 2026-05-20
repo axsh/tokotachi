@@ -30,10 +30,7 @@ func NewCollector(repoRoot string) *Collector {
 // or empty string if no release exists.
 // Uses: gh release list --limit 100 --json tagName ...
 func (c *Collector) GetLatestReleaseTag(toolID string) (string, error) {
-	jqExpr := fmt.Sprintf(
-		`[.[] | select(.tagName | startswith("%s-v"))] | sort_by(.tagName) | last | .tagName // empty`,
-		toolID,
-	)
+	jqExpr := `[.[] | select(.tagName | test("^v[0-9]+"))] | sort_by(.tagName) | last | .tagName // empty`
 
 	cmd := exec.Command("gh", "release", "list", "--limit", "100",
 		"--json", "tagName", "--jq", jqExpr)

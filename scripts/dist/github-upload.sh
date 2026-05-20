@@ -61,12 +61,33 @@ compute_incremented_version() {
   parse_semver "$cur"
   local cur_major=$_major cur_minor=$_minor cur_patch=$_patch
 
-  parse_semver "$inc"
+  # Remove '+' prefix
+  local raw_inc="${inc#+}"
+
+  # Normalize inc value by adding placeholders if components are missing
+  if [[ "$raw_inc" =~ ^v[0-9]+$ ]]; then
+    raw_inc="${raw_inc}.0.0"
+  elif [[ "$raw_inc" =~ ^v[0-9]+\.[0-9]+$ ]]; then
+    raw_inc="${raw_inc}.0"
+  fi
+
+  parse_semver "$raw_inc"
   local inc_major=$_major inc_minor=$_minor inc_patch=$_patch
 
-  local new_major=$((cur_major + inc_major))
-  local new_minor=$((cur_minor + inc_minor))
-  local new_patch=$((cur_patch + inc_patch))
+  local new_major=$cur_major
+  local new_minor=$cur_minor
+  local new_patch=$cur_patch
+
+  if [[ $inc_major -gt 0 ]]; then
+    new_major=$((cur_major + inc_major))
+    new_minor=0
+    new_patch=0
+  elif [[ $inc_minor -gt 0 ]]; then
+    new_minor=$((cur_minor + inc_minor))
+    new_patch=0
+  elif [[ $inc_patch -gt 0 ]]; then
+    new_patch=$((cur_patch + inc_patch))
+  fi
 
   echo "v${new_major}.${new_minor}.${new_patch}"
 }
@@ -124,6 +145,18 @@ VERSION_ARG="${2:-+v0.0.1}"
 if [[ "$VERSION_ARG" == +* ]]; then
   MODE="increment"
   RAW_VERSION="${VERSION_ARG#+}"
+
+  # Validate increment format: no trailing .0 allowed.
+  # Must be +v{major}, +v0.{minor}, or +v0.0.{patch}
+  if [[ ! "$VERSION_ARG" =~ ^\+v([1-9][0-9]*|0\.[1-9][0-9]*|0\.0\.[1-9][0-9]*)$ ]]; then
+    fail "Invalid increment format: '${VERSION_ARG}'."
+    echo "  Allowed formats:"
+    echo "    Major bump: +v1, +v2..."
+    echo "    Minor bump: +v0.1, +v0.2..."
+    echo "    Patch bump: +v0.0.1, +v0.0.2..."
+    echo "  (Trailing .0 is not allowed. e.g. +v0.1.0 or +v1.0.0 is invalid)"
+    exit 1
+  fi
 else
   MODE="absolute"
   RAW_VERSION="$VERSION_ARG"

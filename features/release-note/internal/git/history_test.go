@@ -96,3 +96,15 @@ func TestDeduplicateBranches(t *testing.T) {
 		})
 	}
 }
+
+func TestGetLatestReleaseTag_RealOrSkip(t *testing.T) {
+	// A simple sanity check that runs gh and logs result, or skips if gh is not available/auth fails.
+	collector := git.NewCollector(".")
+	tag, err := collector.GetLatestReleaseTag("tt")
+	if err != nil {
+		t.Logf("Skipping real gh tag fetch test: %v", err)
+		return
+	}
+	t.Logf("Successfully fetched latest release tag: %q", tag)
+}
+
