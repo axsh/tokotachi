@@ -22,6 +22,7 @@ type ArgsConfig struct {
 // PlatformConfig defines platform-specific overrides.
 type PlatformConfig struct {
 	Cmd  *string     `yaml:"cmd,omitempty"`
+	Cmds []string    `yaml:"cmds,omitempty"` // Fallback command list
 	Type *string     `yaml:"type,omitempty"`
 	Args *ArgsConfig `yaml:"args,omitempty"`
 }
@@ -29,6 +30,7 @@ type PlatformConfig struct {
 // EditorConfig defines the launch settings for a specific editor.
 type EditorConfig struct {
 	Cmd     string          `yaml:"cmd"`
+	Cmds    []string        `yaml:"cmds,omitempty"` // Fallback command list
 	Type    string          `yaml:"type"`
 	Args    ArgsConfig      `yaml:"args"`
 	Windows *PlatformConfig `yaml:"windows,omitempty"`
@@ -69,6 +71,8 @@ const defaultYAMLTemplate = `# tokotachi editor settings
 # 
 # 各エディタの設定項目:
 # - cmd:               基本の起動コマンド名、または絶対パス
+# - cmds:              起動コマンド候補の配列。指定すると上から順に解決を試みます（フォールバック用）。
+#                      パスに {home} や {localappdata} のプレースホルダーを含めることができ、実行時に置換されます。
 # - type:              起動タイプ。以下から選択します:
 #                      "vscode" -> VSCode系。Dev Containerアタッチや --new-window などの引数をサポート。
 #                      "local"  -> ローカルフォルダオープン。
@@ -123,7 +127,9 @@ system:
         new_window: ["--new-window", "{path}"]
         devcontainer: ["--folder-uri", "{uri}"]
       windows:
-        cmd: "antigravity-ide.cmd"
+        cmds:
+          - "antigravity-ide.cmd"
+          - "{home}/AppData/Local/Programs/Antigravity IDE/bin/antigravity-ide.cmd"
       darwin:
         cmd: "antigravity"
       linux:
@@ -190,9 +196,14 @@ func defaultConfig() *Config {
 			NewWindow:    []string{"--new-window", "{path}"},
 			Devcontainer: []string{"--folder-uri", "{uri}"},
 		},
-		Windows: &PlatformConfig{Cmd: ptr("antigravity-ide.cmd")},
-		Darwin:  &PlatformConfig{Cmd: ptr("antigravity")},
-		Linux:   &PlatformConfig{Cmd: ptr("antigravity")},
+		Windows: &PlatformConfig{
+			Cmds: []string{
+				"antigravity-ide.cmd",
+				"{home}/AppData/Local/Programs/Antigravity IDE/bin/antigravity-ide.cmd",
+			},
+		},
+		Darwin: &PlatformConfig{Cmd: ptr("antigravity")},
+		Linux:  &PlatformConfig{Cmd: ptr("antigravity")},
 	}
 
 	// claude
@@ -231,6 +242,18 @@ func LoadConfig() (*Config, error) {
 		if err := ioutil.WriteFile(configPath, []byte(defaultYAMLTemplate), 0644); err != nil {
 			return defaultConfig(), fmt.Errorf("failed to write default editor.yaml: %w", err)
 		}
+	} else {
+		// If exists, check if it's outdated and user has no custom edits
+		data, err := ioutil.ReadFile(configPath)
+		if err == nil {
+			var cfg Config
+			if err := yaml.Unmarshal(data, &cfg); err == nil {
+				// If user editors is empty and template is outdated, update the file
+				if len(cfg.User.Editors) == 0 && string(data) != defaultYAMLTemplate {
+					_ = ioutil.WriteFile(configPath, []byte(defaultYAMLTemplate), 0644)
+				}
+			}
+		}
 	}
 
 	data, err := ioutil.ReadFile(configPath)
@@ -243,9 +266,10 @@ func LoadConfig() (*Config, error) {
 		return defaultConfig(), fmt.Errorf("failed to parse editor.yaml: %w", err)
 	}
 
-	if cfg.System.Editors == nil {
-		cfg.System.Editors = make(map[string]EditorConfig)
-	}
+	// Always overwrite system section with the compiled-in defaults to ensure
+	// updates to built-in editors are immediately effective.
+	cfg.System = defaultConfig().System
+
 	if cfg.User.Editors == nil {
 		cfg.User.Editors = make(map[string]EditorConfig)
 	}
