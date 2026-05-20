@@ -164,7 +164,9 @@ fi
 
 # ─── Validate version format ───────────────────────────────────────
 
-validate_version_format "$RAW_VERSION"
+if [[ "$MODE" == "absolute" ]]; then
+  validate_version_format "$RAW_VERSION"
+fi
 
 # ─── Determine new version ─────────────────────────────────────────
 
