@@ -2,6 +2,10 @@ package matrix
 
 import "github.com/axsh/tokotachi/pkg/detect"
 
+// EditorTypeResolver allows external packages to register a resolver to determine
+// the editor's type (e.g. "vscode", "local", "cli") dynamically.
+var EditorTypeResolver func(editor detect.Editor) string
+
 // ResolveCapability returns the Capability for the given OS and Editor.
 // This is the central matrix lookup function.
 func ResolveCapability(os detect.OS, editor detect.Editor) Capability {
@@ -9,6 +13,33 @@ func ResolveCapability(os detect.OS, editor detect.Editor) Capability {
 	if cap, ok := defaultMatrix[key]; ok {
 		return cap
 	}
+
+	// Resolve capability dynamically for unknown editors using the type resolver
+	if EditorTypeResolver != nil {
+		editorType := EditorTypeResolver(editor)
+		switch editorType {
+		case "vscode":
+			return Capability{
+				CanOpenLocal:             true,
+				CanTryDevcontainerAttach: true,
+				CanUseSSHMode:            true,
+				CanLaunchNewWindow:       true,
+				LocalOpenLevel:           L1Supported,
+				DevcontainerOpenLevel:   L2BestEffort,
+				SSHLevel:                 L1Supported,
+			}
+		case "cli":
+			return Capability{
+				CanOpenLocal:        true,
+				CanRunClaudeLocally: true,
+				CanUseSSHMode:       true,
+				LocalOpenLevel:      L1Supported,
+				DevcontainerOpenLevel: L4Unsupported,
+				SSHLevel:            L1Supported,
+			}
+		}
+	}
+
 	// Fallback: local open only
 	return Capability{
 		CanOpenLocal:          true,

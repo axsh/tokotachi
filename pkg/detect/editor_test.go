@@ -21,7 +21,7 @@ func TestParseEditor(t *testing.T) {
 		{"claude", "claude", detect.EditorClaude, false},
 		{"vscode alias", "vscode", detect.EditorVSCode, false},
 		{"antigravity alias", "antigravity", detect.EditorAG, false},
-		{"invalid", "vim", detect.Editor(""), true},
+		{"custom editor", "vim", detect.Editor("vim"), false},
 		{"empty", "", detect.Editor(""), true},
 	}
 	for _, tt := range tests {
@@ -82,9 +82,4 @@ func TestResolveEditor(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
-}
-
-func TestResolveEditor_InvalidValue(t *testing.T) {
-	_, err := detect.ResolveEditor("vim", "", "", "")
-	require.Error(t, err)
 }
