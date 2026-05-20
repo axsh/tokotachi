@@ -58,6 +58,17 @@ func (c *Collector) GetCommitSHA(tag string) (string, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		// If the tag is not found locally, try fetching it from remote origin.
+		fetchCmd := exec.Command("git", "fetch", "origin", "tag", tag)
+		fetchCmd.Dir = c.repoRoot
+		_ = fetchCmd.Run() // Ignore fetch error and let the retry determine success.
+
+		stdout.Reset()
+		stderr.Reset()
+		if retryErr := cmd.Run(); retryErr == nil {
+			return strings.TrimSpace(stdout.String()), nil
+		}
+
 		return "", fmt.Errorf("failed to get commit SHA for tag %s: %s: %w", tag, stderr.String(), err)
 	}
 
