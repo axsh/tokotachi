@@ -4,7 +4,7 @@
 # Example: ./scripts/dist/tool/internal/build.sh tt
 
 set -euo pipefail
-source "$(dirname "${BASH_SOURCE[0]}")/../../../shared/_lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../shared/_lib.sh"
 
 # ─── Argument check ─────────────────────────────────────────────────
 if [[ $# -lt 1 ]]; then
