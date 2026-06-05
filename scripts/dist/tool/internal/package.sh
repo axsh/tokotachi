@@ -74,7 +74,10 @@ while read -r os arch; do
     pass "${archive_name}.zip"
   else
     # Linux/macOS: tar.gz archive
-    (cd "$tmp_dir" && tar czf "${RELEASE_DIR}/${archive_name}.tar.gz" "${BINARY_NAME}${ext}")
+    # Use --force-local on Windows hosts to avoid tar interpreting drive letters (C:) as remote hosts
+    local tar_opts="czf"
+    [[ "$(detect_os)" == "windows" ]] && tar_opts="--force-local -czf"
+    (cd "$tmp_dir" && tar $tar_opts "${RELEASE_DIR}/${archive_name}.tar.gz" "${BINARY_NAME}${ext}")
     pass "${archive_name}.tar.gz"
   fi
 
