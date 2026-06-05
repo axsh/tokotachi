@@ -4,111 +4,78 @@ CLI tools distribution pipeline scripts.
 
 ## Overview
 
-This directory contains scripts for building, releasing, and publishing
-CLI tools defined in `features/`. These scripts form the distribution
-pipeline that produces cross-platform binaries and publishes them to
-package managers.
+This directory contains scripts for building, releasing, and publishing CLI tools defined in `features/`. These scripts form the distribution pipeline that produces cross-platform binaries and publishes them to package managers.
 
-## Prerequisites
+The scripts are divided into tool-specific release scripts, future content-specific release scripts, and shared utilities.
 
-- Go 1.21+
-- Python 3 (YAML parsing)
-- GitHub CLI `gh` (for `publish.sh` and `github-upload.sh`)
+## Directory Structure
 
-## Scripts
+```
+scripts/dist/
+├── README.md                  # This file
+├── tool/                      # Tool (tt) release pipeline scripts
+│   ├── release.sh             # [Public] All-in-one: build + package + publish
+│   └── internal/              # Internal step scripts (called by release.sh)
+│       ├── build.sh           # Compiles Go binaries for target platforms
+│       ├── package.sh         # Archives binaries and packages installers
+│       ├── publish.sh         # Publishes to GitHub Releases and package managers
+│       ├── install.ps1        # Installer for Windows users
+│       └── uninstall.ps1      # Uninstaller for Windows users
+│
+├── content/                   # Content release pipeline scripts (Future extension)
+│   └── README.md
+│
+└── shared/                    # Shared utilities
+    └── _lib.sh                # Common bash functions and environment settings
+```
 
-| Script | Description | Usage |
-|--------|-------------|-------|
-| `_lib.sh` | Common library (sourced by all scripts) | — |
-| `build.sh` | Build CLI tools from features | `./scripts/dist/build.sh <tool-id>` |
-| `release.sh` | Create release artifacts | `./scripts/dist/release.sh <tool-id> <version>` |
-| `publish.sh` | Publish to GitHub Releases | `./scripts/dist/publish.sh <tool-id> <version>` |
-| `github-upload.sh` | All-in-one: build + release + publish | `./scripts/dist/github-upload.sh <tool-id> [version]` |
-| `dev.sh` | Launch development environments | `./scripts/dist/dev.sh <feature-name>` |
-| `install-tools.sh` | Install developer tools locally | `./scripts/dist/install-tools.sh [--all \| <tool-id>...]` |
-| `bootstrap-tools.sh` | Initial setup for new developers | `./scripts/dist/bootstrap-tools.sh` |
-| `install.ps1` | Install tt to user-local directory (Windows) | `powershell -ExecutionPolicy Bypass -File .\scripts\dist\install.ps1` |
-| `uninstall.ps1` | Uninstall tt (Windows) | `powershell -ExecutionPolicy Bypass -File .\scripts\dist\uninstall.ps1` |
-
-## Release Workflow
+## Release Workflow (Tool)
 
 ### Quick Release (All-in-one)
 
-Build, release, and publish in a single command:
+Build, package, and publish `tt` in a single command:
 
 ```bash
-# Patch release (default: +v0.0.1)
-./scripts/dist/github-upload.sh tt
+# Patch release (default: increment patch version +v0.0.1)
+./scripts/dist/tool/release.sh tt
 
 # Specific version
-./scripts/dist/github-upload.sh tt v2.0.0
+./scripts/dist/tool/release.sh tt v2.0.0
 
-# Increment version
-./scripts/dist/github-upload.sh tt +v0.1.0
+# Increment minor version
+./scripts/dist/tool/release.sh tt +v0.1.0
 ```
 
-### Step-by-Step Release
+### Step-by-Step Release (Internal)
 
 #### 1. Build
-
-Build a CLI tool from its feature source:
-
+Build a CLI tool from feature source:
 ```bash
-./scripts/dist/build.sh tt
+./scripts/dist/tool/internal/build.sh tt
 ```
 
-This reads `tools/manifests/tt.yaml` to determine build targets,
-then compiles the Go binary for all specified platforms.
-
-#### 2. Release
-
-Create release artifacts (archives + checksums):
-
+#### 2. Package
+Create release archives (tar.gz/zip) and generate checksums. For Windows targets, this automatically packages the Windows installer (`install.ps1`, `uninstall.ps1`):
 ```bash
-./scripts/dist/release.sh tt v1.0.0
+./scripts/dist/tool/internal/package.sh tt v1.0.0
 ```
-
 Artifacts are written to `dist/tt/v1.0.0/`.
 
 #### 3. Publish
-
 Publish the release to distribution channels:
-
 ```bash
-./scripts/dist/publish.sh tt v1.0.0
+./scripts/dist/tool/internal/publish.sh tt v1.0.0
 ```
-
 This publishes to:
 - GitHub Releases
 - Homebrew tap (from `tools/installers/homebrew/`)
 - Scoop bucket (from `tools/installers/scoop/`)
 
-## Artifact Flow
+---
 
-```
-features/
-     ↓
-tools/manifests/
-     ↓
-scripts/dist/build.sh
-     ↓
-dist/
-     ↓
-scripts/dist/release.sh
-     ↓
-packaging/
-     ↓
-scripts/dist/publish.sh
-     ↓
-Homebrew / Scoop / GitHub Releases
+## Developer Environment Setup
 
-── Or all-in-one ──
-scripts/dist/github-upload.sh → build.sh → release.sh → publish.sh
-```
-
-## Related Files
-
-- `tools/manifests/` — Tool distribution metadata
-- `packaging/` — Build packaging configuration (GoReleaser, archives, checksums)
-- `releases/` — Release history and channel definitions
-- `dist/` — Build artifacts (gitignored)
+For developer setup and dev-environment launching, use the scripts located in **`scripts/dev/`**:
+- `./scripts/dev/bootstrap.sh` — Initial setup for new developers
+- `./scripts/dev/install-tools.sh` — Build and install development tools locally to `bin/`
+- `./scripts/dev/dev.sh` — Launch development environment wrapper (`tt up`)
