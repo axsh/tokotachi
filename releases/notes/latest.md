@@ -4,28 +4,26 @@
 
 [New]
 
-- エディタ起動設定のカスタマイズが外部YAMLファイル（editor.yaml）で可能となり、独自/新規エディタの追加や設定変更をユーザーが自由に実施可能に
-- editor.yamlはsystem（自動生成・管理）とuser（ユーザー編集・上書き）のセクションを分離
-- cmd/type/argsや引数テンプレート（{path}, {container}, {uri}）等の構造化された共通・OS別設定に対応
-- editor.yamlが未存在時は、解説付きの初期設定ファイルを自動生成
-- 任意のエディタ名がeditor.yamlに定義可能となり、--editorで指定できるように
-- 新規ファイル: pkg/editor/config.go（設定管理・ロード）, pkg/editor/launcher.go（カスタムランチャー）, pkg/editor/config_test.go（テスト）を追加
-- YAML定義の自動パース/生成にgopkg.in/yaml.v3を導入
-- 不正なeditor.yaml読み込み時は警告を表示、動作はデフォルト値で継続
-- OSごとの上書き設定機能を追加
-- 統合テストにマージシナリオ等の自動検証を追加
+- エディタ起動設定をカスタマイズできる外部ファイル editor.yaml の管理方式を導入
+    - ユーザーホームに自動生成され、詳細なコメント付きマニュアルを付与
+    - system（自動生成/アプリ更新時自動上書き）と user（手動編集/優先）の二系統セクションで運用
+    - 新規エディタや引数の追加・編集、OS別設定、コマンド候補リスト(cmd/cmds)や起動タイプ(type)の柔軟な定義が可能
+    - args・cmd・パスなどで {home}, {localappdata}, {path}, {container}, {uri}等の動的プレースホルダー展開に対応
+    - 新たなカスタムエディタ追加で--editorに任意キー指定が可能
+    - 既存環境変数(TT_CMD_CODE等)の上書きも引き続きサポート
+    - 初回未存在時は分かりやすい構造のデフォルトファイル自動生成
+    - PATHや指定パスの探索・動的解決による自動起動
 
 [Changed]
 
-- --editor で指定可能なエディタ名を、ハードコーディングからeditor.yamlの全定義に拡張
-- エディタ起動コマンド・引数管理をttコマンド内での個別実装から、editor.yamlによる動的カスタマイズに移行
-- エディタ起動ロジックをCustomLauncherに集約
-- 既存環境変数（TT_CMD_CODE等）はeditor.yamlより高優先度で動作し互換性維持
-- エディタ設定が構造化された引数管理と状況分岐・テンプレート置換をサポート
-- 設定ファイルエラー時の挙動が、“致命的エラーで中断”から“警告表示＆自動デフォルトフォールバック”に変更
-- editor.yamlファイルにガイドコメントや説明（マニュアル）を自動挿入
+- エディタ起動ロジックが、個別Go実装からeditor.yaml & 1ファイル(CustomLauncher)のランチャー方式に統一
+- 既存全エディタの起動コマンド/引数をyamlで一元管理（例: Windows上のagコマンドはantigravity-ide.cmd、他OSはantigravityに自動統一）
+- コマンド候補の解決手順が一般化（PATH,ファイル有無,プレースホルダー等リスト順で評価）
+- --editorで選択できるエディタ名がyaml記載の全キーになり、固定リスト制限が撤廃
+- editor.yamlのsystemセクションはアプリ本体更新時に自動同期。user未カスタマイズかつ古い場合は自動アップデート
 
 [Removed]
 
-- pkg/editor/ag.go, pkg/editor/vscode.go, pkg/editor/cursor.go, pkg/editor/factory.goなど、エディタ個別実装コードをすべて撤廃
-- エディタ名やコマンド・引数のハードコーディング、個別新規エディタ追加入りリリース工程を不要化
+- ag.go, vscode.go, cursor.go など従来の個別エディタ用Goファイルの実装を全廃
+- ハードコーディングされていた特定コマンド名やパス依存の個別起動ロジック（例: antigravity-ide.cmd直指定等）を削除
+- --editor判定の定数リストによる制限・factory.goの起動分岐ロジックを廃止
