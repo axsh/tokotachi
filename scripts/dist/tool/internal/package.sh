@@ -75,7 +75,7 @@ while read -r os arch; do
   else
     # Linux/macOS: tar.gz archive
     # Use --force-local on Windows hosts to avoid tar interpreting drive letters (C:) as remote hosts
-    local tar_opts="czf"
+    tar_opts="czf"
     [[ "$(detect_os)" == "windows" ]] && tar_opts="--force-local -czf"
     (cd "$tmp_dir" && tar $tar_opts "${RELEASE_DIR}/${archive_name}.tar.gz" "${BINARY_NAME}${ext}")
     pass "${archive_name}.tar.gz"
