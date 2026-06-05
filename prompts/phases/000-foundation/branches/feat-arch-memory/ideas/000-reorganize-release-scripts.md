@@ -23,7 +23,9 @@
    - ツールリリース用のスクリプト群と、将来のコンテンツリリース用のスクリプト群を、それぞれ `tool/` および `content/` ディレクトリに分離します。
 3. **開発環境構築スクリプトの再配置**
    - 開発者の初期セットアップや開発環境起動のためのスクリプトは、リリース関連の `dist/` ディレクトリから切り離し、`scripts/` 直下の適切なディレクトリ（例: `scripts/dev/` などの開発用コンテキスト）へ移動します。
-4. **互換性と既存動作の維持**
+4. **Windows向け配布パッケージへのインストーラ同梱**
+   - Windows向けに配布される Zip パッケージ内に、インストーラスクリプト（`install.ps1`）およびアンインストーラスクリプト（`uninstall.ps1`）が正しく同梱されるようにパッケージングスクリプトを修正します。
+5. **互換性と既存動作の維持**
    - 整理後も、従来のビルド・パッケージング・リリース（GitHubアップロード）の一連の動作が問題なく機能すること。
    - スクリプト間の依存関係（ライブラリの読み込みパスなど）が正しく解決されること。
 
@@ -83,6 +85,9 @@ scripts/
    - `_lib.sh` 内で定義されている `SCRIPT_DIR` および `REPO_ROOT` の解決ロジックが、サブフォルダ移動後も正しく機能するように調整します。
    - `release.sh` (旧 `github-upload.sh`) が内部で呼び出す `build.sh`, `package.sh` (旧 `release.sh`), `publish.sh` のパスを `internal/` 配下に向くように修正します。
    - 開発用スクリプト（`bootstrap.sh`, `install-tools.sh` など）が呼び出している `build.sh` などのリリース内サブスクリプトへの参照を、移動後の新しいパス（`scripts/dist/tool/internal/build.sh` など）に修正します。
+3. **Windowsパッケージ作成処理（`package.sh`）の修正**
+   - `package.sh`（旧 `release.sh`）で Windows 向けの Zip ファイルを作成する際、バイナリ（`tt.exe`）と同じ一時ディレクトリにインストーラ（`install.ps1`）およびアンインストーラ（`uninstall.ps1`）をコピーします。
+   - `zip` コマンドで圧縮する際、および `Compress-Archive` を使うフォールバック処理の双方で、これらインストーラ群も同梱されるように圧縮対象の指定を更新します。
 
 ## 検証シナリオ
 
@@ -97,6 +102,7 @@ scripts/
 ### シナリオ2: ツールリリースビルドの単体検証
 1. `scripts/dist/tool/internal/build.sh tt` を実行し、エラーなく `dist/tt/` 以下にバイナリが生成されることを確認する。
 2. `scripts/dist/tool/internal/package.sh tt v9.9.9` を実行し、`dist/tt/v9.9.9/` 以下にアーカイブ（tar.gz/zip）およびチェックサムファイルが生成されることを確認する。
+3. 生成された Windows 向けの zip パッケージ（`tt_windows_amd64.zip`）を展開し、直下に `tt.exe` だけでなく、`install.ps1` と `uninstall.ps1` が同梱されていることを確認する。
 
 ### シナリオ3: ツールリリース一括実行の検証
 1. `scripts/dist/tool/release.sh tt` をオプションなしで実行する（GitHub APIの書き込み手前で止まる、あるいは dry-run 処理を確認する）。
