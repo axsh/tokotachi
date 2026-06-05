@@ -37,7 +37,8 @@ tokotachi/
 ├── tests/                 # Project-level test suites
 │   └── tt/                # tt integration tests (Go)
 ├── scripts/               # Build and test automation
-│   ├── dist/              # Distribution pipeline (build, release, publish)
+│   ├── dist/              # Distribution pipeline (tool/content release)
+│   ├── dev/               # Developer environment setup utilities
 │   ├── process/           # build.sh, integration_test.sh
 │   └── utils/             # Utility scripts
 ├── prompts/               # AI workflow specifications and rules
