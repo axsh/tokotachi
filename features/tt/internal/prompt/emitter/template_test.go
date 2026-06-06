@@ -11,7 +11,8 @@ func TestResolveTemplateVars(t *testing.T) {
 			Skills:    ".agent/skills/",
 			Workflows: ".agent/workflows/",
 		},
-		MemBase: "prompts/memory",
+		MemBase:    "prompts/memory",
+		TargetName: "antigravity",
 	}
 
 	tests := []struct {
@@ -48,6 +49,21 @@ func TestResolveTemplateVars(t *testing.T) {
 			name:  "memory inbox reference",
 			input: "Write to {{memory:inbox}} if unsure.",
 			want:  "Write to prompts/memory/inbox.md if unsure.",
+		},
+		{
+			name:  "target name resolves to target name",
+			input: "Run update --target \"{{target:name}}\".",
+			want:  "Run update --target \"antigravity\".",
+		},
+		{
+			name:  "target meta_dir resolves to meta directory",
+			input: "Check {{target:meta_dir}} for metadata.",
+			want:  "Check .agent/.meta/ for metadata.",
+		},
+		{
+			name:  "unknown target variable is left as-is",
+			input: "See {{target:unknown}} for info.",
+			want:  "See {{target:unknown}} for info.",
 		},
 		{
 			name:  "unknown kind is left as-is",

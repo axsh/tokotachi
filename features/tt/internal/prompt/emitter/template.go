@@ -3,6 +3,8 @@ package emitter
 import (
 	"regexp"
 	"strings"
+
+	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
 // templateVarRegex matches {{kind:id}} patterns where kind is a word
@@ -11,8 +13,9 @@ var templateVarRegex = regexp.MustCompile(`\{\{(\w+):([\w][\w-]*)\}\}`)
 
 // TemplateContext holds the information needed to resolve template variables.
 type TemplateContext struct {
-	Paths   TargetPaths
-	MemBase string // e.g., "prompts/memory"
+	Paths      TargetPaths
+	MemBase    string // e.g., "prompts/memory"
+	TargetName string // e.g., "antigravity"
 }
 
 // TargetPaths holds the target-specific output paths.
@@ -54,6 +57,8 @@ func resolveRef(kind, id string, ctx *TemplateContext) string {
 		return ensureTrailingSlash(ctx.Paths.Skills) + id + "/SKILL.md"
 	case "memory":
 		return ctx.MemBase + "/" + id + ".md"
+	case "target":
+		return resolveTargetVar(id, ctx)
 	default:
 		return ""
 	}
@@ -75,4 +80,17 @@ func ensureTrailingSlash(s string) string {
 		return s + "/"
 	}
 	return s
+}
+
+// resolveTargetVar resolves a target-scoped template variable.
+// Supported IDs: "name" (target name), "meta_dir" (metadata directory).
+func resolveTargetVar(id string, ctx *TemplateContext) string {
+	switch id {
+	case "name":
+		return ctx.TargetName
+	case "meta_dir":
+		return resolve.MetaDir(ctx.TargetName)
+	default:
+		return ""
+	}
 }
