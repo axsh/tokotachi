@@ -1,10 +1,10 @@
 ---
 apiVersion: agent.meta/v1
 kind: procedure
-id: prompt-update
-title: Prompt Update
+id: update-prompts
+title: Update Prompts
 trigger:
-  command: prompt-update
+  command: update-prompts
   manual_only: true
 steps:
   - determine-target

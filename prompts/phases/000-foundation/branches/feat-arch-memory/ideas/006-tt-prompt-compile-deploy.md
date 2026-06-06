@@ -151,9 +151,9 @@ you MUST run `./scripts/prompt/update.sh --force --target "{{target:name}}"` to 
 1. compile + deploy の2ステップを `update` の1ステップに統合し、プロンプト記述をシンプルにする
 2. `--target "{{target:name}}"` により、このスキルを読んでいるCoding Agent自身のターゲットのみを更新対象にする。例えば Antigravity がこのスキルを実行する場合、コンパイル時に `{{target:name}}` → `antigravity` と展開されるため、実際に実行されるコマンドは `./scripts/prompt/update.sh --force --target antigravity` となる。これにより、他のCoding Agent向けの設定に不要な影響を与えない
 
-#### R9. prompt-update プロシージャの新規追加
+#### R9. update-prompts プロシージャの新規追加
 
-`prompts/manifest/code_content/procedures/prompt-update.md` を新規作成する。このプロシージャは Antigravity 向けにはワークフロー（`.agent/workflows/prompt-update.md`）として、Cursor 向けにはスキル（`.cursor/skills/prompt-update/SKILL.md`）としてコンパイル・デプロイされる。
+`prompts/manifest/code_content/procedures/update-prompts.md` を新規作成する。このプロシージャは Antigravity 向けにはワークフロー（`.agent/workflows/update-prompts.md`）として、Cursor 向けにはスキル（`.cursor/skills/update-prompts/SKILL.md`）としてコンパイル・デプロイされる。
 
 Coding Agent が自分のタイミングで `tt prompt update` を呼び出すための手順を定義する:
 

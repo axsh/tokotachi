@@ -4,7 +4,7 @@
 
 ## Goal Description
 
-Part 1-2 で構築した `tt prompt` サブコマンド群を、既存のシェルスクリプトとプロンプトマニフェストに統合する。スクリプトの書き換え、architecture-maintainer スキルの簡潔化、prompt-update プロシージャの追加、ドキュメント更新を行う。
+Part 1-2 で構築した `tt prompt` サブコマンド群を、既存のシェルスクリプトとプロンプトマニフェストに統合する。スクリプトの書き換え、architecture-maintainer スキルの簡潔化、update-prompts プロシージャの追加、ドキュメント更新を行う。
 
 ## User Review Required
 
@@ -16,7 +16,7 @@ None.
 | :--- | :--- |
 | R5. スクリプト書き換え | Proposed Changes > scripts/prompt/* |
 | R8. architecture-maintainer 簡潔化 | Proposed Changes > prompts/manifest/code_content/capabilities/* |
-| R9. prompt-update プロシージャ | 既に作成済み（仕様書レビュー時に作成） |
+| R9. update-prompts プロシージャ | 既に作成済み（仕様書レビュー時に作成） |
 | INV-013 ドキュメント更新 | Proposed Changes > docs/manual/tt-user-manual.md |
 
 ## Proposed Changes
@@ -119,7 +119,7 @@ None.
 
 ### prompts/manifest/code_content/procedures/（プロシージャ確認）
 
-#### 既に作成済み: [prompt-update.md](file://prompts/manifest/code_content/procedures/prompt-update.md)
+#### 既に作成済み: [update-prompts.md](file://prompts/manifest/code_content/procedures/update-prompts.md)
 *   仕様書レビュー時に作成済み。追加の変更は不要。
 
 ---

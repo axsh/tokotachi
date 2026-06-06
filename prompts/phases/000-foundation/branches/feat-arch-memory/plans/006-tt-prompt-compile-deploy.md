@@ -10,7 +10,7 @@
 
 - **Part 1（本計画書）**: 基盤構築 - ターゲット名称解決の共通化（R1）、パッケージ移植（R6）、go.mod 更新
 - **Part 2**: コマンド実装 - `tt prompt compile/deploy/update`（R2, R3, R4）、テンプレート変数拡張（R7）
-- **Part 3**: スクリプト書き換え（R5）、architecture-maintainer 簡潔化（R8）、prompt-update プロシージャ（R9）、ドキュメント更新
+- **Part 3**: スクリプト書き換え（R5）、architecture-maintainer 簡潔化（R8）、update-prompts プロシージャ（R9）、ドキュメント更新
 
 ## User Review Required
 
@@ -27,7 +27,7 @@ None.
 | R5 (スクリプト書き換え) | Part 3 で対応 |
 | R7 (テンプレート変数拡張) | Part 2 で対応 |
 | R8 (architecture-maintainer 簡潔化) | Part 3 で対応 |
-| R9 (prompt-update プロシージャ) | Part 3 で対応 |
+| R9 (update-prompts プロシージャ) | Part 3 で対応 |
 
 ## Proposed Changes
 

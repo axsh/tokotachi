@@ -1,0 +1,12 @@
+apiVersion: agent.meta/v1
+kind: target
+id: codex
+capabilities:
+  rules: true
+  skills: true
+  workflows: false
+  subagents: false
+paths:
+  rules: .agents/rules/
+  skills: .agents/skills/
+index_file: AGENTS.md

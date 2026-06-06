@@ -28,7 +28,8 @@ last_reviewed: 2026-06-04
 
 # Invariants
 
-Properties that must never be violated. These are extracted from established project conventions. It is recommended to organize them into sections and categorize them as needed.
+Properties that must never be violated. These are extracted from established project conventions.
+It is recommended to organize them into sections and categorize them as needed.
 
 ## Workspace Boundary
 
