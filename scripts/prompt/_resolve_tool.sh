@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Common tool discovery logic for agentctl wrapper scripts.
+# Common tool discovery logic for tt prompt wrapper scripts.
 # Source this file, then use $TOOL variable.
 
-_resolve_agentctl() {
-    if [ -n "${AGENTCTL:-}" ]; then
-        echo "$AGENTCTL"
+_resolve_tt() {
+    if [ -n "${TT_TOOL:-}" ]; then
+        echo "$TT_TOOL"
         return 0
     fi
-    if command -v agentctl &>/dev/null; then
-        echo "agentctl"
+    if command -v tt &>/dev/null; then
+        echo "tt"
         return 0
     fi
     # Check project-local bin/
@@ -16,14 +16,14 @@ _resolve_agentctl() {
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local project_root
     project_root="$(cd "$script_dir/../.." && pwd)"
-    local local_bin="$project_root/bin/agentctl"
+    local local_bin="$project_root/bin/tt"
     if [ -x "$local_bin" ]; then
         echo "$local_bin"
         return 0
     fi
-    echo "Skipping coding agent settings update: update tool not found." >&2
-    echo "Set AGENTCTL env var, add agentctl to PATH, or place it in bin/" >&2
+    echo "Skipping coding agent settings update: tt tool not found." >&2
+    echo "Set TT_TOOL env var, add tt to PATH, or place it in bin/" >&2
     return 1
 }
 
-TOOL="$(_resolve_agentctl)" || exit 1
+TOOL="$(_resolve_tt)" || exit 1
