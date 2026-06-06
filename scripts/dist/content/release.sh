@@ -1,9 +1,23 @@
 #!/usr/bin/env bash
-# Content release pipeline: builds/verifies → runs templatizer → commits & pushes.
+# ==============================================================================
+# Content Release Pipeline Script (release.sh)
+#
+# This script automates the complete packaging and release flow for catalog templates:
+# 1. Full Verification: Runs the build and unit test pipeline (build.sh) to ensure
+#    everything (backend, tools, and originals) compiles and passes tests.
+# 2. Catalog Regeneration: Invokes the compiled templatizer binary to scan
+#    catalog/originals, construct template ZIP packages, generate FNV-1a sharded
+#    YAML metadata files inside catalog/scaffolds/, and update the top-level
+#    catalog.yaml index and meta.yaml metadata.
+# 3. Remote Publishing: Stages all generated catalog files, commits them with
+#    single-quoted message 'update catalog', and pushes the updates to the main
+#    branch of the remote repository (git push origin main).
+#
 # Usage: ./scripts/dist/content/release.sh [OPTIONS]
 #
 # Options:
 #   --help    Show this help message
+# ==============================================================================
 
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/_lib.sh"
