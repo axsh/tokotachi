@@ -58,6 +58,10 @@
       "type": "array",
       "items": { "type": "string" },
       "description": "Target tool IDs this policy applies to."
+    },
+    "applies_when": {
+      "type": "string",
+      "description": "Human-readable description of when this policy applies."
     }
   },
   "additionalProperties": false
