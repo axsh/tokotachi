@@ -1,42 +1,42 @@
-# Tokotachi (tt) Windows リリースパッケージ
+# Tokotachi (tt) Windows Release Package
 
-本パッケージには、Tokotachi コマンドラインツール（`tt`）および Windows 環境用の簡易インストーラーが含まれています。
+This package contains the Tokotachi command-line tool (`tt`) and a convenient installer for Windows environments.
 
-## パッケージ内容
-- `tt.exe` : Tokotachi コマンドラインツールの実行バイナリ
-- `install.ps1` : インストール用 PowerShell スクリプト
-- `uninstall.ps1` : アンインストール用 PowerShell スクリプト
-- `README.md` : 本ファイル（説明書）
+## Package Contents
+- `tt.exe`: Executable binary for the Tokotachi command-line tool.
+- `install.ps1`: PowerShell script for automated installation.
+- `uninstall.ps1`: PowerShell script for automated uninstallation.
+- `README.md`: This instruction file.
 
 ---
 
-## インストール手順
+## Installation Instructions
 
-### 推奨：インストーラースクリプトを使用した自動インストール
-PowerShell スクリプトを実行することで、自動的に `tt.exe` を適切なフォルダへ配置し、`PATH`（環境変数）への登録を行います。管理者権限は不要です。
+### Option A: Automated Installation (Recommended)
+You can run the PowerShell script to automatically place `tt.exe` in the appropriate directory and add it to your user `PATH` environment variable. No administrator privileges are required.
 
-1. 本 ZIP ファイルを展開（解凍）します。
-2. 展開したフォルダ内で PowerShell（またはターミナル）を開きます。
-3. 以下のコマンドを実行します：
+1. Extract the contents of this ZIP archive.
+2. Open PowerShell (or Terminal) in the extracted directory.
+3. Run the following command:
    ```powershell
    powershell -ExecutionPolicy Bypass -File .\install.ps1
    ```
-4. インストール完了メッセージが表示されたら、**新しいターミナルウィンドウを開き直し**、以下を実行して正しくインストールされたか確認します：
+4. Once the installation completes successfully, **open a new terminal window** (for the path changes to take effect) and verify the installation:
    ```cmd
    tt --help
    ```
 
-### 手動インストール
-1. `tt.exe` を任意のフォルダ（例: `C:\bin` など）に移動します。
-2. そのフォルダのパスをシステムのユーザー環境変数 `PATH` に追加します。
+### Option B: Manual Installation
+1. Move `tt.exe` to a directory of your choice (e.g., `C:\bin`).
+2. Add that directory to your user `PATH` environment variable.
 
 ---
 
-## アンインストール手順
-自動インストールで追加されたファイルを削除し、`PATH` から登録を解除します。
+## Uninstallation Instructions
+This removes all installed files and cleans up the directory from your user `PATH`.
 
-1. `uninstall.ps1` があるフォルダ内で PowerShell を開きます。
-2. 以下のコマンドを実行します：
+1. Open PowerShell in the directory where `uninstall.ps1` is located.
+2. Run the following command:
    ```powershell
    powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
    ```
