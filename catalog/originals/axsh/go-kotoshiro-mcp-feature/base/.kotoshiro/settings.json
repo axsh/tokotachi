@@ -1,0 +1,24 @@
+{
+    "scripts": [
+        {
+            "name": "Initialize",
+            "description": "Initialize the container image",
+            "command": "./scripts/init.sh"
+        },
+        {
+            "name": "Build",
+            "description": "Build the executable binary",
+            "command": "./scripts/run.sh build.sh"
+        },
+        {
+            "name": "Test",
+            "description": "Run the integration tests",
+            "command": "./scripts/run.sh test.sh"
+        },
+        {
+            "name": "Deploy",
+            "description": "Deploy the function.\nIf \"REGISTRY\" is set in the environment variables, the function will be deployed to the registry.",
+            "command": "./scripts/deploy.sh"
+        }
+    ]
+}

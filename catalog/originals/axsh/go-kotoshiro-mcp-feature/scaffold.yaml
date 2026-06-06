@@ -1,0 +1,40 @@
+name: "kotoshiro-go-mcp"
+category: "feature"
+description: "Go Kotoshiro MCP Feature"
+depends_on:
+  - category: "project"
+    name: "axsh-go-standard"
+original_ref: "catalog/originals/axsh/go-kotoshiro-mcp-feature"
+placement:
+  base_dir: "features/{{feature_name}}"
+  conflict_policy: "skip"
+  template_config:
+    template_extension: ".tmpl"
+    strip_extension: true
+  file_mappings: []
+  post_actions:
+    file_permissions:
+      - pattern: "scripts/*.sh"
+        executable: true
+template_params:
+  - name: "module_path"
+    description: "Go module path"
+    required: true
+    default: "github.com/axsh/tokotachi/features/myfunction"
+    value_spec:
+      type: string
+      length:
+        max_bytes: 256
+      format:
+        pattern: "^[a-zA-Z0-9._/-]+$"
+  - name: "feature_name"
+    description: "Feature name"
+    required: true
+    default: "myfunction"
+    value_spec:
+      type: string
+      length:
+        max_bytes: 64
+        max_chars: 32
+      format:
+        pattern: "^[a-z][a-z0-9_-]*$"

@@ -21,7 +21,9 @@ description: Build, Test, and Verify Pipeline
 // turbo
 ./scripts/process/build.sh
 
-> **Note**: バックエンドのみを高速に確認したい場合は `./scripts/process/build.sh --backend-only` も利用可能です。
+> **Linux / Remote-SSH**: ワークスペースの OS が **Linux**、または **Remote-SSH の接続先が Linux** のときは、上記の代わりに **`./scripts/process/build.sh --skip-etc`** を使うこと（`etc` 系テストが当該環境で落ちることがあるため）。
+
+> **Note**: バックエンドのみを高速に確認したい場合は `./scripts/process/build.sh --skip-frontend --skip-etc` も利用可能です。
 
 ## 3. Environment Setup
 
@@ -42,6 +44,8 @@ description: Build, Test, and Verify Pipeline
 // turbo
 ./scripts/process/integration_test.sh
 
+> **Linux / Remote-SSH（headless）**: ワークスペースが **Linux**、または **Remote-SSH の先が Linux** のときは、**`--headed` と `--ui` を付けない**。`integration_test.sh` は **`xvfb-run -a` で必ずラップ**する（例: **`xvfb-run -a ./scripts/process/integration_test.sh`**。直接実行しない）。`xvfb-run` が無い場合は Xvfb 系パッケージを導入してから実行する（`features/frontend/scripts/integration_test.sh` 先頭コメント参照）。
+
 ### オプション実行（個別実行）
 
 特定のカテゴリやテストのみを実行したい場合は、以下のコマンドを使用してください（ワークフロー外で手動実行）。
@@ -57,6 +61,8 @@ description: Build, Test, and Verify Pipeline
 ./scripts/process/integration_test.sh --resume
 ```
 
+> **Linux / Remote-SSH** では、このブロックおよび 5.2 の `integration_test.sh` を **必ず `xvfb-run -a` でラップ**する。
+
 ## 5. Analyze Results & Feedback Loop
 
 テストが失敗した場合や、期待通りの動作をしなかった場合は、以下の手順で原因を特定し、修正を行います。
@@ -67,11 +73,20 @@ description: Build, Test, and Verify Pipeline
 ### 5.2 デバッグと修正
 1.  **修正の実施**: 実装コードまたはテストコードを修正します。
 2.  **失敗テストのみ再実行**: 修正後、失敗したテストのみを再実行して修正が有効か確認します。
-    - 例: `./scripts/process/integration_test.sh --categories xxx --specify "xxx-1"`
+    - 例: `./scripts/process/integration_test.sh --categories xxx --specify "xxx-1"`（**Linux / Remote-SSH** では `xvfb-run -a` を必ず前置）
 3.  **残りのテストを再開**: 失敗テストが通過したら、`--resume` で残りのテストから再開します。
-    - `./scripts/process/integration_test.sh --resume`
+    - `./scripts/process/integration_test.sh --resume`（**Linux / Remote-SSH** では `xvfb-run -a` を必ず前置）
     - これにより、既に通過済みのテストをスキップし、失敗テストの次から実行されます。
 
 ## 6. Final Check
 
 全てのテストが通過し、リグレッションがないことが確認できたら、タスク完了とします。
+
+### 6.1 Git Push
+
+全てのビルドとテストが成功した時点で、`git push` を実施してリモートリポジトリに反映してください。
+テストが失敗している状態ではプッシュしないでください。
+
+```bash
+git push
+```

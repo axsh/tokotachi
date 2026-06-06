@@ -1,0 +1,6 @@
+scaffolds:
+    - name: default
+      category: root
+      description: Tokotachi - The First of All
+      template_ref: catalog/scaffolds/6/j/v/project-default.zip
+      original_ref: catalog/originals/root/project-default

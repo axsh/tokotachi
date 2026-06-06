@@ -1,0 +1,37 @@
+name: "axsh-go-standard"
+category: "feature"
+description: "Go Standard Feature"
+depends_on:
+  - category: "project"
+    name: "axsh-go-standard"
+original_ref: "catalog/originals/axsh/go-standard-feature"
+placement:
+  base_dir: "features/{{feature_name}}"
+  conflict_policy: "skip"
+  template_config:
+    template_extension: ".tmpl"
+    strip_extension: true
+  file_mappings: []
+  post_actions: {}
+template_params:
+  - name: "module_path"
+    description: "Go module path"
+    required: true
+    default: "github.com/axsh/tokotachi/features"
+    value_spec:
+      type: string
+      length:
+        max_bytes: 256
+      format:
+        pattern: "^[a-zA-Z0-9._/-]+$"
+  - name: "feature_name"
+    description: "Feature name"
+    required: true
+    default: "myprog"
+    value_spec:
+      type: string
+      length:
+        max_bytes: 64
+        max_chars: 32
+      format:
+        pattern: "^[a-z][a-z0-9_-]*$"
