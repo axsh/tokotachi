@@ -73,13 +73,13 @@ None.
 
 ## Step-by-Step Implementation Guide
 
-1.  **Create Directories**:
+1.  **[x] Create Directories**:
     *   `docs/manual/` ディレクトリと `docs/specification/` ディレクトリを作成する。
-2.  **Write tt User Manual**:
+2.  **[x] Write tt User Manual**:
     *   `docs/manual/tt-user-manual.md` を作成し、最新の実装に基づいてユーザマニュアルを日本語で執筆する。
-3.  **Write Catalog Specification**:
+3.  **[x] Write Catalog Specification**:
     *   `docs/specification/catalog-spec.md` を作成し、最新の実装とアルゴリズムに基づいて内部仕様資料を日本語で執筆する。
-4.  **Verification**:
+4.  **[x] Verification**:
     *   検証計画（Verification Plan）に記載の検証コマンドを実行し、ビルドやテストへの影響がないことを確認する。
 
 ## Verification Plan
