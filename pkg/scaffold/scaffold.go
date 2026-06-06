@@ -14,6 +14,7 @@ import (
 )
 
 const defaultRepoURL = "https://github.com/axsh/tokotachi"
+const defaultRepoBranch = "main"
 
 func resolveRepoURL(specifiedURL string) string {
 	if specifiedURL != "" {
@@ -25,10 +26,21 @@ func resolveRepoURL(specifiedURL string) string {
 	return defaultRepoURL
 }
 
+func resolveRepoBranch(specifiedBranch string) string {
+	if specifiedBranch != "" {
+		return specifiedBranch
+	}
+	if envBranch := os.Getenv("TT_CONTENT_BRANCH"); envBranch != "" {
+		return envBranch
+	}
+	return defaultRepoBranch
+}
+
 // RunOptions holds parameters for a scaffold execution.
 type RunOptions struct {
 	Pattern         []string // Command arguments [category, name]
 	RepoURL         string   // Template repository URL
+	RepoBranch      string   // Template repository branch
 	RepoRoot        string   // Target repository root path
 	DryRun          bool
 	Yes             bool
@@ -68,6 +80,7 @@ func (f *githubEntryFetcher) FetchEntry(category, name string) (*ScaffoldEntry, 
 // resolve entry -> resolve dependencies -> download templates -> build plan.
 func Run(opts RunOptions) (*Plan, error) {
 	opts.RepoURL = resolveRepoURL(opts.RepoURL)
+	opts.RepoBranch = resolveRepoBranch(opts.RepoBranch)
 	if opts.Stdout == nil {
 		opts.Stdout = os.Stdout
 	}
@@ -213,6 +226,7 @@ func buildCompositePlan(downloader *github.Client, entries []ScaffoldEntry,
 // Apply executes the plan: checkpoint -> file placement -> post-actions.
 func Apply(plan *Plan, opts RunOptions) error {
 	opts.RepoURL = resolveRepoURL(opts.RepoURL)
+	opts.RepoBranch = resolveRepoBranch(opts.RepoBranch)
 
 	// 1. Create checkpoint
 	headCommit := getHeadCommit(opts.RepoRoot)
@@ -322,6 +336,7 @@ func applyDependencyChain(plan *Plan, opts RunOptions) error {
 		if err != nil {
 			return fmt.Errorf("failed to create downloader: %w", err)
 		}
+		downloader.Branch = opts.RepoBranch
 
 		templateFiles, placement, err := fetchTemplateAndPlacement(
 			downloader, &dp.Entry, opts.Lang, opts.Logger, spinner)
@@ -425,13 +440,15 @@ type MetaYAML struct {
 
 // List fetches the catalog and returns all available scaffolds.
 // Uses cache (via meta.yaml updated_at) when available.
-func List(repoURL string, repoRoot string, filterCategory string) ([]ScaffoldEntry, error) {
+func List(repoURL string, repoBranch string, repoRoot string, filterCategory string) ([]ScaffoldEntry, error) {
 	repoURL = resolveRepoURL(repoURL)
+	repoBranch = resolveRepoBranch(repoBranch)
 
 	downloader, err := github.NewClient(repoURL)
 	if err != nil {
 		return nil, err
 	}
+	downloader.Branch = repoBranch
 
 	// Fetch meta.yaml for cache validation
 	metaData, err := downloader.FetchFile("meta.yaml")
@@ -507,6 +524,7 @@ func fetchAndResolveEntry(opts RunOptions, spinner *Spinner) (
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to create downloader: %w", err)
 	}
+	downloader.Branch = opts.RepoBranch
 
 	category, name := resolveArgs(opts.Pattern)
 

@@ -124,18 +124,18 @@ None.
 
 ## Step-by-Step Implementation Guide
 
-1.  **[TDD] 単体テストの追加**:
+1.  **[x] [TDD] 単体テストの追加**:
     *   `pkg/scaffold/scaffold_test.go` に `TestResolveRepoBranch` テスト関数を追加します。
     *   この時点では `resolveRepoBranch` 関数や `RunOptions.RepoBranch` が未定義のため、ビルド/テストを実行してコンパイルエラー（Red）になることを確認します。
-2.  **[scaffold.go] 定数、構造体、ヘルパー関数の実装**:
+2.  **[x] [scaffold.go] 定数、構造体、ヘルパー関数の実装**:
     *   `pkg/scaffold/scaffold.go` に `defaultRepoBranch` 定数、`resolveRepoBranch` ヘルパー関数、および `RunOptions` の `RepoBranch` フィールドを追加します。
-3.  **[scaffold.go] 各機能への適用とリファクタリング**:
+3.  **[x] [scaffold.go] 各機能への適用とリファクタリング**:
     *   `Run`、`Apply` 関数の冒頭でブランチ解決を行い、作成する `github.Client` に対し `downloader.Branch = opts.RepoBranch` のように設定します。
     *   `List` 関数の引数シグネチャを修正し、`List` 内部でのブランチ解決およびクライアントへのセット処理を追加します。
-4.  **[cmd/scaffold.go] コマンドラインフラグの追加と適用**:
+4.  **[x] [cmd/scaffold.go] コマラインフラグの追加と適用**:
     *   `features/tt/cmd/scaffold.go` を修正し、`--branch` フラグをバインドします。
     *   `List` および `RunOptions` にブランチフラグの値を渡すように修正します。
-5.  **単体テストの実行と確認**:
+5.  **[x] 単体テストの実行と確認**:
     *   単体テストを実行し、テストがすべて成功すること（Green）を確認します。
 
 ## Verification Plan
