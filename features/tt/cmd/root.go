@@ -46,6 +46,7 @@ func init() {
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(scaffoldCmd)
 	rootCmd.AddCommand(updateCodeStatusCmd)
+	rootCmd.AddCommand(promptCmd)
 }
 
 // Execute runs the root command.
