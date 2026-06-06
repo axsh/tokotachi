@@ -34,7 +34,7 @@ that directs you to the appropriate architecture document based on your task.
    - If an invariant was added or changed, update `prompts/memory/invariants.md`
    - If you added, modified, or deleted any memory documents in `prompts/memory/` (including content or frontmatter changes),
      you MUST run `./scripts/prompt/compile.sh` to compile the memory index and verify metadata integrity.
-   - If deploying the changes, run `./scripts/prompt/deploy.sh --force` to update the deployed configuration.
+   - If compilation succeeds without any errors, run `./scripts/prompt/deploy.sh --force` to update the deployed configuration.
 
 3. **When unsure**:
    - Write to `prompts/memory/inbox.md`
