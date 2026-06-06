@@ -266,44 +266,50 @@ To run integration tests in the `tests/` directory (supporting Go test suites an
 
 ## Release and GitHub Distribution
 
-Release and publishing pipelines are automated via scripts located in the [scripts/dist/](file:///c:/Users/yamya/myprog/tokotachi/work/fix-antigravity-ide/scripts/dist) directory. Note that publishing requires GitHub CLI (`gh`) credentials.
+Release and publishing pipelines are automated via scripts located in the [scripts/dist/](file:///c:/Users/yamya/myprog/tokotachi/work/feat-arch-memory/scripts/dist) directory.
 
-### 1. All-in-One Quick Release (Recommended)
-This runs the full build, packages the binaries, creates a GitHub Release, and publishes update manifests to Scoop/Homebrew.
+### 1. Tool Release (tt)
+
+Automates building, packaging, and publishing the `tt` CLI tool. Note that publishing requires GitHub CLI (`gh`) credentials.
+
+#### All-in-One Quick Release (Recommended)
+This runs the full build, packages the binaries, creates a GitHub Release, and publishes update manifests to Scoop/Homebrew:
 
 ```bash
 # A. Release by incrementing patch version (e.g., v2.0.0 -> v2.0.1)
-./scripts/dist/github-upload.sh tt
+./scripts/dist/tool/release.sh tt
 
 # B. Release with a specific version name
-./scripts/dist/github-upload.sh tt v2.1.0
+./scripts/dist/tool/release.sh tt v2.1.0
 
 # C. Release by incrementing minor version (e.g., +v0.1.0)
-./scripts/dist/github-upload.sh tt +v0.1.0
+./scripts/dist/tool/release.sh tt +v0.1.0
 ```
 
-### 2. Manual Step-by-Step Release Flow
+#### Manual Step-by-Step Release Flow
 You can trigger each step of the release pipeline individually for fine-grained control:
 
-#### Step 1: Build cross-platform binaries
-Cross-compiles the binary for all target OS/arch combinations defined in `tools/manifests/tt.yaml`.
-
+##### Step 1: Build cross-platform binaries
 ```bash
-./scripts/dist/build.sh tt
+./scripts/dist/tool/internal/build.sh tt
 ```
 
-#### Step 2: Packaging release artifacts
-Compresses compiled binaries into archives (`.tar.gz` / `.zip`) and generates SHA256 checksums under `dist/tt/<version>/`.
-
+##### Step 2: Packaging release artifacts
 ```bash
-./scripts/dist/release.sh tt v2.0.0
+./scripts/dist/tool/internal/package.sh tt v2.0.0
 ```
 
-#### Step 3: Publish to distribution channels
-Publishes archives to GitHub Releases and pushes updates to the Scoop bucket and Homebrew tap manifests.
+##### Step 3: Publish to distribution channels
+```bash
+./scripts/dist/tool/internal/publish.sh tt v2.0.0
+```
+
+### 2. Content Release (Catalog Templates)
+
+Automates building the templatizer, packaging catalog originals into scaffolds, and pushing updates to the current active branch of the remote repository:
 
 ```bash
-./scripts/dist/publish.sh tt v2.0.0
+./scripts/dist/content/release.sh
 ```
 
 ---
