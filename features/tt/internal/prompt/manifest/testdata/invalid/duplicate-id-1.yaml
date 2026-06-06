@@ -1,0 +1,8 @@
+apiVersion: agent.meta/v1
+kind: policy
+id: duplicate-test
+title: Duplicate ID 1
+scope: project
+activation:
+  mode: always
+body: first

@@ -1,0 +1,8 @@
+apiVersion: agent.meta/v1
+kind: policy
+id: bad-reference
+title: Bad Reference Policy
+scope: project
+activation:
+  mode: always
+body_file: nonexistent/file.md

@@ -1,0 +1,3 @@
+apiVersion: agent.meta/v1
+id: missing-kind
+title: Missing Kind Entity

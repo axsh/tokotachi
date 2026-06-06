@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "target.schema.json",
+  "title": "Target Definition",
+  "type": "object",
+  "required": ["apiVersion", "kind", "id", "capabilities", "paths"],
+  "properties": {
+    "apiVersion": { "type": "string", "const": "agent.meta/v1" },
+    "kind": { "type": "string", "const": "target" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "rules": { "type": "boolean" },
+        "skills": { "type": "boolean" },
+        "workflows": { "type": "boolean" },
+        "subagents": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "object",
+      "properties": {
+        "rules": { "type": "string" },
+        "skills": { "type": "string" },
+        "workflows": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
