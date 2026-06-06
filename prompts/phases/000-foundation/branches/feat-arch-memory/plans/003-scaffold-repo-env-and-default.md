@@ -101,15 +101,15 @@ None.
 
 ## Step-by-Step Implementation Guide
 
-1.  **[TDD] 新規テストファイルの作成**:
+1.  **[x] [TDD] 新規テストファイルの作成**:
     *   `pkg/scaffold/scaffold_test.go` を新規作成し、`TestResolveRepoURL` のテーブル駆動テストを実装します。
     *   この時点では `resolveRepoURL` が未実装（または未変更）のため、ビルド/テストが失敗すること（Red）を確認します。
-2.  **[scaffold.go] 定数およびヘルパー関数の実装**:
+2.  **[x] [scaffold.go] 定数およびヘルパー関数の実装**:
     *   `pkg/scaffold/scaffold.go` 内の `defaultRepoURL` を `https://github.com/axsh/tokotachi` に変更します。
     *   `resolveRepoURL` ヘルパー関数を `scaffold.go` に追加します（必要に応じて `"os"` パッケージをインポートに追加します）。
-3.  **[scaffold.go] 各機能への適用**:
+3.  **[x] [scaffold.go] 各機能への適用**:
     *   `Run`、`List`、`Apply` 関数（および依存パッケージの読み込みで `opts.RepoURL` を利用している箇所）の冒頭で `resolveRepoURL` を使用してリポジトリURLを解決するように修正します。
-4.  **単体テストの実行と確認**:
+4.  **[x] 単体テストの実行と確認**:
     *   単体テストを実行し、テストがすべて成功すること（Green）を確認します。
 
 ## Verification Plan

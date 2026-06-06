@@ -13,7 +13,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const defaultRepoURL = "https://github.com/axsh/tokotachi-scaffolds"
+const defaultRepoURL = "https://github.com/axsh/tokotachi"
+
+func resolveRepoURL(specifiedURL string) string {
+	if specifiedURL != "" {
+		return specifiedURL
+	}
+	if envURL := os.Getenv("TT_CONTENT_REPO"); envURL != "" {
+		return envURL
+	}
+	return defaultRepoURL
+}
 
 // RunOptions holds parameters for a scaffold execution.
 type RunOptions struct {
@@ -57,9 +67,7 @@ func (f *githubEntryFetcher) FetchEntry(category, name string) (*ScaffoldEntry, 
 // Run executes the full scaffold workflow:
 // resolve entry -> resolve dependencies -> download templates -> build plan.
 func Run(opts RunOptions) (*Plan, error) {
-	if opts.RepoURL == "" {
-		opts.RepoURL = defaultRepoURL
-	}
+	opts.RepoURL = resolveRepoURL(opts.RepoURL)
 	if opts.Stdout == nil {
 		opts.Stdout = os.Stdout
 	}
@@ -204,9 +212,7 @@ func buildCompositePlan(downloader *github.Client, entries []ScaffoldEntry,
 
 // Apply executes the plan: checkpoint -> file placement -> post-actions.
 func Apply(plan *Plan, opts RunOptions) error {
-	if opts.RepoURL == "" {
-		opts.RepoURL = defaultRepoURL
-	}
+	opts.RepoURL = resolveRepoURL(opts.RepoURL)
 
 	// 1. Create checkpoint
 	headCommit := getHeadCommit(opts.RepoRoot)
@@ -420,9 +426,7 @@ type MetaYAML struct {
 // List fetches the catalog and returns all available scaffolds.
 // Uses cache (via meta.yaml updated_at) when available.
 func List(repoURL string, repoRoot string, filterCategory string) ([]ScaffoldEntry, error) {
-	if repoURL == "" {
-		repoURL = defaultRepoURL
-	}
+	repoURL = resolveRepoURL(repoURL)
 
 	downloader, err := github.NewClient(repoURL)
 	if err != nil {
