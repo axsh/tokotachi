@@ -22,46 +22,63 @@ function Write-Pass  { param([string]$Message) Write-Host "[PASS] $Message" -For
 function Write-Fail  { param([string]$Message) Write-Host "[FAIL] $Message" -ForegroundColor Red }
 function Write-Warn  { param([string]$Message) Write-Host "[WARN] $Message" -ForegroundColor Yellow }
 
-# ─── Resolve project root ───────────────────────────────────
-# This script lives at scripts/dist/tool/internal/install.ps1
+# ─── Mode Detection & Binary Resolution ──────────────────────
+# This installer automatically detects and supports two deployment modes:
+# 1. Release Package Mode:
+#    Used when running from a distributed ZIP archive. The script checks if
+#    the binary (tt.exe) is in the same directory as the script. If found,
+#    it skips the build process and installs it directly.
+# 2. Developer Repository Mode:
+#    Used when running within a cloned repository. The script resolves the
+#    project root directory, and compiles the source code using 'go build'
+#    if the binary is not already built inside the 'bin' directory.
+
 $ScriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ProjectRoot = (Resolve-Path (Join-Path $ScriptDir "..\..\..\..")).Path
+$LocalBinary = Join-Path $ScriptDir "$BinaryName.exe"
 
-# ─── Step 1: Ensure binary exists ───────────────────────────
-$BinDir       = Join-Path $ProjectRoot "bin"
-$SourceBinary = Join-Path $BinDir $BinaryName
-
-if (-not (Test-Path $SourceBinary)) {
-    $goExe = Get-Command go -ErrorAction SilentlyContinue
-    if (-not $goExe) {
-        Write-Fail "Go is not installed. Please install Go and try again."
-        exit 1
-    }
-
-    $FeaturePath = Join-Path $ProjectRoot $FeatureDir
-    if (-not (Test-Path (Join-Path $FeaturePath "go.mod"))) {
-        Write-Fail "Feature source not found: $FeaturePath"
-        exit 1
-    }
-
-    if (-not (Test-Path $BinDir)) {
-        New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
-    }
-
-    Push-Location $FeaturePath
-    try {
-        & go build -o $SourceBinary .
-        if ($LASTEXITCODE -ne 0) {
-            Write-Fail "Build failed. Please fix errors and try again."
-            exit 1
-        }
-    } finally {
-        Pop-Location
-    }
+if (Test-Path $LocalBinary) {
+    Write-Info "Running in Release Package Mode."
+    $SourceBinary = $LocalBinary
+} else {
+    Write-Info "Running in Developer Repository Mode."
+    
+    # Resolve project root relative to the script location (scripts/dist/tool/internal/install.ps1)
+    $ProjectRoot = (Resolve-Path (Join-Path $ScriptDir "..\..\..\..")).Path
+    $BinDir       = Join-Path $ProjectRoot "bin"
+    $SourceBinary = Join-Path $BinDir $BinaryName
 
     if (-not (Test-Path $SourceBinary)) {
-        Write-Fail "Binary still not found after build: $SourceBinary"
-        exit 1
+        $goExe = Get-Command go -ErrorAction SilentlyContinue
+        if (-not $goExe) {
+            Write-Fail "Go is not installed. Please install Go and try again."
+            exit 1
+        }
+
+        $FeaturePath = Join-Path $ProjectRoot $FeatureDir
+        if (-not (Test-Path (Join-Path $FeaturePath "go.mod"))) {
+            Write-Fail "Feature source not found: $FeaturePath"
+            exit 1
+        }
+
+        if (-not (Test-Path $BinDir)) {
+            New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
+        }
+
+        Push-Location $FeaturePath
+        try {
+            & go build -o $SourceBinary .
+            if ($LASTEXITCODE -ne 0) {
+                Write-Fail "Build failed. Please fix errors and try again."
+                exit 1
+            }
+        } finally {
+            Pop-Location
+        }
+
+        if (-not (Test-Path $SourceBinary)) {
+            Write-Fail "Binary still not found after build: $SourceBinary"
+            exit 1
+        }
     }
 }
 
