@@ -1,0 +1,8 @@
+scaffolds:
+    feature:
+        axsh-go-standard: catalog/scaffolds/b/i/b/l.yaml
+        kotoshiro-go-mcp: catalog/scaffolds/l/r/y/6.yaml
+    project:
+        axsh-go-standard: catalog/scaffolds/8/w/4/o.yaml
+    root:
+        default: catalog/scaffolds/6/j/v/n.yaml
