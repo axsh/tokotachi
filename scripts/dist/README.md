@@ -22,8 +22,8 @@ scripts/dist/
 │       ├── install.ps1        # Installer for Windows users
 │       └── uninstall.ps1      # Uninstaller for Windows users
 │
-├── content/                   # Content release pipeline scripts (Future extension)
-│   └── README.md
+├── content/                   # Content release pipeline scripts
+│   └── release.sh             # [Public] All-in-one: build + regenerate catalog + git push
 │
 └── shared/                    # Shared utilities
     └── _lib.sh                # Common bash functions and environment settings
@@ -70,6 +70,18 @@ This publishes to:
 - GitHub Releases
 - Homebrew tap (from `tools/installers/homebrew/`)
 - Scoop bucket (from `tools/installers/scoop/`)
+
+---
+
+## Release Workflow (Content)
+
+### Catalog Release
+
+Build, regenerate catalog data using `templatizer`, and commit/push updates to main branch in a single command:
+
+```bash
+./scripts/dist/content/release.sh
+```
 
 ---
 
