@@ -299,6 +299,10 @@ You can trigger each step of the release pipeline individually for fine-grained 
 ./scripts/dist/tool/internal/package.sh tt v2.0.0
 ```
 
+> [!TIP]
+> **Verify before publishing**:
+> You can manually verify the packaged artifacts (e.g., check that the correct binaries and Windows installer scripts/README are included inside the zip/tar.gz files) under `dist/tt/v2.0.0/` before proceeding to the publish step.
+
 ##### Step 3: Publish to distribution channels
 ```bash
 ./scripts/dist/tool/internal/publish.sh tt v2.0.0
