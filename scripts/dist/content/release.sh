@@ -10,8 +10,8 @@
 #    YAML metadata files inside catalog/scaffolds/, and update the top-level
 #    catalog.yaml index and meta.yaml metadata.
 # 3. Remote Publishing: Stages all generated catalog files, commits them with
-#    single-quoted message 'update catalog', and pushes the updates to the main
-#    branch of the remote repository (git push origin main).
+#    single-quoted message 'update catalog', and pushes the updates to the current
+#    active branch of the remote repository (git push origin <current-branch>).
 #
 # Usage: ./scripts/dist/content/release.sh [OPTIONS]
 #
@@ -28,7 +28,7 @@ Usage: ./scripts/dist/content/release.sh [OPTIONS]
 
 1. Runs build.sh (full build & unit tests)
 2. Runs templatizer to regenerate catalog data
-3. Commits and pushes catalog changes to main branch
+3. Commits and pushes catalog changes to current branch
 
 Options:
   --help    Show this help message
@@ -90,9 +90,12 @@ if git diff --cached --quiet; then
 else
   info "Committing changes..."
   git commit -m 'update catalog'
-  info "Pushing to main..."
-  if git push origin main; then
-    pass "Successfully pushed catalog updates to main!"
+  
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  info "Pushing to ${current_branch}..."
+  if git push origin "${current_branch}"; then
+    pass "Successfully pushed catalog updates to ${current_branch}!"
   else
     fail "Git push failed."
     exit 1
