@@ -318,22 +318,43 @@ Automates building the templatizer, packaging catalog originals into scaffolds, 
 
 ---
 
-## Development Workflow
+## 開発とリリースのワークフロー
 
-This project uses an **AI-assisted development workflow** with structured phases:
+本プロジェクトでは、AIアシスト開発ワークフローと、ブランチベースのリリースパイプラインを統合した開発プロセスを採用しています。
+
+### 1. 開発ループ (AIアシスト)
+
+ツールの実装変更やコンテンツ（カタログテンプレート）の更新を行う場合は、まず新しいフィーチャーブランチ（作業ブランチ）を作成し、以下の定義された開発フェーズに従って進めます。
 
 ```
-  Idea → Specification → Implementation Plan → Execution → Verification
+  ブランチ作成 ──> 仕様書作成 ──> 実装計画作成 ──> 実装実行 ──> ビルド・検証
 ```
 
-### Workflow Phases
+#### 各開発フェーズ
+1. **仕様書作成 (Specification)** — 開発要件や仕様を `prompts/phases/` 配下に定義します。作成には [create-specification](.agent/workflows/create-specification.md) ワークフローを使用します。
+2. **実装計画作成 (Implementation Plan)** — 具体的な実装手順や検証計画を作成します。作成には [create-implementation-plan](.agent/workflows/create-implementation-plan.md) ワークフローを使用します。
+3. **実装実行 (Execution)** — コードやテスト、カタログの修正を行います。実行には [execute-implementation-plan](.agent/workflows/execute-implementation-plan.md) ワークフローを使用します。
+4. **ビルド・検証 (Verification)** — 実装した内容が正しく動作するかテストを実行します。検証には [build-pipeline](.agent/workflows/build-pipeline.md) ワークフローを使用します。
 
-1. **Specification** — Capture requirements in `prompts/phases/` using [create-specification](.agent/workflows/create-specification.md)
-2. **Implementation Plan** — Generate detailed plans using [create-implementation-plan](.agent/workflows/create-implementation-plan.md)
-3. **Execution** — Implement code and tests using [execute-implementation-plan](.agent/workflows/execute-implementation-plan.md)
-4. **Verification** — Build and test using [build-pipeline](.agent/workflows/build-pipeline.md)
+*各フェーズの移行時には、必ず人間によるレビューと承認が必要です。自動で次のフェーズに進むことはありません。*
 
-Each phase includes a **human review checkpoint** before progressing to the next.
+---
+
+### 2. リリースワークフロー
+
+開発ブランチでの検証が完了した後、変更対象のコンポーネントに応じてリリース作業を行います。
+
+#### A. ツールリリース (tt CLIツール)
+CLIツール `tt` のバイナリおよび配布用アーカイブをコンパイルし、GitHub Releasesに直接アップロードして公開します。
+- リリース用スクリプト `./scripts/dist/tool/release.sh tt` を実行してリリースを公開します。
+- このスクリプトを実行すると、現在のコードベースに基づいてビルド、パッケージング、および配布チャネルへの公開（GitHub Releasesへのアップロードなど）が実行されます。
+- 通常は、開発ブランチから `main` ブランチへPRをマージした後に、`main` ブランチまたはリリース専用ブランチから実行します。
+
+#### B. コンテンツリリース (カタログテンプレート)
+カタログテンプレート（`catalog/scaffolds/` やインデックス、メタデータ）はGitリポジトリ内に直接格納されるため、リリースはリポジトリの更新コミットとして行われます。
+1. **コンテンツリリースの実行** — 作業中のカレントブランチ上で `./scripts/dist/content/release.sh` を実行します。これにより、自動的に検証用バイナリのビルド、カタログの再生成と検証が行われ、カタログ更新のコミットが自動生成された後、作業中のリモートブランチへ直接 `push` されます。
+2. **プルリクエスト (PR) の作成** — カレントブランチがリモートにプッシュされた後、GitHub上で `main` ブランチに対するプルリクエスト（PR）を作成します。
+3. **マージとリリース完了** — PRがレビューされ `main` ブランチにマージされることで、リリースが完了します。マージされた瞬間から、すべての `tt` クライアントが最新のカタログテンプレートを利用可能になります。
 
 ## Contributing
 
