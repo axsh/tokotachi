@@ -1,0 +1,12 @@
+version: 1
+project_id: test-project
+sources:
+  policies: "prompts/manifest/code_content/policies/**/*.yaml"
+  memory_docs: "prompts/memory/**/*.md"
+outputs:
+  resolved_manifest: tmp/dist/manifest.resolved.yaml
+  memory_index: prompts/memory/index.md
+defaults:
+  language: ja
+  generated_banner: true
+  build_dir: tmp/dist/

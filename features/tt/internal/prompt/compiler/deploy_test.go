@@ -1,0 +1,204 @@
+package compiler
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestDeploy_FirstRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "valid"), tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+	result, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("Deploy() error = %v", err)
+	}
+	if result.Skipped {
+		t.Error("expected Skipped=false on first run")
+	}
+	if result.DigestCurrent == "" {
+		t.Error("expected non-empty DigestCurrent")
+	}
+	if result.CompileResult == nil {
+		t.Error("expected non-nil CompileResult")
+	}
+
+	// Verify digest file was created
+	cfg, _ := LoadConfig(projectPath)
+	rootDir, _ := ResolveProjectRoot(projectPath)
+	buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
+	digestFile := DigestPath(buildDir)
+	if _, err := os.Stat(digestFile); os.IsNotExist(err) {
+		t.Error("expected digest file to be created")
+	}
+}
+
+func TestDeploy_NoChanges(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "valid"), tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+
+	// First deploy
+	_, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("first Deploy() error = %v", err)
+	}
+
+	// Second deploy without changes
+	result, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("second Deploy() error = %v", err)
+	}
+	if !result.Skipped {
+		t.Error("expected Skipped=true when no changes")
+	}
+}
+
+func TestDeploy_WithChanges(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "valid"), tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+
+	// First deploy
+	_, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("first Deploy() error = %v", err)
+	}
+
+	// Modify a source file
+	policyFile := filepath.Join(tmpDir, "prompts", "manifest", "code_content", "policies", "test.yaml")
+	data, err := os.ReadFile(policyFile)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	if err := os.WriteFile(policyFile, append(data, []byte("\n# changed\n")...), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	// Second deploy with changes
+	result, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("second Deploy() error = %v", err)
+	}
+	if result.Skipped {
+		t.Error("expected Skipped=false when source changed")
+	}
+}
+
+func TestDeploy_Force(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "valid"), tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+
+	// First deploy
+	_, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("first Deploy() error = %v", err)
+	}
+
+	// Force deploy (no changes)
+	result, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       true,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("force Deploy() error = %v", err)
+	}
+	if result.Skipped {
+		t.Error("expected Skipped=false with --force")
+	}
+}
+
+func TestDeploy_DryRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "valid"), tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+
+	result, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      true,
+	})
+	if err != nil {
+		t.Fatalf("Deploy() error = %v", err)
+	}
+	if result.Skipped {
+		t.Error("expected Skipped=false on first dry-run")
+	}
+
+	// Verify digest file was NOT created
+	cfg, _ := LoadConfig(projectPath)
+	rootDir, _ := ResolveProjectRoot(projectPath)
+	buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
+	digestFile := DigestPath(buildDir)
+	if _, err := os.Stat(digestFile); !os.IsNotExist(err) {
+		t.Error("dry-run should not create digest file")
+	}
+}
+
+func TestDeploy_ValidationErrors(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "invalid"), tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+	result, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("Deploy() unexpected fatal error = %v", err)
+	}
+	if result.CompileResult == nil || len(result.CompileResult.Errors) == 0 {
+		t.Error("expected validation errors in CompileResult")
+	}
+
+	// Verify digest file was NOT created
+	cfg, _ := LoadConfig(projectPath)
+	rootDir, _ := ResolveProjectRoot(projectPath)
+	buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
+	digestFile := DigestPath(buildDir)
+	if _, err := os.Stat(digestFile); !os.IsNotExist(err) {
+		t.Error("digest file should not be created on validation error")
+	}
+}
