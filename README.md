@@ -189,7 +189,7 @@ Installs to `%LOCALAPPDATA%\Axsh\Tokotachi\bin` and configures user PATH. No adm
 # Clone and install
 git clone https://github.com/axsh/tokotachi.git
 cd tokotachi
-powershell -ExecutionPolicy Bypass -File .\scripts\dist\install.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\dist\tool\internal\win\install.ps1
 ```
 
 Open a new terminal and verify with `tt --help`.
@@ -197,7 +197,7 @@ Open a new terminal and verify with `tt --help`.
 To uninstall:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dist\uninstall.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\dist\tool\internal\win\uninstall.ps1
 ```
 
 **Option B: Manual Install**

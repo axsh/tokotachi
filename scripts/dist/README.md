@@ -19,8 +19,10 @@ scripts/dist/
 │       ├── build.sh           # Compiles Go binaries for target platforms
 │       ├── package.sh         # Archives binaries and packages installers
 │       ├── publish.sh         # Publishes to GitHub Releases and package managers
-│       ├── install.ps1        # Installer for Windows users
-│       └── uninstall.ps1      # Uninstaller for Windows users
+│       └── win/               # Windows release assets
+│           ├── install.ps1    # Installer for Windows users
+│           ├── uninstall.ps1  # Uninstaller for Windows users
+│           └── README.md      # Japanese README for the Windows release package
 │
 ├── content/                   # Content release pipeline scripts
 │   └── release.sh             # [Public] All-in-one: build + regenerate catalog + git push

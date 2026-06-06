@@ -58,13 +58,12 @@ while read -r os arch; do
   cp "$binary" "${tmp_dir}/${BINARY_NAME}${ext}"
 
   if [[ "$os" == "windows" ]]; then
-    # Copy installer scripts to temp dir
-    cp "$(dirname "${BASH_SOURCE[0]}")/install.ps1" "${tmp_dir}/"
-    cp "$(dirname "${BASH_SOURCE[0]}")/uninstall.ps1" "${tmp_dir}/"
+    # Copy installer files and README for Windows
+    cp "$(dirname "${BASH_SOURCE[0]}")/win/"* "${tmp_dir}/"
 
     # Windows: zip archive (with fallback to PowerShell)
     if command -v zip &>/dev/null; then
-      (cd "$tmp_dir" && zip -q "${RELEASE_DIR}/${archive_name}.zip" "${BINARY_NAME}${ext}" "install.ps1" "uninstall.ps1")
+      (cd "$tmp_dir" && zip -q "${RELEASE_DIR}/${archive_name}.zip" "${BINARY_NAME}${ext}" "install.ps1" "uninstall.ps1" "README.md")
     else
       # Fallback: use PowerShell Compress-Archive
       win_src_pattern="$(cygpath -w "${tmp_dir}")\\*"
