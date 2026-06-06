@@ -1,124 +1,133 @@
 ---
 id: current-overview
 kind: memory
-title: Current Project Overview
+title: 現在のプロジェクト概要
 status: current
 topics:
-  - overview
-  - modules
-  - structure
+  - 概要
+  - モジュール
+  - 構造
 triggers:
-  - onboarding to the project
-  - understanding the overall architecture
-  - changing package boundaries
+  - プロジェクトへのオンボーディング
+  - 全体的なアーキテクチャの理解
+  - パッケージ境界の変更
 depends_on: []
 evidence:
-  - code
-  - docs
+  - コード
+  - ドキュメント
 review:
   human_required_for:
-    - major_structural_change
+    - 重大な構造変更
 owners:
-  - architecture
-last_reviewed: 2026-06-04
+  - アーキテクチャ
+last_reviewed: 2026-06-06
 ---
 
-# Current Project Overview
+# 現在のプロジェクト概要
 
-This document describes the current state of the project structure, module responsibilities,
-and dependency relationships.
+このドキュメントでは、現在のプロジェクト構造、モジュールの責務、および依存関係について説明します。
 
-## Technology Stack
+## 技術スタック
 
-- **Language**: Go (v1.21+)
-- **Architecture**: Modular / Layered Architecture
-- **Build System**: Custom bash scripts (`scripts/process/`)
+- **言語**: Go (v1.24+)
+- **アーキテクチャ**: モジュール化 / レイヤードアーキテクチャ (Modular / Layered Architecture)
+- **ビルドシステム**: カスタムbashスクリプト (`scripts/process/`)
 
-## Repository Structure
+## リポジトリの構造
 
 ```
 .
-├── features/                   # Feature modules (vertical slices)
-│   └── myprog/                 # Main application feature
-│       ├── go.mod              # Go module definition
-│       └── main.go             # Application entry point
+├── features/                   # 機能モジュール (垂直スライス)
+│   ├── tt/                     # メインCLIツール機能 (main.go, go.mod等)
+│   ├── templatizer/            # テンプレート生成機能
+│   ├── release-note/           # リリースノート作成機能
+│   └── integration-test/       # 統合テスト実行用の機能
 │
-├── shared/                     # Shared libraries and utilities
-│   └── libs/                   # Reusable library packages
-│       └── README.md
+├── shared/                     # 共有ライブラリおよびユーティリティ
+│   └── libs/                   # 再利用可能なライブラリパッケージ
 │
-├── scripts/                    # Build and utility scripts
-│   ├── process/                # Build pipeline scripts
-│   │   ├── build.sh            # Full build + unit test runner
-│   │   └── integration_test.sh # Integration test runner
-│   └── utils/                  # Utility scripts
-│       └── show_current_status.sh
+├── pkg/                        # ルートモジュール用の公開/再利用可能パッケージ群 (action, scaffold等)
 │
-├── prompts/                    # Coding agent configuration (source of truth)
-│   ├── memory/              # Project Memory (this directory)
-│   ├── manifest/               # Common IR manifest definitions
-│   ├── rules/                  # Coding, testing, planning rules
-│   │   ├── coding-rules.md
-│   │   ├── testing-rules.md
-│   │   ├── planning-rules.md
-│   │   └── Vibe-Coding-Standard.md
-│   └── phases/                 # Phased development specifications
-│       └── 000-foundation/
+├── internal/                   # 外部非公開のユーティリティパッケージ群 (cmdexec, log等)
 │
-├── .agent/                     # Antigravity-specific configuration
-│   ├── workflows/              # 8 workflow definitions
-│   └── rules/                  # Agent instructions
-│       └── instructions.md
+├── tools/                      # ツール用のメタデータおよびインストーラー
 │
-├── .cursor/                    # Cursor IDE configuration (generated)
-├── .kotoshiro/                 # Project-specific tooling
+├── tests/                      # 各機能の統合テストコード
 │
-├── AGENTS.md                   # Workspace-level rules (sandbox boundary)
-├── .gitignore
-└── .gitmodules                 # Git submodule references
+├── catalog/                    # スキャフォールドのカタログテンプレート
+│
+├── scripts/                    # ビルドおよびユーティリティスクリプト
+│   ├── process/                # ビルドパイプラインスクリプト (build.sh, integration_test.sh)
+│   └── utils/                  # ユーティリティスクリプト (show_current_status.sh等)
+│
+├── prompts/                    # コーディングエージェント設定 (ソースオブトゥルース)
+│   ├── memory/                 # プロジェクトメモリ (本ディレクトリ)
+│   ├── manifest/               # 共通IRマニフェスト定義
+│   ├── rules/                  # コーディング、テスト、計画のルール
+│   └── phases/                 # フェーズごとの開発仕様書
+│
+├── .agent/                     # Antigravity固有の設定
+│   ├── workflows/              # ワークフロー定義
+│   └── rules/                  # エージェント指示書
+│
+├── AGENTS.md                   # ワークスペースレベルのルール (サンドボックス境界)
+├── tokotachi.go                # ルートレベルのコアライブラリAPI
+├── go.mod                      # ルートモジュールの定義
+└── .gitmodules                 # Gitサブモジュールの参照
 ```
 
-## Module Responsibilities
+## モジュールの責務
 
-### features/myprog/
-The main application module. Contains the entry point (`main.go`) and
-application-specific logic. This is the primary vertical slice of the project.
+### features/
+機能モジュール（垂直スライス）を格納します。
+- `features/tt/`: メインCLIアプリケーションモジュール。エントリーポイント (`main.go`) とCLI固有のロジックを含みます。
+- `features/templatizer/`, `features/release-note/`, `features/integration-test/`: その他の機能モジュール。
 
 ### shared/libs/
-Reusable library packages shared across feature modules. Follows the
-"Accept Interfaces, Return Structs" principle. Dependencies flow inward
-(features depend on shared, not vice versa).
+機能モジュール間で共有される、再利用可能なライブラリパッケージ。「インターフェースを受け取り、構造体を返す」原則に従います。
+
+### pkg/
+ルートモジュール `github.com/axsh/tokotachi` 内の公開パッケージ群。各機能パッケージ (action, detect, scaffold 等) が含まれ、再利用可能です。
+
+### internal/
+ルートモジュール内のプライベートパッケージ群 (cmdexec, log 等)。外部モジュールからは直接参照されません。
+
+### tools/
+インストーラーやツールのメタデータ。
+
+### tests/
+各機能の統合テスト。
+
+### catalog/
+スキャフォールド作成時のカタログテンプレート。
 
 ### scripts/
-Build and utility scripts that automate development workflows.
-- `process/`: Pipeline scripts (build, test, integration test)
-- `utils/`: Helper scripts (status display, validation)
+開発ワークフローを自動化するビルドおよびユーティリティスクリプト。
+- `process/`: パイプラインスクリプト（build.sh、integration_test.sh）
+- `utils/`: 補助スクリプト
 
 > [!IMPORTANT]
-> Direct use of `go build`, `go test`, `npm run build` is prohibited.
-> Always use the scripts in `scripts/process/`.
+> `go build`、`go test`、`npm run build` を直接実行することは禁止されています。
+> 常に `scripts/process/` にあるスクリプトを使用してください。
 
 ### prompts/
-Source of truth for coding agent configuration and project documentation.
-- `memory/: Project Memory (design knowledge base)
-- `manifest/`: Common IR definitions for multi-tool agent configuration
-- `rules/`: Coding standards, testing rules, planning rules
-- `phases/`: Phased development specifications and plans
+コーディングエージェントの設定とプロジェクトドキュメント。
+- `memory/`: プロジェクトメモリ（設計ナレッジベース）
+- `manifest/`: エージェント用マニフェスト定義
+- `rules/`: コーディング規格、テストルール、計画ルール
+- `phases/`: フェーズごとの開発仕様書および計画書
 
 ### .agent/
-Antigravity-specific configuration. Contains workflows and rules that are
-consumed by the Antigravity coding agent. These are migration targets
-that will be managed via `prompts/manifest/` in the future.
+Antigravity固有の設定。エージェントが実行するワークフローや指示書が含まれます。
 
-## Dependency Direction
+## 依存関係の方向
 
 ```
-features/myprog  -->  shared/libs
+features/tt (および他のfeatures) --> shared/libs, pkg, internal
        |
        v
-  prompts/rules (referenced by agents)
-  .agent/ (consumed by Antigravity)
+  prompts/rules (エージェントによって参照される)
+  .agent/ (Antigravityによって消費される)
 ```
 
-The dependency direction is strictly inward: feature modules may depend
-on shared libraries, but shared libraries must not depend on features.
+依存関係の方向は厳密に内向きです。機能モジュールは共有ライブラリや `pkg`、`internal` に依存できますが、共有ライブラリや `pkg` が機能モジュールに依存することはできません。
