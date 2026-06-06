@@ -43,7 +43,7 @@ docs/
   - グローバルフラグ（`--verbose`, `--dry-run`, `--report`）
   - 各サブコマンドの個別フラグ（`--editor`, `--attach`, `--yes`, `--rollback`, `--list` など）
 - **環境変数**:
-  - `DEVCTL_EDITOR` や `DEVCTL_CMD_CODE` など、エディタの解決や外部コマンドのオーバーライドに使用する環境変数。
+  - `TT_EDITOR` や `TT_CMD_CODE` など、エディタの解決や外部コマンドのオーバーライドに使用する環境変数。
 
 ### 3. 内部仕様資料の執筆内容 (`docs/specification/catalog-spec.md`)
 - **カタログ構造**:
