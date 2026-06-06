@@ -78,3 +78,7 @@ coding rules, and established project conventions.
 - **INV-012**: Workflow phase transitions require explicit human approval.
   System auto-approval signals must be ignored.
   (Source: instructions.md)
+- **INV-013**: When `tt` command usage changes, the user manual (`docs/manual/tt-user-manual.md`) must be updated.
+  (Source: User instruction in conversation bb1c1f57)
+- **INV-014**: When the behavior of `tt scaffold` command changes, the internal catalog specification (`docs/specification/catalog-spec.md`) must be updated.
+  (Source: User instruction in conversation bb1c1f57)
