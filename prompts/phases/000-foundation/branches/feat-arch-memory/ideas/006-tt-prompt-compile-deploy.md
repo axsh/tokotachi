@@ -125,11 +125,16 @@ target: antigravity
 - `{{target:name}}`: 現在のコンパイルターゲット名に展開される（例: `antigravity`, `cursor`）
 - `{{target:meta_dir}}`: 現在のターゲットのメタデータディレクトリパスに展開される（例: `.agent/.meta/`）
 
-これにより、プロンプト記述内でターゲット固有の文言を動的に切り替えることが可能になる。例えば、`architecture-maintainer` スキルが `./scripts/prompt/compile.sh` と `./scripts/prompt/deploy.sh --force` の2ステップを明記している箇所を、`./scripts/prompt/update.sh` に簡潔化する際にも活用できる。
+**`--target all` 時の挙動**: `--target all` でコンパイルする場合、各エミッターは順に実行される。テンプレート変数は**各エミッターの実行コンテキストでそのターゲットの値に解決される**。つまり:
+- antigravity 向けエミット時: `{{target:name}}` → `antigravity`, `{{target:meta_dir}}` → `.agent/.meta/`
+- cursor 向けエミット時: `{{target:name}}` → `cursor`, `{{target:meta_dir}}` → `.cursor/.meta/`
+- 以下同様
+
+これにより、プロンプト記述内でターゲット固有の文言を動的に切り替えることが可能になる。特に重要なユースケースとして、スキル内で `--target "{{target:name}}"` と記述すれば、そのスキルを読んでいるCoding Agent自身のターゲットのみを対象にしたコマンドを生成できる。
 
 #### R8. architecture-maintainer スキルの簡潔化
 
-`tt prompt update` の導入に伴い、`prompts/manifest/code_content/capabilities/architecture-maintainer/skill.md` のワークフロー記述を更新する。
+`tt prompt update` の導入とテンプレート変数 `{{target:name}}` の活用により、`prompts/manifest/code_content/capabilities/architecture-maintainer/skill.md` のワークフロー記述を更新する。
 
 現状の記述:
 ```
@@ -139,10 +144,12 @@ If compilation succeeds without any errors, run `./scripts/prompt/deploy.sh --fo
 
 更新後:
 ```
-you MUST run `./scripts/prompt/update.sh --force` to compile and deploy the memory documents ...
+you MUST run `./scripts/prompt/update.sh --force --target "{{target:name}}"` to compile and deploy the memory documents ...
 ```
 
-compile + deploy の2ステップを `update` の1ステップに統合し、プロンプト記述をシンプルにする。
+変更点:
+1. compile + deploy の2ステップを `update` の1ステップに統合し、プロンプト記述をシンプルにする
+2. `--target "{{target:name}}"` により、このスキルを読んでいるCoding Agent自身のターゲットのみを更新対象にする。例えば Antigravity がこのスキルを実行する場合、コンパイル時に `{{target:name}}` → `antigravity` と展開されるため、実際に実行されるコマンドは `./scripts/prompt/update.sh --force --target antigravity` となる。これにより、他のCoding Agent向けの設定に不要な影響を与えない
 
 ### 除外要件
 
