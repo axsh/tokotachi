@@ -386,4 +386,4 @@ tt scaffold [category] [name]
 
 ## License
 
-This project is private.
+This project is licensed under the GPLv3 License.
