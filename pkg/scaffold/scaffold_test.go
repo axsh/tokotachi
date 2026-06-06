@@ -46,3 +46,43 @@ func TestResolveRepoURL(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveRepoBranch(t *testing.T) {
+	tests := []struct {
+		name            string
+		specifiedBranch string
+		envBranch       string
+		expectedBranch  string
+	}{
+		{
+			name:            "Default fallback when no flag and no env",
+			specifiedBranch: "",
+			envBranch:       "",
+			expectedBranch:  "main",
+		},
+		{
+			name:            "Env override when no flag",
+			specifiedBranch: "",
+			envBranch:       "develop",
+			expectedBranch:  "develop",
+		},
+		{
+			name:            "Flag takes precedence over env",
+			specifiedBranch: "feature/test",
+			envBranch:       "develop",
+			expectedBranch:  "feature/test",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envBranch != "" {
+				t.Setenv("TT_CONTENT_BRANCH", tt.envBranch)
+			} else {
+				os.Unsetenv("TT_CONTENT_BRANCH")
+			}
+			actual := resolveRepoBranch(tt.specifiedBranch)
+			assert.Equal(t, tt.expectedBranch, actual)
+		})
+	}
+}
