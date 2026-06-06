@@ -318,43 +318,43 @@ Automates building the templatizer, packaging catalog originals into scaffolds, 
 
 ---
 
-## 開発とリリースのワークフロー
+## Development and Release Workflow
 
-本プロジェクトでは、AIアシスト開発ワークフローと、ブランチベースのリリースパイプラインを統合した開発プロセスを採用しています。
+This project uses an **AI-assisted development workflow** integrated with branch-based release pipelines.
 
-### 1. 開発ループ (AIアシスト)
+### 1. Development Loop (AI-Assisted)
 
-ツールの実装変更やコンテンツ（カタログテンプレート）の更新を行う場合は、まず新しいフィーチャーブランチ（作業ブランチ）を作成し、以下の定義された開発フェーズに従って進めます。
+For any code changes (features, tools) or catalog updates (content), create a new feature branch and follow the structured development phases:
 
 ```
-  ブランチ作成 ──> 仕様書作成 ──> 実装計画作成 ──> 実装実行 ──> ビルド・検証
+  Branch out ──> Specification ──> Implementation Plan ──> Execution ──> Verification
 ```
 
-#### 各開発フェーズ
-1. **仕様書作成 (Specification)** — 開発要件や仕様を `prompts/phases/` 配下に定義します。作成には [create-specification](.agent/workflows/create-specification.md) ワークフローを使用します。
-2. **実装計画作成 (Implementation Plan)** — 具体的な実装手順や検証計画を作成します。作成には [create-implementation-plan](.agent/workflows/create-implementation-plan.md) ワークフローを使用します。
-3. **実装実行 (Execution)** — コードやテスト、カタログの修正を行います。実行には [execute-implementation-plan](.agent/workflows/execute-implementation-plan.md) ワークフローを使用します。
-4. **ビルド・検証 (Verification)** — 実装した内容が正しく動作するかテストを実行します。検証には [build-pipeline](.agent/workflows/build-pipeline.md) ワークフローを使用します。
+#### Workflow Phases
+1. **Specification** — Capture requirements in `prompts/phases/` using the [create-specification](.agent/workflows/create-specification.md) workflow.
+2. **Implementation Plan** — Generate detailed technical plans using the [create-implementation-plan](.agent/workflows/create-implementation-plan.md) workflow.
+3. **Execution** — Implement code, tests, and catalog modifications using the [execute-implementation-plan](.agent/workflows/execute-implementation-plan.md) workflow.
+4. **Verification** — Verify changes by running the [build-pipeline](.agent/workflows/build-pipeline.md) workflow.
 
-*各フェーズの移行時には、必ず人間によるレビューと承認が必要です。自動で次のフェーズに進むことはありません。*
+*Each phase requires a **human review checkpoint** before proceeding to the next. AI will not automatically proceed to the next phase without explicit approval.*
 
 ---
 
-### 2. リリースワークフロー
+### 2. Release Workflows
 
-開発ブランチでの検証が完了した後、変更対象のコンポーネントに応じてリリース作業を行います。
+Once verification is complete, release changes depending on the component type:
 
-#### A. ツールリリース (tt CLIツール)
-CLIツール `tt` のバイナリおよび配布用アーカイブをコンパイルし、GitHub Releasesに直接アップロードして公開します。
-- リリース用スクリプト `./scripts/dist/tool/release.sh tt` を実行してリリースを公開します。
-- このスクリプトを実行すると、現在のコードベースに基づいてビルド、パッケージング、および配布チャネルへの公開（GitHub Releasesへのアップロードなど）が実行されます。
-- 通常は、開発ブランチから `main` ブランチへPRをマージした後に、`main` ブランチまたはリリース専用ブランチから実行します。
+#### A. Tool Release (tt CLI Tool)
+The tool release compiles binaries, packages archives, and publishes them directly to GitHub Releases.
+- Run `./scripts/dist/tool/release.sh tt` to publish the release.
+- This script builds the binaries, packages the archives, and uploads them to the distribution channels (such as GitHub Releases).
+- Typically run from the `main` branch or a dedicated release branch after code changes are merged.
 
-#### B. コンテンツリリース (カタログテンプレート)
-カタログテンプレート（`catalog/scaffolds/` やインデックス、メタデータ）はGitリポジトリ内に直接格納されるため、リリースはリポジトリの更新コミットとして行われます。
-1. **コンテンツリリースの実行** — 作業中のカレントブランチ上で `./scripts/dist/content/release.sh` を実行します。これにより、自動的に検証用バイナリのビルド、カタログの再生成と検証が行われ、カタログ更新のコミットが自動生成された後、作業中のリモートブランチへ直接 `push` されます。
-2. **プルリクエスト (PR) の作成** — カレントブランチがリモートにプッシュされた後、GitHub上で `main` ブランチに対するプルリクエスト（PR）を作成します。
-3. **マージとリリース完了** — PRがレビューされ `main` ブランチにマージされることで、リリースが完了します。マージされた瞬間から、すべての `tt` クライアントが最新のカタログテンプレートを利用可能になります。
+#### B. Content Release (Catalog Templates)
+Since catalog templates (`catalog/scaffolds/`, indices, metadata) are stored directly inside the Git repository, content release commits changes to the repository itself:
+1. **Run Content Release** — Execute `./scripts/dist/content/release.sh` on your active branch. This automatically builds verification binaries, regenerates the catalog, generates local commits, and pushes them directly to the active remote branch.
+2. **Create Pull Request** — Create a Pull Request (PR) from your feature branch to the `main` branch on GitHub.
+3. **Merge and Complete** — Once the PR is merged, the release is complete. The new catalog templates become immediately active and resolvable by `tt` clients.
 
 ## Contributing
 
