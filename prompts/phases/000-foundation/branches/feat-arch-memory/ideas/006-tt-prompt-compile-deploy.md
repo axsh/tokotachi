@@ -151,6 +151,22 @@ you MUST run `./scripts/prompt/update.sh --force --target "{{target:name}}"` to 
 1. compile + deploy の2ステップを `update` の1ステップに統合し、プロンプト記述をシンプルにする
 2. `--target "{{target:name}}"` により、このスキルを読んでいるCoding Agent自身のターゲットのみを更新対象にする。例えば Antigravity がこのスキルを実行する場合、コンパイル時に `{{target:name}}` → `antigravity` と展開されるため、実際に実行されるコマンドは `./scripts/prompt/update.sh --force --target antigravity` となる。これにより、他のCoding Agent向けの設定に不要な影響を与えない
 
+#### R9. prompt-update プロシージャの新規追加
+
+`prompts/manifest/code_content/procedures/prompt-update.md` を新規作成する。このプロシージャは Antigravity 向けにはワークフロー（`.agent/workflows/prompt-update.md`）として、Cursor 向けにはスキル（`.cursor/skills/prompt-update/SKILL.md`）としてコンパイル・デプロイされる。
+
+Coding Agent が自分のタイミングで `tt prompt update` を呼び出すための手順を定義する:
+
+1. **ターゲットの決定**: 以下の優先順位で `--target` の値を決定する
+   - ユーザーが明示的にターゲットを指定した場合、その値を使用する（「全部更新して」→ `all`）
+   - ユーザーが指定しない場合、Coding Agent自身が自分を正規名一覧から特定し、自分のターゲット名を使用する
+   - 自分を特定できない場合は `--target all` にフォールバックする
+2. **`--force` の判断**: ソースファイル変更直後は `--force` 推奨。通常は事前チェックに任せる
+3. **コマンド実行**: `./scripts/prompt/update.sh --target <TARGET>` を実行する
+4. **結果確認**: 終了コードとメッセージを確認し、エラー時はソースファイルを修正して再実行
+
+このプロシージャにより、AIエージェントはユーザーから「プロンプト設定を更新して」と指示された際に、適切なターゲットを判断して `update` を実行できるようになる。
+
 ### 除外要件
 
 - `agentctl init` コマンドの移植は不要（ttの`scaffold`が上位互換機能を持つ）
