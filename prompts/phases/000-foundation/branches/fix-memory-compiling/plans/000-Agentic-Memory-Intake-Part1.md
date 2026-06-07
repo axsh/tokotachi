@@ -571,135 +571,98 @@ Part 2 では補助コマンド (status/intake list/show)、Wrapper スクリプ
 
 ## Step-by-Step Implementation Guide
 
-### Step 1: ディレクトリレイアウトとスキーマの準備
+### Step 1: ディレクトリレイアウトとスキーマの準備 [x]
 
-1.  `prompts/memory/.gitignore` を作成し `var/` を記載
-2.  `prompts/memory/schemas/` ディレクトリを作成
-3.  `agent-notify-payload.schema.json`, `intake-event.schema.json`, `agent-notify-result.schema.json` の 3 ファイルを作成
-4.  `git add && git commit`
+1.  [x] `prompts/memory/.gitignore` を作成し `var/` を記載
+2.  [x] `prompts/memory/schemas/` ディレクトリを作成
+3.  [x] `agent-notify-payload.schema.json`, `intake-event.schema.json`, `agent-notify-result.schema.json` の 3 ファイルを作成
+4.  [x] `git add && git commit`
 
-### Step 2: 依存パッケージの追加
+### Step 2: 依存パッケージの追加 [x]
 
-1.  `features/tt/go.mod` に `github.com/oklog/ulid/v2`, `modernc.org/sqlite`, `golang.org/x/text` を追加
-2.  `go mod tidy` を実行
-3.  `git add && git commit`
+1.  [x] `features/tt/go.mod` に `github.com/oklog/ulid/v2`, `modernc.org/sqlite`, `golang.org/x/text` を追加
+2.  [x] `go mod tidy` を実行
+3.  [x] `git add && git commit`
 
-### Step 3: 共通型定義 (TDD: Red -> Green)
+### Step 3: 共通型定義 (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/types.go` を作成 (上記の構造体定義)
-2.  `features/tt/internal/agent/types_test.go` を作成 -- exit code 定数・code 定数が期待値と一致すること、JSON marshal/unmarshal のラウンドトリップを確認
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/types.go` を作成 (上記の構造体定義)
+2.  [x] `features/tt/internal/agent/types_test.go` を作成 -- exit code 定数・code 定数が期待値と一致すること、JSON marshal/unmarshal のラウンドトリップを確認
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 4: スキーマバリデーション (TDD: Red -> Green)
+### Step 4: スキーマバリデーション (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/notify/schema_test.go` を作成 -- テーブル駆動テスト:
-    *   有効なペイロード -> nil
-    *   必須フィールド欠損 (`raw_notes` 欠落) -> error
-    *   型不一致 (`version: "1"` instead of `1`) -> error
-    *   境界値 (`raw_notes` 0 件, 33 件, `task_summary` 501 文字) -> error
-    *   `agent` が enum 外 -> error
-2.  `features/tt/internal/agent/notify/schema.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/notify/schema_test.go` を作成 -- テーブル駆動テスト (15 ケース)
+2.  [x] `features/tt/internal/agent/notify/schema.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 5: テキスト正規化 (TDD: Red -> Green)
+### Step 5: テキスト正規化 (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/notify/normalize_test.go` を作成 -- テーブル駆動テスト:
-    *   NFC 正規化 (濁点分離 -> 合成済み)
-    *   空白圧縮
-    *   前後 trim
-    *   空ノート除外 (正規化後に空になるケース)
-    *   全ノートが空になる -> error
-2.  `features/tt/internal/agent/notify/normalize.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/notify/normalize_test.go` を作成 -- テーブル駆動テスト (7 ケース)
+2.  [x] `features/tt/internal/agent/notify/normalize.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 6: ID/Hash 計算 (TDD: Red -> Green)
+### Step 6: ID/Hash 計算 (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/notify/identity_test.go` を作成 -- テーブル駆動テスト:
-    *   ULID 一意性 (100 回生成して全て異なる)
-    *   `content_hash` 同一性 (同じ入力 -> 同じ hash)
-    *   `content_id` の branch/timestamp 非依存性 (異なる branch/timestamp でも同じ content -> 同じ content_id)
-    *   `event_id` の "E-" prefix
-    *   `content_hash` の "sha256:" prefix
-    *   `content_id` の "RAWC-" prefix
-2.  `features/tt/internal/agent/notify/identity.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/notify/identity_test.go` を作成 -- テーブル駆動テスト (12 ケース)
+2.  [x] `features/tt/internal/agent/notify/identity.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 7: Branch Strategy (TDD: Red -> Green)
+### Step 7: Branch Strategy (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/notify/branch_test.go` を作成 -- テーブル駆動テスト:
-    *   正常な Git 環境 -> `scope="branch"`, `branch_package` が `owner/repo:branch:mergebase` 形式
-    *   Git なし -> `scope="session"`
-    *   detached HEAD -> `scope="session"`
-    *   merge_base 取得失敗 -> branch_package の末尾が空
-2.  `features/tt/internal/agent/notify/branch.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/notify/branch_test.go` を作成 -- テーブル駆動テスト (10 ケース)
+2.  [x] `features/tt/internal/agent/notify/branch.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 8: 環境情報補完 (TDD: Red -> Green)
+### Step 8: 環境情報補完 (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/notify/supplement_test.go` を作成
-2.  `features/tt/internal/agent/notify/supplement.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/notify/supplement_test.go` を作成 (4 ケース)
+2.  [x] `features/tt/internal/agent/notify/supplement.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 9: Storage -- FileStore (TDD: Red -> Green)
+### Step 9: Storage -- FileStore (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/storage/filestore_test.go` を作成 -- テーブル駆動テスト:
-    *   正常: atomic write 後にファイルが存在し、JSON が valid
-    *   パス構造: `pending/YYYY/MM/DD/E-{ULID}.json` 形式
-    *   ディレクトリ自動作成: 存在しないパスでもエラーにならない
-2.  `features/tt/internal/agent/storage/filestore.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/storage/filestore_test.go` を作成 -- テーブル駆動テスト (6 ケース)
+2.  [x] `features/tt/internal/agent/storage/filestore.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 10: Storage -- SQLite Index (TDD: Red -> Green)
+### Step 10: Storage -- SQLite Index (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/storage/index_test.go` を作成 -- テーブル駆動テスト:
-    *   Store + 読み出し: event_id でレコードが取得できる
-    *   冪等性: 同一 `client_request_id` で 2 回 Store -> 2 回目は既存 event_id を返す
-    *   WAL mode: `PRAGMA journal_mode` が `wal` であることを確認
-    *   FTS: task_summary のキーワード検索でヒットする
-2.  `features/tt/internal/agent/storage/index.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/storage/index_test.go` を作成 -- テーブル駆動テスト (5 ケース)
+2.  [x] `features/tt/internal/agent/storage/index.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 11: Storage -- Audit Log (TDD: Red -> Green)
+### Step 11: Storage -- Audit Log (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/storage/audit_test.go` を作成
-2.  `features/tt/internal/agent/storage/audit.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/storage/audit_test.go` を作成 (5 ケース)
+2.  [x] `features/tt/internal/agent/storage/audit.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 12: Handler -- パイプラインオーケストレーション (TDD: Red -> Green)
+### Step 12: Handler -- パイプラインオーケストレーション (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/notify/handler_test.go` を作成 -- テスト:
-    *   正常系: 有効な payload -> `accepted`, exit 0
-    *   異常系: 不正 JSON -> `rejected`, exit 10
-    *   異常系: スキーマ違反 -> `rejected`, exit 11
-    *   冪等性: 同一 `client_request_id` -> 同じ event_id
-    *   Git なし -> `accepted_with_warnings`, warnings に `NO_GIT_REPOSITORY`
-2.  `features/tt/internal/agent/notify/handler.go` を実装
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/notify/handler_test.go` を作成 (5 ケース)
+2.  [x] `features/tt/internal/agent/notify/handler.go` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 13: コマンド層 (agent.go, agent_notify.go)
+### Step 13: コマンド層 (agent.go, agent_notify.go) [x]
 
-1.  `features/tt/cmd/agent.go` を作成 -- `tt agent` サブコマンドグループ
-2.  `features/tt/cmd/agent_notify.go` を作成 -- `tt agent notify` コマンド
-    *   CLI フラグの定義 (上記の全フラグ)
-    *   JSON 経路 / CLI フラグ経路の分岐
-    *   `--dry-run` / `--print-payload` の処理
-    *   結果 JSON の stdout 出力
-    *   exit code のマッピング
-3.  `git add && git commit`
+1.  [x] `features/tt/cmd/agent.go` を作成 -- `tt agent` サブコマンドグループ
+2.  [x] `features/tt/cmd/agent_notify.go` を作成 -- `tt agent notify` コマンド
+3.  [x] `git add && git commit`
 
-### Step 14: ビルドと検証
+### Step 14: ビルドと検証 [x]
 
-1.  Verification Plan を実行
+1.  [x] `./scripts/process/build.sh --backend-only` 全テスト PASS
 
 ## Verification Plan
 
