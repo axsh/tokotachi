@@ -175,6 +175,17 @@ scripts/code/
 
 `notify.sh` の責務は、Coding Agent から受け取ったオプションを `tt agent notify` のオプションにマッピングして渡すことのみである。JSON 生成、スキーマ検証、retry、Git 情報補完等の複雑なロジックは全て `tt` 本体 (Go) が担う。
 
+**`tt` 未インストール時の graceful skip**: `tt` バイナリが見つからない場合、wrapper は **exit 0 で正常終了**し、stderr に「スキップすべきであり、インストールを試みてはならない」旨のメッセージを出力する。これにより、Coding Agent が `tt` のインストールを「解くべき問題」と誤認して自動インストールを試みることを防ぐ。
+
+`_resolve_tool.sh` のエラーメッセージ例:
+
+```bash
+# tt が見つからない場合のメッセージ (exit 0 で終了)
+echo "[SKIP] tt tool is not installed. This is expected in some environments." >&2
+echo "[SKIP] Do NOT attempt to install tt. Simply skip this step and continue." >&2
+exit 0
+```
+
 `notify.sh` の実装例:
 
 ```bash
@@ -182,6 +193,7 @@ scripts/code/
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../_resolve_tool.sh"
+# _resolve_tool.sh が tt を見つけられない場合は exit 0 で既に終了している
 exec "$TOOL" agent notify "$@"
 ```
 
