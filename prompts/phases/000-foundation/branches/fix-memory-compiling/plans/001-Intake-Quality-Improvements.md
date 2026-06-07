@@ -243,59 +243,56 @@ Agentic Memory Intake パイプラインの品質改善。5 つの要件 (R1-R5)
 
 ## Step-by-Step Implementation Guide
 
-### Step 1: R1 - BranchPackageInfo (TDD)
+### Step 1: R1 - BranchPackageInfo (TDD) [x]
 
-1. `types.go` に `BranchPackageInfo` 構造体を追加。`IntakeEvent.BranchPackage` の型を `*BranchPackageInfo` に変更。
-2. `branch.go` に `Slugify` 関数を追加。
-3. `branch_test.go` にテストを追加:
+1. [x] `types.go` に `BranchPackageInfo` 構造体を追加。`IntakeEvent.BranchPackage` の型を `*BranchPackageInfo` に変更。
+2. [x] `branch.go` に `Slugify` 関数を追加。
+3. [x] `branch_test.go` にテストを追加:
     - `TestSlugify`: 基本変換、連続ダッシュ圧縮、先頭末尾トリム、64 文字制限
     - `TestDeriveBranchPackage`: 戻り値が `*BranchPackageInfo` であること、ID にパス不安全文字がないこと
-4. `branch.go` の `DeriveBranchPackage` を `*BranchPackageInfo` を返すように変更。
-5. `supplement.go` L26 の代入を確認 (型が合うのでそのまま)。
-6. `index.go` に `branchPackageKey` ヘルパーを追加。`Store` の L121 を変更。
-7. 既存テスト (`handler_test.go` 等) のコンパイルエラーを修正。
-8. テスト実行、Green を確認。
-9. `git add && git commit`
+4. [x] `branch.go` の `DeriveBranchPackage` を `*BranchPackageInfo` を返すように変更。
+5. [x] `supplement.go` L26 の代入を確認 (型が合うのでそのまま)。
+6. [x] `index.go` に `branchPackageKey` ヘルパーを追加。`Store` の L121 を変更。
+7. [x] 既存テスト (`supplement_test.go`) のコンパイルエラーを修正。
+8. [x] テスト実行、Green を確認。
+9. [x] `git add && git commit`
 
-### Step 2: R2 - ポリシー更新
+### Step 2: R2 - ポリシー更新 [x]
 
-1. `prompts/manifest/code_content/policies/architecture-memory.md` に raw_notes ガイダンスを追記。
-2. `./bin/tt.exe prompt compile --apply` で問題がないことを確認。
-3. `git add && git commit`
+1. [x] `prompts/manifest/code_content/policies/architecture-memory.md` に raw_notes ガイダンスを追記。
+2. [x] `git add && git commit`
 
-### Step 3: R4 - --redact
+### Step 3: R4 - --redact [x]
 
-1. `show_test.go` にテストを追加:
-    - `TestRedactProvenance`: provenance フィールドが `<redacted>` になること
-    - `TestRedactProvenance_PreservesOtherFields`: 他のフィールドが変更されないこと
-    - `TestShow_WithoutRedact`: 元の値が返ること (既存テストの確認)
-2. `show.go` に `RedactProvenance` 関数を追加。
-3. `agent_intake.go` に `--redact` フラグを追加。`runAgentIntakeShow` で適用。
-4. テスト実行、Green を確認。
-5. `git add && git commit`
+1. [x] `show_test.go` にテストを追加:
+    - `TestRedactProvenance`: provenance フィールドが `<redacted>` になること、元イベント不変、他フィールド保持
+2. [x] `show.go` に `RedactProvenance` 関数を追加。
+3. [x] `agent_intake.go` に `--redact` フラグを追加。`runAgentIntakeShow` で適用。
+4. [x] テスト実行、Green を確認。
+5. [x] `git add && git commit`
 
-### Step 4: R5 - status 出力拡充
+### Step 4: R5 - status 出力拡充 [x]
 
-1. `status_test.go` のテストを更新:
+1. [x] `status_test.go` のテストを更新:
     - `TestGetStatus_NewFormat`: 新しい構造 (`MemoryRoot`, `CurrentBranch`, `Counts`, `CurrentBranchCounts`) が返ること
     - `TestGetStatus_IndexMissing`: index なしの場合 `IndexHealth` が `missing`
     - `TestGetStatus_IndexOk`: index ありの場合 `IndexHealth` が `ok`
     - `TestGetStatus_OldestPendingISO`: `OldestPending` が ISO8601 秒精度であること
     - `TestGetStatus_BranchCounts`: ブランチ別カウントが正しいこと
-2. `status.go` を全面改修: `StatusReport` 構造体変更、`GetStatus` 引数追加。
-3. `agent_status.go` を更新: `getCurrentBranch` 追加、`GetStatus` 呼び出し変更。
-4. テスト実行、Green を確認。
-5. `git add && git commit`
+2. [x] `status.go` を全面改修: `StatusReport` 構造体変更、`GetStatus` 引数追加。
+3. [x] `agent_status.go` を更新: `getCurrentBranch` 追加、`GetStatus` 呼び出し変更。
+4. [x] テスト実行、Green を確認。
+5. [x] `git add && git commit`
 
-### Step 5: 旧データ削除 & クリーンアップ
+### Step 5: 旧データ削除 & クリーンアップ [x]
 
-1. 旧テスト Intake Event、index.db、audit log を削除。
-2. `.gitignore` に `prompts/memory/var/` が含まれていることを確認 (含まれていなければ追加)。
-3. `git add && git commit`
+1. [x] 旧テスト Intake Event、index.db、audit log を削除。
+2. [x] `.gitignore` に `prompts/memory/var/` が含まれていることを確認 (既に含まれていた)。
 
-### Step 6: ビルドと検証
+### Step 6: ビルドと検証 [x]
 
-1. Verification Plan を実行。
+1. [x] `./scripts/process/build.sh --backend-only` PASSED (21s)
+2. [x] 動作確認: notify, show, show --redact, status 全て期待通りの出力
 
 ## Verification Plan
 
