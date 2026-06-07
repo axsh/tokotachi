@@ -111,3 +111,90 @@ func TestParseAllMemoryDocs_WithInvalid(t *testing.T) {
 		t.Error("ParseAllMemoryDocs() expected errors for invalid docs")
 	}
 }
+
+func TestShouldSkipMemoryPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		expected bool
+	}{
+		{
+			name:     "var directory should be skipped",
+			path:     "prompts/memory/var/intake/pending/2026/06/07/E-test.json",
+			expected: true,
+		},
+		{
+			name:     "schemas directory should be skipped",
+			path:     "prompts/memory/schemas/agent-notify-payload.schema.json",
+			expected: true,
+		},
+		{
+			name:     "normal memory doc should not be skipped",
+			path:     "prompts/memory/current.md",
+			expected: false,
+		},
+		{
+			name:     "nested memory doc should not be skipped",
+			path:     "prompts/memory/adr/001-decision.md",
+			expected: false,
+		},
+		{
+			name:     "var in windows path should be skipped",
+			path:     "prompts\\memory\\var\\intake\\file.json",
+			expected: true,
+		},
+		{
+			name:     "schemas in windows path should be skipped",
+			path:     "prompts\\memory\\schemas\\schema.json",
+			expected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := shouldSkipMemoryPath(tt.path)
+			if result != tt.expected {
+				t.Errorf("shouldSkipMemoryPath(%q) = %v, want %v", tt.path, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseAllMemoryDocs_SkipsVarAndSchemas(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a valid memory doc
+	validDir := filepath.Join(tmpDir, "memory")
+	if err := os.MkdirAll(validDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	validContent := "---\nid: test-doc\nkind: memory\ntitle: Test\nstatus: current\n---\n# Test\n"
+	if err := os.WriteFile(filepath.Join(validDir, "test.md"), []byte(validContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a file under var/ that would cause a parse error if not skipped
+	varDir := filepath.Join(tmpDir, "memory", "var", "intake")
+	if err := os.MkdirAll(varDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(varDir, "bad.md"), []byte("not valid frontmatter"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a file under schemas/ that would cause a parse error if not skipped
+	schemasDir := filepath.Join(tmpDir, "memory", "schemas")
+	if err := os.MkdirAll(schemasDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(schemasDir, "schema.md"), []byte("not valid"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	docs, errs := ParseAllMemoryDocs(tmpDir, "memory/**/*.md")
+	if len(errs) > 0 {
+		t.Errorf("ParseAllMemoryDocs() unexpected errors: %v", errs)
+	}
+	if len(docs) != 1 {
+		t.Errorf("ParseAllMemoryDocs() got %d docs, want 1 (only the valid doc)", len(docs))
+	}
+}

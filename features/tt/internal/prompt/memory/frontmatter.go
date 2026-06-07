@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -102,6 +103,11 @@ func ParseAllMemoryDocs(rootDir, pattern string) ([]*manifest.MemoryDoc, []manif
 	var errors []manifest.ValidationError
 
 	for _, file := range files {
+		// Skip non-memory paths (var/, schemas/) before reading file content
+		if shouldSkipMemoryPath(file) {
+			continue
+		}
+
 		// Skip generated files
 		if isGeneratedFile(file) {
 			continue
@@ -119,6 +125,14 @@ func ParseAllMemoryDocs(rootDir, pattern string) ([]*manifest.MemoryDoc, []manif
 	}
 
 	return docs, errors
+}
+
+// shouldSkipMemoryPath returns true if the path should be excluded from
+// memory document parsing. Paths under var/ and schemas/ are excluded.
+func shouldSkipMemoryPath(path string) bool {
+	normalized := filepath.ToSlash(path)
+	return strings.Contains(normalized, "/var/") ||
+		strings.Contains(normalized, "/schemas/")
 }
 
 // isGeneratedFile checks if a file contains the generated file banner
