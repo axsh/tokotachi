@@ -20,3 +20,8 @@ Use notify only to store long-term memory candidates.
 Do not edit canonical memory documents for intake.
 Do not run `./scripts/code/prompt/compile.sh`, `./scripts/code/prompt/deploy.sh`, or `./scripts/code/prompt/update.sh`
 unless the user explicitly asks for consolidation or deployment.
+
+When writing --note values, keep each note as a single proposition or fact.
+Do not pack multiple concepts into one note.
+Bad:  --note "Pipeline: A -> B -> C -> D"
+Good: --note "A validates input before B" --note "B normalizes text" --note "C stores to disk"
