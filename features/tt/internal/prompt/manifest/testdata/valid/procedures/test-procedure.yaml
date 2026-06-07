@@ -1,0 +1,10 @@
+apiVersion: agent.meta/v1
+kind: procedure
+id: test-procedure
+title: Test Procedure
+trigger:
+  command: test
+  manual_only: true
+steps:
+  - step-one
+  - step-two

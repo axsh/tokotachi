@@ -1,0 +1,6 @@
+[submodule "prompts/phases/000-foundation/refs/repos/tokotachi-scaffolds"]
+	path = prompts/phases/000-foundation/refs/repos/tokotachi-scaffolds
+	url = https://github.com/axsh/tokotachi-scaffolds.git
+[submodule "prompts/phases/000-foundation/refs/repos/vv5"]
+	path = prompts/phases/000-foundation/refs/repos/vv5
+	url = https://github.com/axsh/vv5.git

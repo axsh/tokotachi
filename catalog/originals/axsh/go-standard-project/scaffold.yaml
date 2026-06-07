@@ -1,0 +1,18 @@
+name: "axsh-go-standard"
+category: "project"
+description: "AXSH Go Standard Project"
+depends_on:
+  - category: "root"
+    name: "default"
+original_ref: "catalog/originals/axsh/go-standard-project"
+placement:
+  base_dir: "."
+  conflict_policy: "skip"
+  template_config:
+    template_extension: ".tmpl"
+    strip_extension: true
+  file_mappings: []
+  post_actions:
+    file_permissions:
+      - pattern: "scripts/**/*.sh"
+        executable: true

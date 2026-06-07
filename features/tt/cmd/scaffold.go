@@ -18,6 +18,7 @@ var (
 	scaffoldFlagRollback bool
 	scaffoldFlagList     bool
 	scaffoldFlagRepo     string
+	scaffoldFlagBranch   string
 	scaffoldFlagLang     string
 	scaffoldFlagRoot     string
 	scaffoldFlagValues   []string
@@ -39,6 +40,7 @@ func init() {
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagRollback, "rollback", false, "Rollback the last scaffold operation")
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagList, "list", false, "List available scaffold templates")
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagRepo, "repo", "", "Override the default template repository URL")
+	scaffoldCmd.Flags().StringVar(&scaffoldFlagBranch, "branch", "", "Override the default template repository branch")
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagLang, "lang", "", "Specify locale for template localization (e.g. ja, en)")
 	scaffoldCmd.Flags().StringVar(&scaffoldFlagRoot, "root", "", "Specify root directory path instead of auto-detecting Git root")
 	scaffoldCmd.Flags().StringArrayVar(&scaffoldFlagValues, "v", nil, "Set option value directly (key=value), repeatable")
@@ -64,7 +66,7 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 		if len(args) == 1 {
 			filterCategory = args[0]
 		}
-		entries, err := scaffold.List(scaffoldFlagRepo, repoRoot, filterCategory)
+		entries, err := scaffold.List(scaffoldFlagRepo, scaffoldFlagBranch, repoRoot, filterCategory)
 		if err != nil {
 			return err
 		}
@@ -90,6 +92,7 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 	opts := scaffold.RunOptions{
 		Pattern:         args,
 		RepoURL:         scaffoldFlagRepo,
+		RepoBranch:      scaffoldFlagBranch,
 		RepoRoot:        repoRoot,
 		DryRun:          flagDryRun,
 		Yes:             scaffoldFlagYes,

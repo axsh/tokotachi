@@ -1,0 +1,9 @@
+apiVersion: agent.meta/v1
+kind: policy
+id: test-compile-policy
+title: Test Compile Policy
+scope: project
+activation:
+  mode: always
+body: |
+  Test policy for compiler pipeline tests.

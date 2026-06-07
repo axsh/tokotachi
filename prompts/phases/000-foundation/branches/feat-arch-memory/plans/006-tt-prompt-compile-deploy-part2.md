@@ -1,0 +1,358 @@
+# 006-tt-prompt-compile-deploy-part2
+
+> **Source Specification**: [006-tt-prompt-compile-deploy.md](file://prompts/phases/000-foundation/branches/feat-arch-memory/ideas/006-tt-prompt-compile-deploy.md)
+
+## Goal Description
+
+Part 1 で構築した基盤（ターゲット名称解決、移植済みパッケージ群）の上に、`tt prompt compile`, `tt prompt deploy`, `tt prompt update` の cobra コマンドを実装し、テンプレート変数の拡張（`{{target:*}}`）を行う。
+
+## User Review Required
+
+None.
+
+## Requirement Traceability
+
+| Requirement (from Spec) | Implementation Point (Section/File) |
+| :--- | :--- |
+| R2. `tt prompt compile` | Proposed Changes > features/tt/cmd > prompt.go |
+| R3. `tt prompt deploy` | Proposed Changes > features/tt/cmd > prompt.go |
+| R4. `tt prompt update` | Proposed Changes > features/tt/cmd > prompt.go, compiler/update.go |
+| R7. テンプレート変数の拡張 | Proposed Changes > emitter/template.go |
+
+## Proposed Changes
+
+### features/tt/internal/prompt/compiler（update ロジック）
+
+#### [NEW] [update_test.go](file://features/tt/internal/prompt/compiler/update_test.go)
+*   **Description**: update パイプラインの単体テスト。TDD により先に作成。
+*   **Technical Design**:
+    ```go
+    package compiler
+
+    func TestUpdate_FirstRun_NoMetadata(t *testing.T)
+    func TestUpdate_NoChanges_Skip(t *testing.T)
+    func TestUpdate_WithChanges_Execute(t *testing.T)
+    func TestUpdate_Force_BypassCheck(t *testing.T)
+    func TestUpdate_AllTargets(t *testing.T)
+    func TestCheckForChanges_NoMetadata(t *testing.T)
+    func TestCheckForChanges_NoGitChanges(t *testing.T)
+    func TestCheckForChanges_WithGitChanges(t *testing.T)
+    func TestWriteMetadata(t *testing.T)
+    func TestReadMetadata(t *testing.T)
+    ```
+*   **Logic**: テーブル駆動テストで以下を検証:
+    - メタデータファイルが存在しない場合 → 常に更新対象
+    - メタデータファイルが存在し、`updated_at` 以降に git 変更がない場合 → スキップ
+    - メタデータファイルが存在し、`updated_at` 以降に git 変更がある場合 → 更新対象
+    - `--force` 指定時 → 常に更新対象
+    - メタデータの読み書きの正確性
+
+#### [NEW] [update.go](file://features/tt/internal/prompt/compiler/update.go)
+*   **Description**: update パイプライン。compile + deploy をワンステップで実行し、事前チェック付き。
+*   **Technical Design**:
+    ```go
+    package compiler
+
+    import (
+        "time"
+        "github.com/axsh/tokotachi/pkg/resolve"
+    )
+
+    // UpdateOptions holds options for the update pipeline.
+    type UpdateOptions struct {
+        ProjectPath string
+        Target      string // default: "all"
+        Force       bool
+        DryRun      bool
+    }
+
+    // UpdateResult holds the output of the update pipeline.
+    type UpdateResult struct {
+        TargetResults map[string]*TargetUpdateResult
+    }
+
+    // TargetUpdateResult holds the result for a single target.
+    type TargetUpdateResult struct {
+        Skipped       bool
+        Reason        string // e.g., "no changes detected"
+        DeployResult  *DeployResult
+    }
+
+    // UpdateMetadata holds the last update information per target.
+    type UpdateMetadata struct {
+        UpdatedAt    string `yaml:"updated_at"`
+        SourceDigest string `yaml:"source_digest"`
+        Target       string `yaml:"target"`
+    }
+
+    // Update executes the update pipeline for the given targets.
+    func Update(opts UpdateOptions) (*UpdateResult, error)
+
+    // CheckForChanges checks if source files have changed since the
+    // last update by examining git log.
+    func CheckForChanges(rootDir string, since time.Time) (bool, error)
+
+    // ReadMetadata reads the last update metadata for a target.
+    func ReadMetadata(rootDir, target string) (*UpdateMetadata, error)
+
+    // WriteMetadata writes the update metadata for a target.
+    func WriteMetadata(rootDir, target string, meta *UpdateMetadata) error
+    ```
+*   **Logic**:
+    1. ターゲットを `resolve.ResolveTargets(opts.Target)` で解決する
+    2. 各ターゲットについて:
+       a. `ReadMetadata(rootDir, target)` でメタデータを読む
+       b. メタデータが存在しない場合 → 更新対象
+       c. メタデータが存在する場合 → `CheckForChanges(rootDir, metadata.UpdatedAt)` で変更確認
+       d. `opts.Force` が true → 常に更新対象
+       e. 更新対象でなければスキップ
+       f. 更新対象なら `Deploy(DeployOptions{...})` を実行
+       g. デプロイ成功後、`WriteMetadata(rootDir, target, &UpdateMetadata{...})` でメタデータ保存
+    3. `CheckForChanges` の実装:
+       ```go
+       func CheckForChanges(rootDir string, since time.Time) (bool, error) {
+           sinceStr := since.Format(time.RFC3339)
+           cmd := exec.Command("git", "log", "--since="+sinceStr,
+               "--name-only", "--pretty=format:", "--",
+               "prompts/manifest/", "prompts/memory/")
+           cmd.Dir = rootDir
+           output, err := cmd.Output()
+           if err != nil {
+               // git not available or not a repo: assume changes exist
+               return true, nil
+           }
+           trimmed := strings.TrimSpace(string(output))
+           return trimmed != "", nil
+       }
+       ```
+    4. `ReadMetadata` / `WriteMetadata`:
+       - パス: `filepath.Join(rootDir, resolve.MetaDir(target), "last_update.yaml")`
+       - YAML フォーマットで読み書き
+       - ヘッダーコメント: `# Auto-generated by tt prompt update. Do not edit.`
+
+---
+
+### features/tt/internal/prompt/emitter（テンプレート変数拡張）
+
+#### [MODIFY] [template_test.go](file://features/tt/internal/prompt/emitter/template_test.go)
+*   **Description**: `{{target:name}}` と `{{target:meta_dir}}` のテストケースを追加。
+*   **Logic**:
+    - `{{target:name}}` → `"antigravity"` に展開されることを検証
+    - `{{target:meta_dir}}` → `".agent/.meta/"` に展開されることを検証
+    - 未知の `{{target:unknown}}` → そのまま残ることを検証
+
+#### [MODIFY] [template.go](file://features/tt/internal/prompt/emitter/template.go)
+*   **Description**: `TemplateContext` に `TargetName` フィールドを追加し、`resolveRef` に `"target"` kind を追加。
+*   **Technical Design**:
+    ```go
+    type TemplateContext struct {
+        Paths      TargetPaths
+        MemBase    string
+        TargetName string // e.g., "antigravity"
+    }
+
+    func resolveRef(kind, id string, ctx *TemplateContext) string {
+        switch kind {
+        case "policy":
+            return resolvePolicyPath(id, ctx)
+        case "procedure":
+            return ensureTrailingSlash(ctx.Paths.Workflows) + id + ".md"
+        case "capability":
+            return ensureTrailingSlash(ctx.Paths.Skills) + id + "/SKILL.md"
+        case "memory":
+            return ctx.MemBase + "/" + id + ".md"
+        case "target":
+            return resolveTargetVar(id, ctx)
+        default:
+            return ""
+        }
+    }
+
+    func resolveTargetVar(id string, ctx *TemplateContext) string {
+        switch id {
+        case "name":
+            return ctx.TargetName
+        case "meta_dir":
+            return resolve.MetaDir(ctx.TargetName)
+        default:
+            return ""
+        }
+    }
+    ```
+
+---
+
+### features/tt/cmd（cobra コマンド）
+
+#### [NEW] [prompt.go](file://features/tt/cmd/prompt.go)
+*   **Description**: `tt prompt` サブコマンドグループと、`compile`, `deploy`, `update` の3つの子コマンドを定義。
+*   **Technical Design**:
+    ```go
+    package cmd
+
+    import (
+        "fmt"
+        "os"
+
+        "github.com/spf13/cobra"
+        "github.com/axsh/tokotachi/features/tt/internal/prompt/compiler"
+        "github.com/axsh/tokotachi/features/tt/internal/prompt/emitter"
+        "github.com/axsh/tokotachi/pkg/resolve"
+    )
+
+    var promptCmd = &cobra.Command{
+        Use:   "prompt",
+        Short: "Manage prompt manifest compilation and deployment",
+    }
+
+    // --- compile ---
+    var promptCompileCmd = &cobra.Command{
+        Use:   "compile",
+        Short: "Compile prompt manifest and memory documents",
+        RunE:  runPromptCompile,
+    }
+
+    var (
+        compileProject string
+        compileTarget  string
+        compileDryRun  bool
+        compileApply   bool
+    )
+
+    func init() {
+        promptCompileCmd.Flags().StringVar(&compileProject, "project",
+            "prompts/manifest/project.yaml", "Path to project.yaml")
+        promptCompileCmd.Flags().StringVar(&compileTarget, "target",
+            "", "Emitter target (default from TT_TARGET or 'all')")
+        promptCompileCmd.Flags().BoolVar(&compileDryRun, "dry-run",
+            false, "Do not write files, print to stdout")
+        promptCompileCmd.Flags().BoolVar(&compileApply, "apply",
+            false, "Apply generated files to target directories")
+
+        // --- deploy ---
+        // (similar flag definitions)
+
+        // --- update ---
+        // (similar flag definitions)
+
+        promptCmd.AddCommand(promptCompileCmd)
+        promptCmd.AddCommand(promptDeployCmd)
+        promptCmd.AddCommand(promptUpdateCmd)
+    }
+
+    func runPromptCompile(cmd *cobra.Command, args []string) error {
+        target := compileTarget
+        if target == "" {
+            target = os.Getenv(resolve.EnvKeyTarget)
+        }
+        if target == "" {
+            target = "all"
+        }
+        // Resolve target using prefix matching
+        resolvedTarget, err := resolve.ResolveTarget(target, true)
+        if err != nil {
+            return err
+        }
+        // Build targets list
+        targets, err := resolve.ResolveTargets(resolvedTarget)
+        if err != nil {
+            return err
+        }
+
+        for _, t := range targets {
+            result, err := compiler.Compile(compiler.CompileOptions{
+                ProjectPath: compileProject,
+                DryRun:      compileDryRun,
+                Target:      t,
+                Apply:       compileApply,
+            })
+            if err != nil {
+                return fmt.Errorf("compile failed for target %s: %w", t, err)
+            }
+            if len(result.Errors) > 0 {
+                for _, e := range result.Errors {
+                    fmt.Fprintln(os.Stderr, e.Error())
+                }
+                return fmt.Errorf("compile failed with %d validation error(s)",
+                    len(result.Errors))
+            }
+            if compileDryRun {
+                fmt.Println("=== index.md ===")
+                fmt.Println(result.IndexContent)
+                fmt.Println("=== resolved manifest ===")
+                fmt.Println(result.ResolvedYAML)
+            } else {
+                fmt.Printf("Compile succeeded for target %s.\n", t)
+            }
+        }
+        return nil
+    }
+    ```
+*   **Logic**:
+    - `compile`: ターゲットを解決し、各ターゲットに対して `compiler.Compile` を実行。`--dry-run` 時は stdout に結果を表示。
+    - `deploy`: ターゲットを解決し、各ターゲットに対して `compiler.Deploy` を実行。スキップ時は「No changes detected.」を表示。
+    - `update`: ターゲットを解決し、`compiler.Update` を実行。事前チェックでスキップ/実行を判定。
+    - 全コマンドで `TT_TARGET` 環境変数 → `--target` フラグ → デフォルト `"all"` の優先順位。
+
+#### [MODIFY] [root.go](file://features/tt/cmd/root.go)
+*   **Description**: `promptCmd` を `rootCmd` に登録する。
+*   **Technical Design**: `init()` 関数に `rootCmd.AddCommand(promptCmd)` を追加。
+
+#### [MODIFY] [common.go](file://features/tt/cmd/common.go)
+*   **Description**: `knownEnvVars` に `TT_TARGET` を追加。
+*   **Technical Design**: 以下を追加:
+    ```go
+    {"TT_TARGET", "all"},
+    ```
+
+## Step-by-Step Implementation Guide
+
+### Phase 1: テンプレート変数拡張（R7）
+
+1.  **テスト更新**: `features/tt/internal/prompt/emitter/template_test.go` に `{{target:name}}` と `{{target:meta_dir}}` のテストケースを追加。
+2.  **実装更新**: `features/tt/internal/prompt/emitter/template.go` に `TargetName` フィールドと `resolveTargetVar` 関数を追加。
+3.  **テスト実行**: emitter パッケージのテスト確認。
+4.  **Git コミット**: `feat: add target template variables to emitter`
+
+### Phase 2: update ロジック（R4）
+
+5.  **テスト作成**: `features/tt/internal/prompt/compiler/update_test.go` を作成。
+6.  **実装**: `features/tt/internal/prompt/compiler/update.go` を作成。`Update`, `CheckForChanges`, `ReadMetadata`, `WriteMetadata` を実装。
+7.  **テスト実行**: compiler パッケージのテスト確認。
+8.  **Git コミット**: `feat: add prompt update pipeline with git-based change detection`
+
+### Phase 3: cobra コマンド実装（R2, R3, R4）
+
+9.  **実装**: `features/tt/cmd/prompt.go` を作成。`promptCmd`, `promptCompileCmd`, `promptDeployCmd`, `promptUpdateCmd` を定義。
+10. **root.go 更新**: `rootCmd.AddCommand(promptCmd)` を追加。
+11. **common.go 更新**: `knownEnvVars` に `TT_TARGET` を追加。
+12. **テスト実行**: ビルドが通ることを確認。
+13. **Git コミット**: `feat: add tt prompt compile/deploy/update commands`
+
+### Phase 4: ビルド検証
+
+14. **全体ビルド + 単体テスト**:
+    ```bash
+    ./scripts/process/build.sh --skip-frontend --skip-etc
+    ```
+
+## Verification Plan
+
+### Automated Verification
+
+1.  **Build & Unit Tests**:
+    ```bash
+    ./scripts/process/build.sh --skip-frontend --skip-etc
+    ```
+
+2.  **Integration Tests** (共通機能のリグレッション確認):
+    ```bash
+    ./scripts/process/integration_test.sh --categories "common"
+    ```
+    *   **Log Verification**: `tt prompt compile --dry-run`, `tt prompt deploy --dry-run`, `tt prompt update --dry-run` が正常に動作することを確認。
+
+### テスト項目のセルフレビュー
+
+1.  **網羅性の検証**: update パイプラインのテストは、メタデータの有無、git変更の有無、forceフラグ、複数ターゲットの組み合わせを網羅する。テンプレート変数のテストは、既知の変数と未知の変数のケースを含む。
+2.  **証拠の十分性**: 各テストは期待する出力値、ファイルの存在、メタデータの内容を直接検証する。
+3.  **ボトムアップ順序**: template.go (末端) -> update.go (依存) -> prompt.go (コマンド層) の順。

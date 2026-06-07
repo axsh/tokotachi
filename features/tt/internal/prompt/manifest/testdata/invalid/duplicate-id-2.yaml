@@ -1,0 +1,8 @@
+apiVersion: agent.meta/v1
+kind: procedure
+id: duplicate-test
+title: Duplicate ID 2
+trigger:
+  command: dup
+steps:
+  - dup-step

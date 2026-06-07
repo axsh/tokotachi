@@ -146,6 +146,7 @@ type envVarDef struct {
 // knownEnvVars lists all TT_* environment variables.
 var knownEnvVars = []envVarDef{
 	{"TT_EDITOR", "cursor"},
+	{"TT_TARGET", "all"},
 	{"TT_CMD_CODE", "code"},
 	{"TT_CMD_CURSOR", "cursor"},
 	{"TT_CMD_AG", "antigravity"},

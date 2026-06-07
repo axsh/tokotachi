@@ -1,0 +1,9 @@
+scaffolds:
+    - name: axsh-go-standard
+      category: project
+      description: AXSH Go Standard Project
+      depends_on:
+        - category: root
+          name: default
+      template_ref: catalog/scaffolds/8/w/4/go-standard-project.zip
+      original_ref: catalog/originals/axsh/go-standard-project

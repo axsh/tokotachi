@@ -1,0 +1,9 @@
+apiVersion: agent.meta/v1
+kind: policy
+id: test-policy
+title: Test Policy
+scope: project
+activation:
+  mode: always
+body: |
+  This is a test policy body.

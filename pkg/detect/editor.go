@@ -1,6 +1,10 @@
 package detect
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/axsh/tokotachi/pkg/resolve"
+)
 
 // Editor represents a supported editor or agent.
 type Editor string
@@ -15,25 +19,42 @@ const (
 // EnvKeyEditor is the environment variable name for the default editor.
 const EnvKeyEditor = "TT_EDITOR"
 
+// targetToEditor maps resolved target names to Editor constants.
+// This is needed because some Editor constants differ from the canonical
+// target name (e.g., "antigravity" -> EditorAG="ag").
+var targetToEditor = map[string]Editor{
+	"antigravity": EditorAG,
+	"cursor":      EditorCursor,
+	"claude-code": EditorClaude,
+	"codex":       Editor("codex"),
+}
+
 // ParseEditor parses a string into an Editor value.
 // Accepts aliases: "vscode" -> "code", "antigravity" -> "ag".
+// Uses shared target name resolution for known targets.
 func ParseEditor(s string) (Editor, error) {
+	if s == "" {
+		return "", fmt.Errorf("editor name cannot be empty")
+	}
+
+	// Handle editor-only names not in KnownTargets
 	switch s {
 	case "code", "vscode":
 		return EditorVSCode, nil
-	case "cursor":
-		return EditorCursor, nil
-	case "ag", "antigravity":
-		return EditorAG, nil
-	case "claude":
-		return EditorClaude, nil
-	default:
-		if s == "" {
-			return "", fmt.Errorf("editor name cannot be empty")
-		}
-		// Allow custom editor names dynamically
+	}
+
+	// Delegate to shared target resolution ("all" is not valid for editors)
+	resolved, err := resolve.ResolveTarget(s, false)
+	if err != nil {
+		// Allow custom editor names dynamically (e.g., "vim", "emacs")
 		return Editor(s), nil
 	}
+
+	// Map resolved target name to Editor constant
+	if ed, ok := targetToEditor[resolved]; ok {
+		return ed, nil
+	}
+	return Editor(resolved), nil
 }
 
 // ResolveEditor determines the editor using the following priority:

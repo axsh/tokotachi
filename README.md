@@ -37,7 +37,8 @@ tokotachi/
 ├── tests/                 # Project-level test suites
 │   └── tt/                # tt integration tests (Go)
 ├── scripts/               # Build and test automation
-│   ├── dist/              # Distribution pipeline (build, release, publish)
+│   ├── dist/              # Distribution pipeline (tool/content release)
+│   ├── dev/               # Developer environment setup utilities
 │   ├── process/           # build.sh, integration_test.sh
 │   └── utils/             # Utility scripts
 ├── prompts/               # AI workflow specifications and rules
@@ -188,7 +189,7 @@ Installs to `%LOCALAPPDATA%\Axsh\Tokotachi\bin` and configures user PATH. No adm
 # Clone and install
 git clone https://github.com/axsh/tokotachi.git
 cd tokotachi
-powershell -ExecutionPolicy Bypass -File .\scripts\dist\install.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\dist\tool\internal\win\install.ps1
 ```
 
 Open a new terminal and verify with `tt --help`.
@@ -196,7 +197,7 @@ Open a new terminal and verify with `tt --help`.
 To uninstall:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dist\uninstall.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\dist\tool\internal\win\uninstall.ps1
 ```
 
 **Option B: Manual Install**
@@ -265,64 +266,95 @@ To run integration tests in the `tests/` directory (supporting Go test suites an
 
 ## Release and GitHub Distribution
 
-Release and publishing pipelines are automated via scripts located in the [scripts/dist/](file:///c:/Users/yamya/myprog/tokotachi/work/fix-antigravity-ide/scripts/dist) directory. Note that publishing requires GitHub CLI (`gh`) credentials.
+Release and publishing pipelines are automated via scripts located in the [scripts/dist/](file:///c:/Users/yamya/myprog/tokotachi/work/feat-arch-memory/scripts/dist) directory.
 
-### 1. All-in-One Quick Release (Recommended)
-This runs the full build, packages the binaries, creates a GitHub Release, and publishes update manifests to Scoop/Homebrew.
+### 1. Tool Release (tt)
+
+Automates building, packaging, and publishing the `tt` CLI tool. Note that publishing requires GitHub CLI (`gh`) credentials.
+
+#### All-in-One Quick Release (Recommended)
+This runs the full build, packages the binaries, creates a GitHub Release, and publishes update manifests to Scoop/Homebrew:
 
 ```bash
 # A. Release by incrementing patch version (e.g., v2.0.0 -> v2.0.1)
-./scripts/dist/github-upload.sh tt
+./scripts/dist/tool/release.sh tt
 
 # B. Release with a specific version name
-./scripts/dist/github-upload.sh tt v2.1.0
+./scripts/dist/tool/release.sh tt v2.1.0
 
 # C. Release by incrementing minor version (e.g., +v0.1.0)
-./scripts/dist/github-upload.sh tt +v0.1.0
+./scripts/dist/tool/release.sh tt +v0.1.0
 ```
 
-### 2. Manual Step-by-Step Release Flow
+#### Manual Step-by-Step Release Flow
 You can trigger each step of the release pipeline individually for fine-grained control:
 
-#### Step 1: Build cross-platform binaries
-Cross-compiles the binary for all target OS/arch combinations defined in `tools/manifests/tt.yaml`.
-
+##### Step 1: Build cross-platform binaries
 ```bash
-./scripts/dist/build.sh tt
+./scripts/dist/tool/internal/build.sh tt
 ```
 
-#### Step 2: Packaging release artifacts
-Compresses compiled binaries into archives (`.tar.gz` / `.zip`) and generates SHA256 checksums under `dist/tt/<version>/`.
-
+##### Step 2: Packaging release artifacts
 ```bash
-./scripts/dist/release.sh tt v2.0.0
+./scripts/dist/tool/internal/package.sh tt v2.0.0
 ```
 
-#### Step 3: Publish to distribution channels
-Publishes archives to GitHub Releases and pushes updates to the Scoop bucket and Homebrew tap manifests.
+> [!TIP]
+> **Verify before publishing**:
+> You can manually verify the packaged artifacts (e.g., check that the correct binaries and Windows installer scripts/README are included inside the zip/tar.gz files) under `dist/tt/v2.0.0/` before proceeding to the publish step.
+
+##### Step 3: Publish to distribution channels
+```bash
+./scripts/dist/tool/internal/publish.sh tt v2.0.0
+```
+
+### 2. Content Release (Catalog Templates)
+
+Automates building the templatizer, packaging catalog originals into scaffolds, and pushing updates to the current active branch of the remote repository:
 
 ```bash
-./scripts/dist/publish.sh tt v2.0.0
+./scripts/dist/content/release.sh
 ```
 
 ---
 
-## Development Workflow
+## Development and Release Workflow
 
-This project uses an **AI-assisted development workflow** with structured phases:
+This project uses an **AI-assisted development workflow** integrated with branch-based release pipelines.
+
+### 1. Development Loop (AI-Assisted)
+
+For any code changes (features, tools) or catalog updates (content), create a new feature branch and follow the structured development phases:
 
 ```
-  Idea → Specification → Implementation Plan → Execution → Verification
+  Branch out ──> Specification ──> Implementation Plan ──> Execution ──> Verification
 ```
 
-### Workflow Phases
+#### Workflow Phases
+1. **Specification** — Capture requirements in `prompts/phases/` using the [create-specification](.agent/workflows/create-specification.md) workflow.
+2. **Implementation Plan** — Generate detailed technical plans using the [create-implementation-plan](.agent/workflows/create-implementation-plan.md) workflow.
+3. **Execution** — Implement code, tests, and catalog modifications using the [execute-implementation-plan](.agent/workflows/execute-implementation-plan.md) workflow.
+4. **Verification** — Verify changes by running the [build-pipeline](.agent/workflows/build-pipeline.md) workflow.
 
-1. **Specification** — Capture requirements in `prompts/phases/` using [create-specification](.agent/workflows/create-specification.md)
-2. **Implementation Plan** — Generate detailed plans using [create-implementation-plan](.agent/workflows/create-implementation-plan.md)
-3. **Execution** — Implement code and tests using [execute-implementation-plan](.agent/workflows/execute-implementation-plan.md)
-4. **Verification** — Build and test using [build-pipeline](.agent/workflows/build-pipeline.md)
+*Each phase requires a **human review checkpoint** before proceeding to the next. AI will not automatically proceed to the next phase without explicit approval.*
 
-Each phase includes a **human review checkpoint** before progressing to the next.
+---
+
+### 2. Release Workflows
+
+Once verification is complete, release changes depending on the component type:
+
+#### A. Tool Release (tt CLI Tool)
+The tool release compiles binaries, packages archives, and publishes them directly to GitHub Releases.
+- Run `./scripts/dist/tool/release.sh tt` to publish the release.
+- This script builds the binaries, packages the archives, and uploads them to the distribution channels (such as GitHub Releases).
+- Typically run from the `main` branch or a dedicated release branch after code changes are merged.
+
+#### B. Content Release (Catalog Templates)
+Since catalog templates (`catalog/scaffolds/`, indices, metadata) are stored directly inside the Git repository, content release commits changes to the repository itself:
+1. **Run Content Release** — Execute `./scripts/dist/content/release.sh` on your active branch. This automatically builds verification binaries, regenerates the catalog, generates local commits, and pushes them directly to the active remote branch.
+2. **Create Pull Request** — Create a Pull Request (PR) from your feature branch to the `main` branch on GitHub.
+3. **Merge and Complete** — Once the PR is merged, the release is complete. The new catalog templates become immediately active and resolvable by `tt` clients.
 
 ## Contributing
 
@@ -354,4 +386,4 @@ tt scaffold [category] [name]
 
 ## License
 
-This project is private.
+This project is licensed under the GPLv3 License.
