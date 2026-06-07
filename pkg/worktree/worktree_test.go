@@ -3,6 +3,7 @@ package worktree_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
@@ -199,4 +200,82 @@ func TestFetchBranch_DryRun(t *testing.T) {
 	recs := m.CmdRunner.Recorder.Records()
 	require.Len(t, recs, 1)
 	assert.Contains(t, recs[0].Command, "fetch origin test-remote-branch")
+}
+
+func TestRemove_DeinitsSubmodulesBeforeRemove(t *testing.T) {
+	m := newTestManager(t, true) // dry-run
+	branch := "test-branch"
+	wtDir := m.Path(branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	// Create .gitmodules file to trigger submodule deinit
+	require.NoError(t, os.WriteFile(
+		filepath.Join(wtDir, ".gitmodules"),
+		[]byte("[submodule \"sub\"]\n\tpath = sub\n\turl = https://example.com/sub.git\n"),
+		0o644,
+	))
+
+	err := m.Remove(branch, false)
+	require.NoError(t, err)
+
+	recs := m.CmdRunner.Recorder.Records()
+	// Find indices of submodule deinit and worktree remove
+	deinitIdx := -1
+	removeIdx := -1
+	for i, r := range recs {
+		if strings.Contains(r.Command, "submodule deinit") {
+			deinitIdx = i
+		}
+		if strings.Contains(r.Command, "worktree remove") {
+			removeIdx = i
+		}
+	}
+	assert.GreaterOrEqual(t, deinitIdx, 0,
+		"submodule deinit should be recorded, recs: %v", recs)
+	assert.GreaterOrEqual(t, removeIdx, 0,
+		"worktree remove should be recorded, recs: %v", recs)
+	assert.Less(t, deinitIdx, removeIdx,
+		"submodule deinit must come before worktree remove, recs: %v", recs)
+}
+
+func TestRemove_SkipsDeinitWhenNoSubmodules(t *testing.T) {
+	m := newTestManager(t, true) // dry-run
+	branch := "test-branch"
+	wtDir := m.Path(branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	// No .gitmodules file
+
+	err := m.Remove(branch, false)
+	require.NoError(t, err)
+
+	recs := m.CmdRunner.Recorder.Records()
+	for _, r := range recs {
+		assert.NotContains(t, r.Command, "submodule deinit",
+			"submodule deinit should not be called when no .gitmodules, recs: %v", recs)
+	}
+}
+
+func TestCreate_PrunesBeforeAdd(t *testing.T) {
+	m := newTestManager(t, true) // dry-run
+	branch := "test-branch"
+
+	err := m.Create(branch)
+	require.NoError(t, err)
+
+	recs := m.CmdRunner.Recorder.Records()
+	pruneIdx := -1
+	addIdx := -1
+	for i, r := range recs {
+		if strings.Contains(r.Command, "worktree prune") {
+			pruneIdx = i
+		}
+		if strings.Contains(r.Command, "worktree add") {
+			addIdx = i
+		}
+	}
+	assert.GreaterOrEqual(t, pruneIdx, 0,
+		"worktree prune should be recorded, recs: %v", recs)
+	assert.GreaterOrEqual(t, addIdx, 0,
+		"worktree add should be recorded, recs: %v", recs)
+	assert.Less(t, pruneIdx, addIdx,
+		"worktree prune must come before worktree add, recs: %v", recs)
 }
