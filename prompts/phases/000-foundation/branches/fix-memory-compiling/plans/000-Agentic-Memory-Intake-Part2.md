@@ -336,57 +336,50 @@ None.
 
 ## Step-by-Step Implementation Guide
 
-### Step 1: Compiler Ignore Hardening (TDD: Red -> Green)
+### Step 1: Compiler Ignore Hardening (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/prompt/memory/frontmatter_test.go` にテストケースを追加:
-    *   `var/` 配下のファイルがスキップされること
-    *   `schemas/` 配下のファイルがスキップされること
-    *   通常の `*.md` はスキップされないこと
-2.  `features/tt/internal/prompt/memory/frontmatter.go` に `shouldSkipMemoryPath` を実装し、`ParseAllMemoryDocs` に組み込む
-3.  テスト実行、Green を確認
-4.  `git add && git commit`
+1.  [x] `features/tt/internal/prompt/memory/frontmatter_test.go` にテストケースを追加 (7 tests)
+2.  [x] `features/tt/internal/prompt/memory/frontmatter.go` に `shouldSkipMemoryPath` を実装
+3.  [x] テスト実行、Green を確認
+4.  [x] `git add && git commit`
 
-### Step 2: 補助コマンドのロジック (TDD: Red -> Green)
+### Step 2: 補助コマンドのロジック (TDD: Red -> Green) [x]
 
-1.  `features/tt/internal/agent/status/status_test.go` を作成:
-    *   pending/processed/failed/ignored ファイルを tmpdir に配置し、カウントが正しいこと
-    *   空ディレクトリでカウント 0 であること
-2.  `features/tt/internal/agent/status/status.go` を実装
-3.  `features/tt/internal/agent/status/list_test.go` を作成:
-    *   SQLite にテストデータを投入し、フィルタが正しく動作すること
-    *   FTS 検索が動作すること
-4.  `features/tt/internal/agent/status/list.go` を実装
-5.  `features/tt/internal/agent/status/show_test.go` を作成
-6.  `features/tt/internal/agent/status/show.go` を実装
-7.  テスト実行、Green を確認
-8.  `git add && git commit`
+1.  [x] `features/tt/internal/agent/status/status_test.go` を作成 (3 tests)
+2.  [x] `features/tt/internal/agent/status/status.go` を実装
+3.  [x] `features/tt/internal/agent/status/list_test.go` を作成 (5 tests)
+4.  [x] `features/tt/internal/agent/status/list.go` を実装
+5.  [x] `features/tt/internal/agent/status/show_test.go` を作成 (2 tests)
+6.  [x] `features/tt/internal/agent/status/show.go` を実装
+7.  [x] テスト実行、Green を確認
+8.  [x] `git add && git commit`
 
-### Step 3: コマンド層 (agent_status.go, agent_intake.go)
+### Step 3: コマンド層 (agent_status.go, agent_intake.go) [x]
 
-1.  `features/tt/cmd/agent_status.go` を作成
-2.  `features/tt/cmd/agent_intake.go` を作成
-3.  `git add && git commit`
+1.  [x] `features/tt/cmd/agent_status.go` を作成
+2.  [x] `features/tt/cmd/agent_intake.go` を作成
+3.  [x] `git add && git commit`
 
-### Step 4: Wrapper スクリプトの作成
+### Step 4: Wrapper スクリプトの作成 [x]
 
-1.  `scripts/code/` ディレクトリ構造を作成
-2.  `scripts/code/_resolve_tool.sh` を作成 (graceful skip 対応)
-3.  `scripts/code/agent/notify.sh` を作成 (明示的引数マッピング)
-4.  `scripts/code/agent/status.sh` を作成
-5.  `scripts/code/agent/intake.sh` を作成
-6.  `scripts/code/prompt/compile.sh`, `deploy.sh`, `update.sh` を移行作成
-7.  全 wrapper に `chmod +x` を設定
-8.  `git add && git commit`
+1.  [x] `scripts/code/` ディレクトリ構造を作成
+2.  [x] `scripts/code/_resolve_tool.sh` を作成 (graceful skip 対応)
+3.  [x] `scripts/code/agent/notify.sh` を作成 (明示的引数マッピング)
+4.  [x] `scripts/code/agent/status.sh` を作成
+5.  [x] `scripts/code/agent/intake.sh` を作成
+6.  [x] `scripts/code/prompt/compile.sh`, `deploy.sh`, `update.sh` を移行作成
+7.  [x] 全 wrapper に `chmod +x` を設定
+8.  [x] `git add && git commit`
 
-### Step 5: 常駐ポリシーの作成
+### Step 5: 常駐ポリシーの作成 [x]
 
-1.  `prompts/manifest/code_content/policies/architecture-memory.md` を新規作成
-2.  `./bin/tt.exe prompt compile` を実行して問題がないことを確認
-3.  `git add && git commit`
+1.  [x] `prompts/manifest/code_content/policies/architecture-memory.md` を新規作成
+2.  [x] `./bin/tt.exe prompt compile --apply` を実行して成功を確認
+3.  [x] `git add && git commit`
 
-### Step 6: ビルドと検証
+### Step 6: ビルドと検証 [x]
 
-1.  Verification Plan を実行
+1.  [x] `./scripts/process/build.sh --backend-only` ALL PASS (24s)
 
 ## Verification Plan
 
