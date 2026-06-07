@@ -38,6 +38,10 @@
         "workflows": { "$ref": "#/$defs/categoryLimit" }
       },
       "additionalProperties": false
+    },
+    "index_file": {
+      "type": "string",
+      "description": "Path to the index file for this target (e.g. AGENTS.md)."
     }
   },
   "additionalProperties": false,

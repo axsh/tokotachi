@@ -51,4 +51,4 @@ If the correction involves a `policy-change`:
 
 ### 7. Recompile Generated Files
 If frontmatter was changed or a new document was added:
-- Run `./scripts/prompt/deploy.sh --force` to regenerate index.md and update .agent/ configuration.
+- Run `./scripts/prompt/update.sh --force --target "antigravity"` to recompile and deploy the updated configuration.
