@@ -321,3 +321,41 @@ func TestDelete_RemovesStateFile(t *testing.T) {
 	_, statErr := os.Stat(statePath)
 	assert.True(t, os.IsNotExist(statErr), "state file should be deleted after delete")
 }
+
+func TestDelete_PruneBeforeBranchDelete(t *testing.T) {
+	env := newTestEnv(t)
+	branch := "test-branch"
+
+	wtDir := filepath.Join(env.RepoRoot, "work", branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"),
+		[]byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
+
+	err := env.Runner.Delete(action.DeleteOptions{
+		Branch:      branch,
+		Force:       true,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Depth:       10,
+		Yes:         true,
+	}, env.WM)
+	require.NoError(t, err)
+
+	recs := env.Recorder.Records()
+	pruneIdx := -1
+	branchDelIdx := -1
+	for i, r := range recs {
+		if strings.Contains(r.Command, "worktree prune") {
+			pruneIdx = i
+		}
+		if strings.Contains(r.Command, "branch -") {
+			branchDelIdx = i
+		}
+	}
+	assert.GreaterOrEqual(t, pruneIdx, 0,
+		"worktree prune should be recorded, recs: %v", recs)
+	assert.GreaterOrEqual(t, branchDelIdx, 0,
+		"branch delete should be recorded, recs: %v", recs)
+	assert.Less(t, pruneIdx, branchDelIdx,
+		"worktree prune must come before branch delete, recs: %v", recs)
+}
