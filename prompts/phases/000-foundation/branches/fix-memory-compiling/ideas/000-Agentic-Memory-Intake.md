@@ -302,11 +302,25 @@ flowchart TD
 
 ### Code Agent 側のプロンプト設計
 
-常駐ルール (architecture-memory policy 等) に以下を追記:
+既存の常駐ポリシー `prompts/manifest/code_content/policies/architecture-memory.md` の本文を以下のように変更する:
+
+**変更前** (現在の内容):
 
 ```text
+Before changing architecture-sensitive code, read prompts/memory/index.md.
+After such changes, update the relevant architecture document.
+If unsure where to write, append to prompts/memory/inbox.md.
+```
+
+**変更後**:
+
+```text
+Before changing architecture-sensitive code, read prompts/memory/index.md.
+After such changes, update the relevant architecture document.
+If unsure where to write, append to prompts/memory/inbox.md.
+
 When architecture-impacting or agent-memory-relevant knowledge may have been created,
-run `./scripts/prompt/update_notify.sh --agent <canonical-agent>` once per coherent task boundary.
+run `./scripts/prompt/update_notify.sh --agent {{target:name}}` once per coherent task boundary.
 
 Use notify only to store long-term memory candidates.
 Do not edit canonical memory documents for intake.
@@ -315,6 +329,7 @@ unless the user explicitly asks for consolidation or deployment.
 ```
 
 通知タイミングは「まとまりのある作業境界ごとに 1 回」とし、毎チャット・毎ツール呼び出しでの発火は禁止する。
+
 
 ### raw_notes の品質指針
 
