@@ -32,19 +32,27 @@ type PayloadContext struct {
 	WrapperVersion string `json:"wrapper_version,omitempty"`
 }
 
+// BranchPackageInfo holds the structured branch package identifier.
+type BranchPackageInfo struct {
+	Key       string `json:"key"`        // "owner/repo:branch:merge_base"
+	ID        string `json:"id"`         // "BR-{branch_slug}-{merge_base_short8}"
+	Branch    string `json:"branch"`     // raw branch name
+	MergeBase string `json:"merge_base"` // full merge_base hash
+}
+
 // IntakeEvent is the full stored event (payload + computed fields).
 type IntakeEvent struct {
 	NotifyPayload
-	EventID               string     `json:"event_id"`
-	InstanceID            string     `json:"instance_id"`
-	ContentHash           string     `json:"content_hash"`
-	ContentID             string     `json:"content_id"`
-	Git                   *GitInfo   `json:"git,omitempty"`
-	Scope                 string     `json:"scope"`
-	BranchPackage         string     `json:"branch_package,omitempty"`
-	EffectiveChangedPaths []string   `json:"effective_changed_paths,omitempty"`
-	Timestamps            Timestamps `json:"timestamps"`
-	Provenance            Provenance `json:"provenance"`
+	EventID               string             `json:"event_id"`
+	InstanceID            string             `json:"instance_id"`
+	ContentHash           string             `json:"content_hash"`
+	ContentID             string             `json:"content_id"`
+	Git                   *GitInfo           `json:"git,omitempty"`
+	Scope                 string             `json:"scope"`
+	BranchPackage         *BranchPackageInfo `json:"branch_package,omitempty"`
+	EffectiveChangedPaths []string           `json:"effective_changed_paths,omitempty"`
+	Timestamps            Timestamps         `json:"timestamps"`
+	Provenance            Provenance         `json:"provenance"`
 }
 
 // GitInfo holds git repository state.

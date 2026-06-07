@@ -35,7 +35,8 @@ func TestSupplementEnvironment(t *testing.T) {
 		assert.Equal(t, "main", event.Git.DefaultBranch)
 		assert.Equal(t, "base123", event.Git.MergeBase)
 		assert.Equal(t, "branch", event.Scope)
-		assert.Contains(t, event.BranchPackage, "axsh/tokotachi")
+		assert.NotNil(t, event.BranchPackage)
+		assert.Contains(t, event.BranchPackage.Key, "axsh/tokotachi")
 		assert.NotEmpty(t, event.Provenance.Hostname)
 		assert.NotEmpty(t, event.Provenance.Cwd)
 	})
@@ -51,7 +52,7 @@ func TestSupplementEnvironment(t *testing.T) {
 		assert.Contains(t, warnings, agent.CodeNoGitRepository)
 		assert.Nil(t, event.Git)
 		assert.Equal(t, "session", event.Scope)
-		assert.Empty(t, event.BranchPackage)
+		assert.Nil(t, event.BranchPackage)
 	})
 
 	t.Run("collectGitPaths merges changed_paths with dirty paths", func(t *testing.T) {

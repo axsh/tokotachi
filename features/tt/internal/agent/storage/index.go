@@ -105,6 +105,8 @@ func (idx *Index) Store(event *agent.IntakeEvent) (string, error) {
 		Valid:  event.ClientRequestID != "",
 	}
 
+	bpKey := branchPackageKey(event.BranchPackage)
+
 	_, err := idx.db.Exec(`
 		INSERT INTO intake_events (
 			event_id, content_hash, content_id, agent, branch, scope,
@@ -118,7 +120,7 @@ func (idx *Index) Store(event *agent.IntakeEvent) (string, error) {
 		event.Agent,
 		branch,
 		event.Scope,
-		event.BranchPackage,
+		bpKey,
 		clientReqID,
 		event.TaskSummary,
 		event.Timestamps.StoredAt.Format("2006-01-02T15:04:05Z"),
@@ -185,6 +187,14 @@ func (idx *Index) SearchFTS(query string) ([]string, error) {
 // Close closes the database connection.
 func (idx *Index) Close() error {
 	return idx.db.Close()
+}
+
+// branchPackageKey extracts the key string from a BranchPackageInfo.
+func branchPackageKey(bp *agent.BranchPackageInfo) string {
+	if bp == nil {
+		return ""
+	}
+	return bp.Key
 }
 
 // EventRecord represents a row from intake_events table.

@@ -1,8 +1,10 @@
 package notify
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/axsh/tokotachi/features/tt/internal/agent"
@@ -26,17 +28,55 @@ func (g *RealGitExecutor) Run(args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// DeriveBranchPackage computes the branch_package identifier.
-// Format: "{repo_id}:{branch_name}:{merge_base}"
-func DeriveBranchPackage(git *agent.GitInfo, executor GitExecutor) string {
+var (
+	slugUnsafeChars    = regexp.MustCompile(`[^A-Za-z0-9._-]`)
+	slugConsecutiveDash = regexp.MustCompile(`-{2,}`)
+)
+
+// Slugify converts a branch name to a path-safe slug.
+// Rules:
+//   - Replace characters outside [A-Za-z0-9._-] with "-"
+//   - Collapse consecutive "-" to one
+//   - Trim leading/trailing "-"
+//   - Max length 64 chars; if exceeded, use first 56 + "-" + 7-char hash
+func Slugify(name string) string {
+	result := slugUnsafeChars.ReplaceAllString(name, "-")
+	result = slugConsecutiveDash.ReplaceAllString(result, "-")
+	result = strings.Trim(result, "-")
+
+	if len(result) > 64 {
+		h := sha256.Sum256([]byte(name))
+		hashSuffix := fmt.Sprintf("%x", h[:4])[:7]
+		result = result[:56] + "-" + hashSuffix
+	}
+
+	return result
+}
+
+// DeriveBranchPackage computes the structured branch package identifier.
+// Returns nil if not in a named branch.
+func DeriveBranchPackage(git *agent.GitInfo, executor GitExecutor) *agent.BranchPackageInfo {
 	if git == nil || git.Branch == "" || git.Branch == "HEAD" {
-		return ""
+		return nil
 	}
 
 	repoID := deriveRepoID(executor)
 	mergeBase := git.MergeBase
+	key := fmt.Sprintf("%s:%s:%s", repoID, git.Branch, mergeBase)
 
-	return fmt.Sprintf("%s:%s:%s", repoID, git.Branch, mergeBase)
+	slug := Slugify(git.Branch)
+	short := mergeBase
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	id := fmt.Sprintf("BR-%s-%s", slug, short)
+
+	return &agent.BranchPackageInfo{
+		Key:       key,
+		ID:        id,
+		Branch:    git.Branch,
+		MergeBase: mergeBase,
+	}
 }
 
 // DeriveScope determines scope based on git availability.
