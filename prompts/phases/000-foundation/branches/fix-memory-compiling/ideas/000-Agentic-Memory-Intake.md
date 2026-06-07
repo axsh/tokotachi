@@ -33,7 +33,7 @@
 
 ```mermaid
 flowchart LR
-    A["Code Agent<br/>(Codex / Claude Code / Cursor / Antigravity)"] -->|"1 task boundary = 1 notify"| B["scripts/prompt/update_notify"]
+    A["Code Agent<br/>(Codex / Claude Code / Cursor / Antigravity)"] -->|"1 task boundary = 1 notify"| B["scripts/code/agent/notify"]
     B --> C["tt agent notify"]
     C --> D["prompts/memory/var/intake/pending"]
     C --> E["prompts/memory/var/index/intake.sqlite"]
@@ -130,8 +130,24 @@ prompts/memory/
 
 #### R5: Wrapper スクリプト
 
-- `scripts/prompt/update_notify.py` を正本、`scripts/prompt/update_notify.sh` を薄い shim として作成する
-- Wrapper は以下の引数を受け付ける:
+Wrapper スクリプトは `scripts/code/` 配下に、`tt` サブコマンド構造と一致するディレクトリ階層で配置する:
+
+```text
+scripts/code/
+  agent/
+    notify.py         # Python 正本 (JSON 生成, 引数解析, retry, schema version 管理)
+    notify.sh         # bash shim (python3 notify.py "$@")
+    assist.sh         # 将来実装 (tt agent assist の wrapper)
+    status.sh         # tt agent status の wrapper
+    intake.sh         # tt agent intake list/show の wrapper
+  prompt/
+    compile.sh        # 既存 (tt prompt compile の wrapper)
+    deploy.sh         # 既存 (tt prompt deploy の wrapper)
+    update.sh         # 既存 (tt prompt update の wrapper)
+  _resolve_tool.sh    # 共通: tt binary 解決ヘルパー
+```
+
+`scripts/code/agent/notify.sh` (および Python 正本 `notify.py`) は以下の引数を受け付ける:
 
 | 引数 | 必須 | 説明 |
 |:---|:---|:---|
@@ -153,7 +169,7 @@ prompts/memory/
 | `--tt <path>` | 任意 | `tt` binary location override |
 
 - Wrapper は retry (exponential backoff, 最大 3 回) と `client_request_id` による冪等性を実装する
-- エージェントに埋め込む instructions は常に `./scripts/prompt/update_notify.sh --agent <x>` で統一する
+- エージェントに埋め込む instructions は常に `./scripts/code/agent/notify.sh --agent <x>` で統一する
 
 #### R6: 補助コマンド
 
@@ -288,10 +304,13 @@ flowchart TD
 - `intake-event.schema.json`: 保存スキーマ
 - `agent-notify-result.schema.json`: 結果スキーマ
 
-#### Wrapper (`scripts/prompt/`)
+#### Wrapper (`scripts/code/`)
 
-- `update_notify.py`: Python 正本 (JSON 生成, 引数解析, retry, schema version 管理)
-- `update_notify.sh`: bash shim (`python3 update_notify.py "$@"`)
+- `scripts/code/agent/notify.py`: Python 正本 (JSON 生成, 引数解析, retry, schema version 管理)
+- `scripts/code/agent/notify.sh`: bash shim (`python3 notify.py "$@"`)
+- `scripts/code/prompt/compile.sh`: 既存 compile.sh の移行
+- `scripts/code/prompt/deploy.sh`: 既存 deploy.sh の移行
+- `scripts/code/prompt/update.sh`: 既存 update.sh の移行
 
 ### 依存パッケージ (新規追加予定)
 
@@ -320,15 +339,15 @@ After such changes, update the relevant architecture document.
 If unsure where to write, append to prompts/memory/inbox.md.
 
 When architecture-impacting or agent-memory-relevant knowledge may have been created,
-run `./scripts/prompt/update_notify.sh --agent {{target:name}}` once per coherent task boundary.
+run `./scripts/code/agent/notify.sh --agent {{target:name}}` once per coherent task boundary.
 
 Use notify only to store long-term memory candidates.
 Do not edit canonical memory documents for intake.
-Do not run `./scripts/prompt/assist.sh`, `./scripts/prompt/compile.sh`, or `./scripts/prompt/update.sh`
+Do not run `./scripts/code/agent/assist.sh`, `./scripts/code/prompt/compile.sh`, or `./scripts/code/prompt/update.sh`
 unless the user explicitly asks for consolidation or deployment.
 ```
 
-> **設計原則**: プロンプト内では `tt` サブコマンドを直接記述せず、必ず `scripts/prompt/` 配下の wrapper スクリプトを参照する。`tt` コマンドの引数やサブコマンド構造が将来変更されても、wrapper 内で吸収することで、各エージェントに配備済みのプロンプトを変更せずに済むようにする。将来 `tt agent assist` が実装された際は `scripts/prompt/assist.sh` を新設し、同じ方針に従う。
+> **設計原則**: プロンプト内では `tt` サブコマンドを直接記述せず、必ず `scripts/code/` 配下の wrapper スクリプトを参照する。`tt` コマンドの引数やサブコマンド構造が将来変更されても、wrapper 内で吸収することで、各エージェントに配備済みのプロンプトを変更せずに済むようにする。wrapper のパスは `scripts/code/<group>/<subcommand>.sh` の形式で、`tt` のサブコマンド構造と一致させる。
 
 通知タイミングは「まとまりのある作業境界ごとに 1 回」とし、毎チャット・毎ツール呼び出しでの発火は禁止する。
 
@@ -341,7 +360,7 @@ unless the user explicitly asks for consolidation or deployment.
 | 悪い raw note | `この方式でいく` | 文脈依存が強すぎる |
 | 良い raw note | `tt agent notify は prompts/memory/var/intake/pending に raw event を deferred 保存する` | 自己完結で後処理しやすい |
 | 悪い raw note | `次回もこれを使う` | 指示対象が不明 |
-| 良い raw note | `scripts/prompt/update_notify.py を notify の唯一の安定エントリポイントにする` | 対象と判断が明確 |
+| 良い raw note | `scripts/code/agent/notify.py を notify の唯一の安定エントリポイントにする` | 対象と判断が明確 |
 
 ---
 
@@ -401,14 +420,14 @@ unless the user explicitly asks for consolidation or deployment.
 
 ### シナリオ 9: Wrapper 経由の notify
 
-1. `./scripts/prompt/update_notify.sh --agent antigravity --summary "Test" --note "Note1" --dry-run --print-payload` を実行する
+1. `./scripts/code/agent/notify.sh --agent antigravity --summary "Test" --note "Note1" --dry-run --print-payload` を実行する
 2. stdout に有効な JSON ペイロードが出力されることを確認
 3. `--dry-run` を外して実行し、`tt agent notify` 経由で正常保存されることを確認
 
 ### シナリオ 10: Compiler Ignore Hardening
 
 1. `prompts/memory/var/intake/pending/` に test event ファイルを配置する
-2. `tt prompt compile` を実行する
+2. `./scripts/code/prompt/compile.sh` を実行する
 3. `var/` 配下のファイルがコンパイル対象として処理されないことを確認 (エラーにならない、output に混入しない)
 
 ---
