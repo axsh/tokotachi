@@ -55,3 +55,18 @@ func Show(varDir, eventID string) (*agent.IntakeEvent, error) {
 
 	return &event, nil
 }
+
+const redactedValue = "<redacted>"
+
+// RedactProvenance replaces provenance fields with <redacted>.
+// Does NOT modify the original event. Returns a copy.
+func RedactProvenance(event *agent.IntakeEvent) *agent.IntakeEvent {
+	copied := *event
+	copied.Provenance = agent.Provenance{
+		Hostname:       redactedValue,
+		User:           redactedValue,
+		Cwd:            redactedValue,
+		WrapperVersion: event.Provenance.WrapperVersion,
+	}
+	return &copied
+}

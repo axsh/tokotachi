@@ -38,6 +38,7 @@ var (
 	intakeListTo     string
 	intakeListFormat string
 	intakeListLimit  int
+	intakeShowRedact bool
 )
 
 func init() {
@@ -50,6 +51,8 @@ func init() {
 	agentIntakeListCmd.Flags().StringVar(&intakeListTo, "to", "", "Filter to date (ISO8601)")
 	agentIntakeListCmd.Flags().StringVar(&intakeListFormat, "format", "json", "Output format (json or table)")
 	agentIntakeListCmd.Flags().IntVar(&intakeListLimit, "limit", 50, "Maximum number of results")
+
+	agentIntakeShowCmd.Flags().BoolVar(&intakeShowRedact, "redact", false, "Redact provenance fields")
 
 	agentIntakeCmd.AddCommand(agentIntakeListCmd)
 	agentIntakeCmd.AddCommand(agentIntakeShowCmd)
@@ -89,6 +92,10 @@ func runAgentIntakeShow(cmd *cobra.Command, args []string) error {
 	event, err := status.Show(varDir, args[0])
 	if err != nil {
 		return fmt.Errorf("failed to show event: %w", err)
+	}
+
+	if intakeShowRedact {
+		event = status.RedactProvenance(event)
 	}
 
 	data, err := json.MarshalIndent(event, "", "  ")

@@ -68,3 +68,35 @@ func TestShow_NotFound(t *testing.T) {
 	_, err := Show(tmpDir, "E-NONEXISTENT")
 	assert.Error(t, err)
 }
+
+func TestRedactProvenance(t *testing.T) {
+	event := &agent.IntakeEvent{
+		NotifyPayload: agent.NotifyPayload{
+			Agent:       "antigravity",
+			TaskSummary: "Test redact",
+		},
+		EventID: "E-REDACT001",
+		Provenance: agent.Provenance{
+			Hostname: "YamDesktop",
+			User:     "yamya",
+			Cwd:      "/home/yamya/project",
+		},
+	}
+
+	redacted := RedactProvenance(event)
+
+	// Provenance should be redacted
+	assert.Equal(t, "<redacted>", redacted.Provenance.Hostname)
+	assert.Equal(t, "<redacted>", redacted.Provenance.User)
+	assert.Equal(t, "<redacted>", redacted.Provenance.Cwd)
+
+	// Other fields should be preserved
+	assert.Equal(t, "E-REDACT001", redacted.EventID)
+	assert.Equal(t, "antigravity", redacted.Agent)
+	assert.Equal(t, "Test redact", redacted.TaskSummary)
+
+	// Original event should NOT be modified
+	assert.Equal(t, "YamDesktop", event.Provenance.Hostname)
+	assert.Equal(t, "yamya", event.Provenance.User)
+	assert.Equal(t, "/home/yamya/project", event.Provenance.Cwd)
+}
