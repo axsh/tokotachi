@@ -88,12 +88,11 @@
 | TestScaffoldDownloadHistory | `HTTP 401` - catalog/scaffolds/6/j/v/n.yaml の取得失敗 |
 | TestScaffoldSkipAlreadyDownloaded | `HTTP 401` - catalog/scaffolds/6/j/v/n.yaml の取得失敗 |
 
-- **原因**: scaffold コマンドが GitHub のプライベートリポジトリ (`tokotachi-scaffolds`) からテンプレートを取得しようとしているが、認証トークンが設定されていない、またはトークンが期限切れになっている。テスト自体は `requireGitHubReachable(t)` で `api.github.com/rate_limit` の到達性は確認しているが、プライベートリポジトリへの認証は別問題。
+- **原因**: **Antigravity IDE がプロセス環境変数 `GITHUB_TOKEN` にダミー値 `github_pat_antigravitydummytoken` を注入している。** この無効なトークンが GitHub API リクエスト時に送信され、`HTTP 401 (Unauthorized)` を引き起こしている。Windows のシステム/ユーザー環境変数には存在せず、シェルプロファイルにも設定がないため、IDE プロセスが直接注入していると判断。
 - **該当コード**: [tt_scaffold_test.go](file:///c:/Users/yamya/myprog/tokotachi/work/fix-memory-compiling/tests/tt/tt_scaffold_test.go)
 - **修正方針**:
-  - (A) GitHub 認証トークン（PAT）が正しく設定されていることをテスト前提条件 (`requireGitHubReachable` の強化、または別ヘルパー) で検証する。
-  - (B) `tt scaffold` コマンドの認証設定を確認・修正する。
-  - (C) scaffold テストの前提として `requireGitHubAuthenticated(t)` のようなヘルパーを追加し、認証失敗時には明確なエラーメッセージを出す。
+  - (A) **テスト実行前に `unset GITHUB_TOKEN` を行う。** `integration_test.sh` に環境変数クリア処理を追加するか、テストヘルパー内で `os.Unsetenv("GITHUB_TOKEN")` を呼ぶ。
+  - (B) scaffold テストの前提条件として、`GITHUB_TOKEN` が無効なダミー値でないことを検証するヘルパーを追加する。
 
 ### カテゴリ4: その他のテスト失敗 (tt)
 
@@ -110,9 +109,10 @@
 2. **release-note credential テストの改善**
    - [config_load_test.go](file:///c:/Users/yamya/myprog/tokotachi/work/fix-memory-compiling/tests/release-note/config_load_test.go) の `TestConfigLoad_CredentialFileExists` を credential ファイル必須のエラーメッセージを明確にした上で維持
 
-3. **scaffold テストの認証前提条件追加**
-   - `requireGitHubAuthenticated(t)` ヘルパーを追加し、プライベートリポジトリへのアクセス可否を事前チェック
-   - 認証が通らない場合は、明確なエラーメッセージで `t.Fatalf` する
+3. **scaffold テストの環境変数クリーンアップ**
+   - テスト実行前に `GITHUB_TOKEN` をクリアする処理を追加（`unset GITHUB_TOKEN` または `os.Unsetenv`）
+   - Antigravity IDE が注入するダミートークン (`github_pat_antigravitydummytoken`) が存在する場合に検知・クリアするロジック
+   - `integration_test.sh` のテスト実行前処理として `unset GITHUB_TOKEN` を追加する案（テストコード修正不要）
 
 ### Phase 2: Docker 依存テストの環境整備
 
@@ -122,7 +122,7 @@
 ## 検証シナリオ (Verification Scenarios)
 
 1. Phase 1 のテストコード修正後、`release-note` カテゴリの非Docker・非credential テストが全て成功する
-2. Phase 1 のテストコード修正後、scaffold テストが認証トークンの有無に応じて適切にエラーメッセージを出す
+2. `GITHUB_TOKEN` を unset した状態で scaffold テストが全て成功する
 3. Docker Desktop を起動した状態で、Docker 依存テストが全て成功する
 
 ## テスト項目 (Testing for the Requirements)
@@ -139,9 +139,9 @@
    scripts/process/integration_test.sh --categories "release-note"
    ```
 
-3. tt 統合テスト（scaffold 認証チェック改善の確認）:
+3. tt 統合テスト（GITHUB_TOKEN unset後の scaffold テスト確認）:
    ```
-   scripts/process/integration_test.sh --categories "tt" --specify "TestScaffold"
+   unset GITHUB_TOKEN && scripts/process/integration_test.sh --categories "tt" --specify "TestScaffold"
    ```
 
 4. tt 統合テスト（Docker不要テストのみ、全体リグレッション確認）:
@@ -154,8 +154,8 @@
 > [!IMPORTANT]
 > **Docker 依存テストの分離方針**: 現在 Docker 依存テストと非依存テストが同じディレクトリ (`tests/tt/`) に混在しています。Docker 未起動環境でも CI を回せるように、build tags やカテゴリ分離を導入すべきでしょうか？
 
-> [!IMPORTANT]
-> **GitHub 認証トークンの設定場所**: scaffold テストが期待する認証トークンの設定方法（環境変数、設定ファイルなど）を明確にする必要があります。現在の `tt scaffold` コマンドはどこから認証情報を読み取っていますか？
+> [!NOTE]
+> **GitHub 認証トークンの問題 (解決済み)**: Antigravity IDE がプロセス環境変数 `GITHUB_TOKEN` にダミー値 `github_pat_antigravitydummytoken` を注入していることが原因。テスト実行前に `unset GITHUB_TOKEN` することで解決する。永続的な修正としては `integration_test.sh` にクリア処理を追加する。
 
 > [!IMPORTANT]
 > **credential テストの扱い**: `TestConfigLoad_CredentialFileExists` は機密ファイルに依存しています。CI/CD 環境ではこのファイルは通常存在しません。このテストの失敗を許容するか、テスト環境にダミーの credential ファイルを配置する仕組みを作るか、方針を決める必要があります。
