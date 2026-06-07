@@ -324,11 +324,14 @@ run `./scripts/prompt/update_notify.sh --agent {{target:name}}` once per coheren
 
 Use notify only to store long-term memory candidates.
 Do not edit canonical memory documents for intake.
-Do not run `tt agent assist`, `tt prompt compile`, or `./scripts/prompt/update.sh`
+Do not run `./scripts/prompt/assist.sh`, `./scripts/prompt/compile.sh`, or `./scripts/prompt/update.sh`
 unless the user explicitly asks for consolidation or deployment.
 ```
 
+> **設計原則**: プロンプト内では `tt` サブコマンドを直接記述せず、必ず `scripts/prompt/` 配下の wrapper スクリプトを参照する。`tt` コマンドの引数やサブコマンド構造が将来変更されても、wrapper 内で吸収することで、各エージェントに配備済みのプロンプトを変更せずに済むようにする。将来 `tt agent assist` が実装された際は `scripts/prompt/assist.sh` を新設し、同じ方針に従う。
+
 通知タイミングは「まとまりのある作業境界ごとに 1 回」とし、毎チャット・毎ツール呼び出しでの発火は禁止する。
+
 
 
 ### raw_notes の品質指針
