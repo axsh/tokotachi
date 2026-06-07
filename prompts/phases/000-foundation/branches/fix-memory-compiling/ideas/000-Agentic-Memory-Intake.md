@@ -173,7 +173,9 @@ scripts/code/
   _resolve_tool.sh    # 共通: tt binary 解決ヘルパー
 ```
 
-`notify.sh` の責務は、Coding Agent から受け取ったオプションを `tt agent notify` のオプションにマッピングして渡すことのみである。JSON 生成、スキーマ検証、retry、Git 情報補完等の複雑なロジックは全て `tt` 本体 (Go) が担う。
+`notify.sh` の責務は、Coding Agent から受け取ったオプションを `tt agent notify` のオプションに**明示的にマッピング**して渡すことである。`"$@"` によるパススルーは禁止する。JSON 生成、スキーマ検証、retry、Git 情報補完等の複雑なロジックは全て `tt` 本体 (Go) が担う。
+
+> **設計意図**: 現時点では `notify.sh` の引数と `tt agent notify` のフラグは一致しているが、これはたまたまの一致である。将来 `tt` 側のフラグ名やサブコマンド構造が変更されても、`notify.sh` 内のマッピングを修正するだけで Coding Agent のプロンプトを変更せずに済む。
 
 **`tt` 未インストール時の graceful skip**: `tt` バイナリが見つからない場合、wrapper は **exit 0 で正常終了**し、stderr に「スキップすべきであり、インストールを試みてはならない」旨のメッセージを出力する。これにより、Coding Agent が `tt` のインストールを「解くべき問題」と誤認して自動インストールを試みることを防ぐ。
 
@@ -186,6 +188,26 @@ echo "[SKIP] Do NOT attempt to install tt. Simply skip this step and continue." 
 exit 0
 ```
 
+`notify.sh` が受け付ける引数 (Coding Agent 向けインターフェース):
+
+| 引数 | 必須 | 説明 |
+|:---|:---|:---|
+| `--agent <name>` | はい | canonical agent 名 |
+| `--summary <text>` | 条件付き | 要約文字列 |
+| `--summary-file <path>` | 条件付き | summary をファイルから読む |
+| `--note <text>` | 条件付き | 1 note を追加 (複数指定可) |
+| `--notes-file <path>` | 条件付き | 1 行 1 note |
+| `--changed-path <path>` | 任意 | 明示 path (複数指定可) |
+| `--changed-paths-from-git` | 任意 | git status/diff から path を収集 |
+| `--architecture-impact` | 任意 | flag を立てる |
+| `--memory-related` | 任意 | flag を立てる |
+| `--prompt-related` | 任意 | flag を立てる |
+| `--agent-behavior-related` | 任意 | flag を立てる |
+| `--requires-immediate-action` | 任意 | flag を立てる |
+| `--client-request-id <id>` | 推奨 | 冪等性キー |
+| `--dry-run` | 任意 | payload を構築するが保存しない |
+| `--print-payload` | 任意 | canonical payload を stdout |
+
 `notify.sh` の実装例:
 
 ```bash
@@ -194,7 +216,34 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../_resolve_tool.sh"
 # _resolve_tool.sh が tt を見つけられない場合は exit 0 で既に終了している
-exec "$TOOL" agent notify "$@"
+
+# --- Coding Agent 引数をパースし、tt agent notify 引数にマッピング ---
+TT_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --agent)            TT_ARGS+=(--agent "$2");            shift 2 ;;
+    --summary)          TT_ARGS+=(--summary "$2");          shift 2 ;;
+    --summary-file)     TT_ARGS+=(--summary-file "$2");     shift 2 ;;
+    --note)             TT_ARGS+=(--note "$2");             shift 2 ;;
+    --notes-file)       TT_ARGS+=(--notes-file "$2");       shift 2 ;;
+    --changed-path)     TT_ARGS+=(--changed-path "$2");     shift 2 ;;
+    --changed-paths-from-git) TT_ARGS+=(--changed-paths-from-git); shift ;;
+    --architecture-impact)    TT_ARGS+=(--architecture-impact);    shift ;;
+    --memory-related)         TT_ARGS+=(--memory-related);         shift ;;
+    --prompt-related)         TT_ARGS+=(--prompt-related);         shift ;;
+    --agent-behavior-related) TT_ARGS+=(--agent-behavior-related); shift ;;
+    --requires-immediate-action) TT_ARGS+=(--requires-immediate-action); shift ;;
+    --client-request-id) TT_ARGS+=(--client-request-id "$2"); shift 2 ;;
+    --dry-run)          TT_ARGS+=(--dry-run);               shift ;;
+    --print-payload)    TT_ARGS+=(--print-payload);         shift ;;
+    *)
+      echo "[ERROR] Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+exec "$TOOL" agent notify "${TT_ARGS[@]}"
 ```
 
 - エージェントに埋め込む instructions は常に `./scripts/code/agent/notify.sh --agent <x>` で統一する
