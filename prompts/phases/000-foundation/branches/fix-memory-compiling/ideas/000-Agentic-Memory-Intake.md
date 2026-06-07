@@ -226,14 +226,14 @@ flowchart TD
 
 既存の prompt compiler パイプラインが `prompts/memory/var/**` と `prompts/memory/schemas/**` を処理対象外とするガード処理を追加する。これにより、raw intake データが各エージェント用 compile 対象に混入することを防ぐ。
 
-### 任意要件 (SHOULD / MAY)
-
-#### R11: Branch Strategy (SHOULD)
+#### R11: Branch Strategy
 
 - `scope=branch` を既定とする
 - Git がない場合や detached HEAD の場合は `scope=session` にフォールバック
 - `branch_package` は `repo_id + branch_name + merge_base(default_branch)` で安定化
 - branch rename 時は alias を追加し既存 package を再利用
+
+### 任意要件 (SHOULD / MAY)
 
 #### R12: Metrics / Observability (MAY)
 
