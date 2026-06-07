@@ -1,6 +1,7 @@
 package status
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,41 +9,61 @@ import (
 	"time"
 
 	"github.com/axsh/tokotachi/features/tt/internal/agent"
+	_ "modernc.org/sqlite"
 )
+
+// StatusCounts holds event counts by status.
+type StatusCounts struct {
+	Pending   int `json:"pending"`
+	Processed int `json:"processed"`
+	Failed    int `json:"failed"`
+	Ignored   int `json:"ignored"`
+}
 
 // StatusReport holds the status summary.
 type StatusReport struct {
-	PendingCount     int    `json:"pending_count"`
-	ProcessedCount   int    `json:"processed_count"`
-	FailedCount      int    `json:"failed_count"`
-	IgnoredCount     int    `json:"ignored_count"`
-	OldestPendingAge string `json:"oldest_pending_age,omitempty"`
-	IndexHealth      string `json:"index_health"`
-	CurrentBranch    string `json:"current_branch,omitempty"`
+	MemoryRoot          string       `json:"memory_root"`
+	CurrentBranch       string       `json:"current_branch"`
+	Counts              StatusCounts `json:"counts"`
+	CurrentBranchCounts *StatusCounts `json:"current_branch_counts,omitempty"`
+	OldestPending       string       `json:"oldest_pending,omitempty"`
+	IndexHealth         string       `json:"index_health"`
 }
 
 // GetStatus computes the status report.
-func GetStatus(varDir string) (*StatusReport, error) {
+// memoryRoot: "prompts/memory" (for display)
+// varDir: "prompts/memory/var" (for file counting)
+// currentBranch: from git (caller provides)
+func GetStatus(memoryRoot, varDir, currentBranch string) (*StatusReport, error) {
 	intakeDir := filepath.Join(varDir, "intake")
 
 	report := &StatusReport{
-		IndexHealth: "unavailable",
+		MemoryRoot:    memoryRoot,
+		CurrentBranch: currentBranch,
 	}
 
-	report.PendingCount = countJSONFiles(filepath.Join(intakeDir, "pending"))
-	report.ProcessedCount = countJSONFiles(filepath.Join(intakeDir, "processed"))
-	report.FailedCount = countJSONFiles(filepath.Join(intakeDir, "failed"))
-	report.IgnoredCount = countJSONFiles(filepath.Join(intakeDir, "ignored"))
-
-	// Oldest pending age
-	oldest := findOldestPendingAge(filepath.Join(intakeDir, "pending"))
-	if oldest != "" {
-		report.OldestPendingAge = oldest
+	// Count files by status
+	report.Counts = StatusCounts{
+		Pending:   countJSONFiles(filepath.Join(intakeDir, "pending")),
+		Processed: countJSONFiles(filepath.Join(intakeDir, "processed")),
+		Failed:    countJSONFiles(filepath.Join(intakeDir, "failed")),
+		Ignored:   countJSONFiles(filepath.Join(intakeDir, "ignored")),
 	}
+
+	// Oldest pending timestamp (ISO8601 seconds precision)
+	report.OldestPending = findOldestPendingTimestamp(filepath.Join(intakeDir, "pending"))
 
 	// Index health
 	dbPath := filepath.Join(intakeDir, "index.db")
 	report.IndexHealth = checkIndexHealth(dbPath)
+
+	// Branch-specific counts from index
+	if currentBranch != "" && report.IndexHealth == "ok" {
+		branchCounts := queryBranchCounts(dbPath, currentBranch)
+		if branchCounts != nil {
+			report.CurrentBranchCounts = branchCounts
+		}
+	}
 
 	return report, nil
 }
@@ -62,8 +83,9 @@ func countJSONFiles(dir string) int {
 	return count
 }
 
-// findOldestPendingAge reads the oldest JSON file in pending/ and returns a human-readable age.
-func findOldestPendingAge(pendingDir string) string {
+// findOldestPendingTimestamp reads all pending events and returns
+// the oldest created_at as ISO8601 seconds precision string.
+func findOldestPendingTimestamp(pendingDir string) string {
 	var oldest time.Time
 	_ = filepath.Walk(pendingDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || filepath.Ext(path) != ".json" {
@@ -85,8 +107,68 @@ func findOldestPendingAge(pendingDir string) string {
 	if oldest.IsZero() {
 		return ""
 	}
-	age := time.Since(oldest)
-	return formatDuration(age)
+	return oldest.UTC().Format("2006-01-02T15:04:05Z")
+}
+
+// checkIndexHealth checks if the SQLite index is healthy.
+// Returns "ok", "missing", or "error".
+func checkIndexHealth(dbPath string) string {
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return "missing"
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return "error"
+	}
+	defer db.Close()
+
+	var result string
+	err = db.QueryRow("PRAGMA integrity_check").Scan(&result)
+	if err != nil || result != "ok" {
+		return "error"
+	}
+
+	return "ok"
+}
+
+// queryBranchCounts queries the index for counts specific to a branch.
+func queryBranchCounts(dbPath, branch string) *StatusCounts {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil
+	}
+	defer db.Close()
+
+	counts := &StatusCounts{}
+	rows, err := db.Query(
+		"SELECT status, COUNT(*) FROM intake_events WHERE branch = ? GROUP BY status",
+		branch,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var s string
+		var c int
+		if err := rows.Scan(&s, &c); err != nil {
+			continue
+		}
+		switch s {
+		case "pending":
+			counts.Pending = c
+		case "processed":
+			counts.Processed = c
+		case "failed":
+			counts.Failed = c
+		case "ignored":
+			counts.Ignored = c
+		}
+	}
+
+	return counts
 }
 
 // formatDuration formats a duration as a human-readable string.
@@ -101,12 +183,4 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%dh", int(d.Hours()))
 	}
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
-}
-
-// checkIndexHealth checks if the SQLite index is healthy.
-func checkIndexHealth(dbPath string) string {
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		return "unavailable"
-	}
-	return "ok"
 }

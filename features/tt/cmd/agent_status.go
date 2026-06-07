@@ -3,7 +3,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -24,9 +26,11 @@ func init() {
 }
 
 func runAgentStatus(cmd *cobra.Command, args []string) error {
-	varDir := filepath.Join("prompts", "memory", "var")
+	memoryRoot := filepath.Join("prompts", "memory")
+	varDir := filepath.Join(memoryRoot, "var")
+	branch := getCurrentBranch()
 
-	report, err := status.GetStatus(varDir)
+	report, err := status.GetStatus(memoryRoot, varDir, branch)
 	if err != nil {
 		return fmt.Errorf("failed to get status: %w", err)
 	}
@@ -37,4 +41,13 @@ func runAgentStatus(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println(string(data))
 	return nil
+}
+
+// getCurrentBranch returns the current git branch name.
+func getCurrentBranch() string {
+	out, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

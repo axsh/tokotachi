@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func createTestEvent(t *testing.T, dir, eventID string, createdAt time.Time) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, eventID+".json"), data, 0644))
 }
 
-func TestGetStatus_CountsCorrectly(t *testing.T) {
+func TestGetStatus_NewFormat(t *testing.T) {
 	tmpDir := t.TempDir()
 	varDir := tmpDir
 	intakeDir := filepath.Join(varDir, "intake")
@@ -55,40 +56,132 @@ func TestGetStatus_CountsCorrectly(t *testing.T) {
 	createTestEvent(t, failedDir, "E-FAIL2", now)
 	createTestEvent(t, failedDir, "E-FAIL3", now)
 
-	report, err := GetStatus(varDir)
+	report, err := GetStatus("prompts/memory", varDir, "fix-memory-compiling")
 	require.NoError(t, err)
 
-	assert.Equal(t, 2, report.PendingCount)
-	assert.Equal(t, 1, report.ProcessedCount)
-	assert.Equal(t, 3, report.FailedCount)
-	assert.Equal(t, 0, report.IgnoredCount)
+	// New format fields
+	assert.Equal(t, "prompts/memory", report.MemoryRoot)
+	assert.Equal(t, "fix-memory-compiling", report.CurrentBranch)
+
+	// Counts
+	assert.Equal(t, 2, report.Counts.Pending)
+	assert.Equal(t, 1, report.Counts.Processed)
+	assert.Equal(t, 3, report.Counts.Failed)
+	assert.Equal(t, 0, report.Counts.Ignored)
 }
 
 func TestGetStatus_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	report, err := GetStatus(tmpDir)
+	report, err := GetStatus("prompts/memory", tmpDir, "main")
 	require.NoError(t, err)
 
-	assert.Equal(t, 0, report.PendingCount)
-	assert.Equal(t, 0, report.ProcessedCount)
-	assert.Equal(t, 0, report.FailedCount)
-	assert.Equal(t, 0, report.IgnoredCount)
-	assert.Empty(t, report.OldestPendingAge)
-	assert.Equal(t, "unavailable", report.IndexHealth)
+	assert.Equal(t, "prompts/memory", report.MemoryRoot)
+	assert.Equal(t, "main", report.CurrentBranch)
+	assert.Equal(t, 0, report.Counts.Pending)
+	assert.Equal(t, 0, report.Counts.Processed)
+	assert.Equal(t, 0, report.Counts.Failed)
+	assert.Equal(t, 0, report.Counts.Ignored)
+	assert.Empty(t, report.OldestPending)
+	assert.Equal(t, "missing", report.IndexHealth)
 }
 
-func TestGetStatus_OldestPendingAge(t *testing.T) {
+func TestGetStatus_OldestPendingISO(t *testing.T) {
 	tmpDir := t.TempDir()
 	pendingDir := filepath.Join(tmpDir, "intake", "pending", "2026", "06", "07")
 
-	now := time.Now().UTC()
-	createTestEvent(t, pendingDir, "E-NEW", now)
-	createTestEvent(t, pendingDir, "E-OLD", now.Add(-2*time.Hour))
+	t1 := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC)
+	t2 := time.Date(2026, 6, 7, 10, 30, 0, 0, time.UTC)
+	createTestEvent(t, pendingDir, "E-NEW", t1)
+	createTestEvent(t, pendingDir, "E-OLD", t2)
 
-	report, err := GetStatus(tmpDir)
+	report, err := GetStatus("prompts/memory", tmpDir, "main")
 	require.NoError(t, err)
 
-	assert.NotEmpty(t, report.OldestPendingAge)
-	assert.Equal(t, "2h", report.OldestPendingAge)
+	// Should be ISO8601 seconds precision
+	assert.Equal(t, "2026-06-07T10:30:00Z", report.OldestPending)
+
+	// Validate format is ISO8601
+	iso8601Pattern := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`)
+	assert.True(t, iso8601Pattern.MatchString(report.OldestPending),
+		"OldestPending should be ISO8601 seconds precision, got %q", report.OldestPending)
 }
+
+func TestGetStatus_IndexMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	report, err := GetStatus("prompts/memory", tmpDir, "main")
+	require.NoError(t, err)
+
+	assert.Equal(t, "missing", report.IndexHealth)
+	assert.Nil(t, report.CurrentBranchCounts)
+}
+
+func TestGetStatus_IndexOk(t *testing.T) {
+	tmpDir := t.TempDir()
+	idx := setupTestIndex(t, tmpDir)
+	defer idx.Close()
+
+	report, err := GetStatus("prompts/memory", tmpDir, "main")
+	require.NoError(t, err)
+
+	assert.Equal(t, "ok", report.IndexHealth)
+}
+
+func TestGetStatus_BranchCounts(t *testing.T) {
+	tmpDir := t.TempDir()
+	idx := setupTestIndex(t, tmpDir)
+
+	now := time.Now().UTC()
+
+	// Insert events for two branches
+	e1 := &agent.IntakeEvent{
+		NotifyPayload: agent.NotifyPayload{
+			Agent:       "antigravity",
+			TaskSummary: "task on fix-branch",
+			RawNotes:    []string{"note"},
+		},
+		EventID:     "E-BR1",
+		ContentHash: "sha256:br1",
+		ContentID:   "RAWC-br1",
+		Scope:       "branch",
+		Git:         &agent.GitInfo{Branch: "fix-branch"},
+		Timestamps:  agent.Timestamps{CreatedAt: now, StoredAt: now},
+	}
+	_, err := idx.Store(e1)
+	require.NoError(t, err)
+
+	e2 := &agent.IntakeEvent{
+		NotifyPayload: agent.NotifyPayload{
+			Agent:       "antigravity",
+			TaskSummary: "task on main",
+			RawNotes:    []string{"note"},
+		},
+		EventID:     "E-BR2",
+		ContentHash: "sha256:br2",
+		ContentID:   "RAWC-br2",
+		Scope:       "branch",
+		Git:         &agent.GitInfo{Branch: "main"},
+		Timestamps:  agent.Timestamps{CreatedAt: now, StoredAt: now},
+	}
+	_, err = idx.Store(e2)
+	require.NoError(t, err)
+
+	idx.Close()
+
+	// Check fix-branch counts
+	report, err := GetStatus("prompts/memory", tmpDir, "fix-branch")
+	require.NoError(t, err)
+
+	require.NotNil(t, report.CurrentBranchCounts)
+	assert.Equal(t, 1, report.CurrentBranchCounts.Pending)
+
+	// Check main counts
+	report2, err := GetStatus("prompts/memory", tmpDir, "main")
+	require.NoError(t, err)
+
+	require.NotNil(t, report2.CurrentBranchCounts)
+	assert.Equal(t, 1, report2.CurrentBranchCounts.Pending)
+}
+
+
