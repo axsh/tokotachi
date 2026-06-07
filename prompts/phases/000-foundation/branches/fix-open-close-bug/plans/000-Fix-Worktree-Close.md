@@ -404,56 +404,56 @@ None.
 
 ### Step 1: worktree_test.go にテストを追加 (Red Phase)
 
-- [ ] `pkg/worktree/worktree_test.go` に以下のテストを追加:
+- [x] `pkg/worktree/worktree_test.go` に以下のテストを追加:
   - `TestRemove_DeinitsSubmodulesBeforeRemove`
   - `TestRemove_SkipsDeinitWhenNoSubmodules`
   - `TestCreate_PrunesBeforeAdd`
-- [ ] import に `"strings"` を追加
-- [ ] テストが失敗することを確認 (`deinitSubmodules` と prune が未実装のため)
-- [ ] コミット: `test: add failing tests for submodule deinit and create prune`
+- [x] import に `"strings"` を追加
+- [x] テストが失敗することを確認 (`deinitSubmodules` と prune が未実装のため)
+- [x] コミット: `test: add failing tests for submodule deinit and create prune`
 
 ### Step 2: worktree.go に実装を追加 (Green Phase)
 
-- [ ] `pkg/worktree/worktree.go` に以下を追加:
+- [x] `pkg/worktree/worktree.go` に以下を追加:
   - 定数 `removeRetryDelay` (500ms) と `removeMaxRetries` (1) を定義
   - `deinitSubmodules` メソッドを追加
   - `Remove` メソッドを改修 (deinit 呼び出し + リトライロジック)
   - `Create` メソッドを改修 (`m.Prune()` を `git worktree add` の前に追加)
-- [ ] import に `"time"` と `pkglog` を追加
-- [ ] Step 1 のテストが全て通ることを確認
-- [ ] コミット: `feat: add submodule deinit, retry logic, and create prune to worktree manager`
+- [x] import に `"time"` と `pkglog` を追加
+- [x] Step 1 のテストが全て通ることを確認
+- [x] コミット: `feat: add submodule deinit, retry logic, and create prune to worktree manager`
 
 ### Step 3: delete_test.go にテストを追加 (Red Phase)
 
-- [ ] `pkg/action/delete_test.go` に以下のテストを追加:
+- [x] `pkg/action/delete_test.go` に以下のテストを追加:
   - `TestDelete_PruneBeforeBranchDelete`
-- [ ] テストが失敗することを確認 (prune が branch delete の後にあるため)
-- [ ] コミット: `test: add failing test for prune-before-branch-delete order`
+- [x] テストが失敗することを確認 (prune が branch delete の後にあるため)
+- [x] コミット: `test: add failing test for prune-before-branch-delete order`
 
 ### Step 4: delete.go の Phase 4 を改修 (Green Phase)
 
-- [ ] `pkg/action/delete.go` の Phase 4 (L109-139) を改修:
+- [x] `pkg/action/delete.go` の Phase 4 (L109-139) を改修:
   - `needsPrune` フラグを導入
   - フォールバック削除成功時に `needsPrune = true`
   - prune の実行条件を `needsPrune || effectiveForce` に変更
   - prune を branch delete の**前**に移動
   - 末尾の `effectiveForce` による prune ブロックを削除 (上に統合済み)
-- [ ] Step 3 のテストが通ることを確認
-- [ ] コミット: `fix: improve delete action to prune before branch delete`
+- [x] Step 3 のテストが通ることを確認
+- [x] コミット: `fix: improve delete action to prune before branch delete`
 
 ### Step 5: close_test.go にテストを追加
 
-- [ ] `pkg/action/close_test.go` に以下のテストを追加:
+- [x] `pkg/action/close_test.go` に以下のテストを追加:
   - `TestClose_SubmoduleDeinit_CalledBeforeRemove`
-- [ ] テストが通ることを確認 (Step 2 で実装済みのため Green)
-- [ ] コミット: `test: add close integration test for submodule deinit`
+- [x] テストが通ることを確認 (Step 2 で実装済みのため Green)
+- [x] コミット: `test: add close integration test for submodule deinit`
 
 ### Step 6: ビルド・全体検証
 
-- [ ] `./scripts/process/build.sh --skip-frontend --skip-etc` を実行
-- [ ] 全単体テスト成功を確認
-- [ ] `./scripts/process/integration_test.sh --categories "common"` を実行
-- [ ] リグレッションがないことを確認
+- [x] `./scripts/process/build.sh --skip-frontend --skip-etc` を実行
+- [x] 全単体テスト成功を確認
+- [x] `./scripts/process/integration_test.sh --categories "common"` を実行
+- [x] リグレッションがないことを確認
 - [ ] コミット (必要に応じて)、プッシュ
 
 ## Verification Plan
