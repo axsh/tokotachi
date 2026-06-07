@@ -397,17 +397,7 @@ flowchart TD
 
 ### Code Agent 側のプロンプト設計
 
-既存の常駐ポリシー `prompts/manifest/code_content/policies/architecture-memory.md` の本文を以下のように変更する:
-
-**変更前** (現在の内容):
-
-```text
-Before changing architecture-sensitive code, read prompts/memory/index.md.
-After such changes, update the relevant architecture document.
-If unsure where to write, append to prompts/memory/inbox.md.
-```
-
-**変更後**:
+常駐ポリシー `prompts/manifest/code_content/policies/architecture-memory.md` を**新規作成**する (旧版は設計変更に伴い削除済み):
 
 ```text
 Before changing architecture-sensitive code, read prompts/memory/index.md.
