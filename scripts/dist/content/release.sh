@@ -91,7 +91,6 @@ else
   info "Committing changes..."
   git commit -m 'update catalog'
   
-  local current_branch
   current_branch=$(git rev-parse --abbrev-ref HEAD)
   info "Pushing to ${current_branch}..."
   if git push origin "${current_branch}"; then
