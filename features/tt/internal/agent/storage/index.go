@@ -3,6 +3,8 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/axsh/tokotachi/features/tt/internal/agent"
@@ -17,6 +19,11 @@ type Index struct {
 // NewIndex opens or creates the SQLite database at the given path.
 // Enables WAL mode and creates tables if not exist.
 func NewIndex(dbPath string) (*Index, error) {
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create database directory: %w", err)
+	}
+
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
