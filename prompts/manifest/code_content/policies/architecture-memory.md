@@ -16,7 +16,7 @@ If unsure where to write, append to prompts/memory/inbox.md.
 ## Mandatory Notify After Architecture-Impacting Changes
 
 When you complete a coherent task boundary (e.g. after `git commit`, before `git push`),
-you **MUST** invoke the **notify-intake** skill if any of the following occurred:
+you **MUST** invoke the **record-architecture-knowledge** skill if any of the following occurred:
 
 - A new Go package (`internal/`, `pkg/`, `cmd/`) was added or removed
 - A new CLI subcommand or API endpoint was introduced
@@ -38,7 +38,7 @@ Run notify **once per coherent task boundary**. Typical timing:
 
 ### How to Record
 
-Use the **notify-intake** skill for full details on:
+Use the **record-architecture-knowledge** skill for full details on:
 
 - Required command invocation (`./scripts/code/agent/notify.sh`)
 - Required and category flags

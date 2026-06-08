@@ -1,12 +1,12 @@
 ---
 apiVersion: agent.meta/v1
 kind: capability
-id: architecture-memory-intake
-title: Architecture Memory Intake Before Commit
+id: pre-push-architecture-check
+title: Pre-Push Architecture Check
 description: >-
-  Inspect staged changes before git commit and determine whether they contain
-  architecture-relevant knowledge that should be recorded via notify.sh.
-  Invoked automatically when the agent is about to run git commit.
+  Before git push, inspect all committed changes and determine whether they
+  contain architecture-relevant knowledge that should be recorded via
+  record-architecture-knowledge skill.
 paths:
   - "internal/**"
   - "pkg/**"
@@ -16,18 +16,18 @@ paths:
   - "prompts/manifest/**"
 references:
   - "prompts/memory/index.md"
-  - "prompts/manifest/code_content/capabilities/notify-intake.md"
+  - "prompts/manifest/code_content/capabilities/record-architecture-knowledge.md"
 scripts:
   - "scripts/code/agent/notify.sh"
 body: inline
 ---
 
-# Architecture Memory Intake Before Commit
+# Pre-Push Architecture Check
 
 You are an AI coding agent working in this repository.
 
-Before creating a `git commit`, you **MUST** inspect the staged changes and decide
-whether the commit contains architecture-relevant knowledge that should be recorded
+Before running `git push`, you **MUST** inspect the changes being pushed and decide
+whether they contain architecture-relevant knowledge that should be recorded
 for future maintainers.
 
 Your goal is not to summarize the implementation.
@@ -40,27 +40,25 @@ Your goal is to capture architectural knowledge that will help a future develope
 - What trade-offs or temporary decisions exist
 - What future changes must be careful about
 
-## Step 1: Inspect the Staged Changes
+## Step 1: Inspect the Changes Being Pushed
 
-Run the following commands to understand what is being committed:
+Run the following commands to understand what will be pushed:
 
 ```bash
-git status --short
-git diff --staged
+git log --oneline origin/HEAD..HEAD
+git diff origin/HEAD..HEAD --stat
+git diff origin/HEAD..HEAD
 ```
 
-If there are no staged changes, report the following and stop:
+If there are no unpushed commits, report the following and stop:
 
 ```text
-Architecture intake: no staged changes found. Skipping.
+Architecture intake: no unpushed commits found. Skipping.
 ```
-
-Do not create architecture notes from unstaged changes
-unless explicitly instructed by the user.
 
 ## Step 2: Determine Whether an Architecture Note Is Needed
 
-Create an architecture note **only when** the staged changes include
+Create an architecture note **only when** the changes being pushed include
 at least one of the following architecture signals:
 
 1. A new module, package, directory, service, command, API, component,
@@ -116,12 +114,12 @@ Do **not** create architecture notes for:
 
 Architecture notes must not become noisy commit summaries.
 
-## Step 4: Record via notify-intake
+## Step 4: Record via record-architecture-knowledge
 
 If architecture signals were detected in Step 2,
-use the **notify-intake** skill to record the knowledge.
+use the **record-architecture-knowledge** skill to record the knowledge.
 
-Read the `notify-intake` capability for full details on:
+Read the `record-architecture-knowledge` capability for full details on:
 
 - Required command invocation and flags
 - Category flag selection
@@ -129,13 +127,13 @@ Read the `notify-intake` capability for full details on:
 - Dry-run for uncertain cases
 - Report format
 
-## Step 5: Final Check Before Commit
+## Step 5: Final Check Before Push
 
-Before allowing the commit to proceed, confirm:
+Before allowing `git push` to proceed, confirm:
 
-1. Staged code changes were inspected via `git diff --staged`.
+1. All unpushed commits were inspected.
 2. Architecture-relevant signals were evaluated against the 14-item checklist.
-3. notify-intake was invoked if architecture signals were detected.
+3. record-architecture-knowledge was invoked if architecture signals were detected.
 4. Report was produced (either "recorded" or "no update").
 
 ## Interaction Rules

@@ -121,7 +121,7 @@ description: Execute Implementation Plan
 > 「no update」の報告を出してから次に進んでください。
 
 全てのビルドとテストが成功し、コミットが完了した後、`git push` の**前に**、
-**notify-intake** スキルに従ってアーキテクチャ知識の記録を行ってください。
+**record-architecture-knowledge** スキルに従ってアーキテクチャ知識の記録を行ってください。
 
 ## 4. Git Push
 

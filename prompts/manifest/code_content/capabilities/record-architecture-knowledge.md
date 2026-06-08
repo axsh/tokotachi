@@ -1,12 +1,12 @@
 ---
 apiVersion: agent.meta/v1
 kind: capability
-id: notify-intake
-title: Architecture Knowledge Intake via notify.sh
+id: record-architecture-knowledge
+title: Record Architecture Knowledge via notify.sh
 description: >-
   Shared skill for recording architecture-relevant knowledge into the project
   memory system using ./scripts/code/agent/notify.sh.
-  Referenced by architecture-memory policy and architecture-memory-intake capability.
+  Referenced by architecture-memory policy and pre-push-architecture-check capability.
 references:
   - "prompts/memory/index.md"
   - "prompts/memory/schemas/agent-notify-payload.schema.json"
@@ -16,7 +16,7 @@ manual_only: true
 body: inline
 ---
 
-# Architecture Knowledge Intake via notify.sh
+# Record Architecture Knowledge via notify.sh
 
 This skill describes how to record architecture-relevant knowledge
 into the project's memory system using `./scripts/code/agent/notify.sh`.
@@ -25,8 +25,8 @@ This is a shared reference. It is invoked by:
 
 - **architecture-memory** policy: when architecture-impacting changes are detected
   during or after implementation
-- **architecture-memory-intake** capability: when inspecting staged changes
-  before `git commit`
+- **pre-push-architecture-check** capability: when inspecting changes
+  before `git push`
 
 ## Recording Tool
 
@@ -169,7 +169,7 @@ If the notes feel like noise, skip the recording and report accordingly.
   --agent-behavior-related \
   --prompt-related \
   --note "architecture-memory.md policy now lists concrete trigger conditions" \
-  --note "notify-intake.md capability created as shared notify.sh reference"
+  --note "record-architecture-knowledge capability created as shared notify.sh reference"
 
 # When unsure if a change qualifies, dry-run first
 ./scripts/code/agent/notify.sh \
