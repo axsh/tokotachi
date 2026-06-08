@@ -72,8 +72,8 @@ func (h *Handler) HandleAssist(branch string, force bool) (*agent.AssistResult, 
 		}
 	}
 
-	// 3. Build task events from records
-	events := h.buildTaskEvents(records)
+	// 3. Build task events from records and extract BranchPackage info
+	events, bpID, bpKey := h.buildTaskEventsAndBP(records)
 
 	// 4. Generate task ID
 	taskID, err := h.generateTaskID()
@@ -84,23 +84,21 @@ func (h *Handler) HandleAssist(branch string, force bool) (*agent.AssistResult, 
 		}, 1
 	}
 
-	// 5. Derive branch package info from first record
-	bpID := records[0].BranchPackage
-
-	// 6. Build paths
+	// 5. Build paths
 	schemaPath := "prompts/memory/schemas/knowledge-atom-batch.schema.json"
 	submitCmd := fmt.Sprintf("tt agent task submit %s --file result.json", taskID)
 
-	// 7. Build instruction
+	// 6. Build instruction
 	instruction := buildInstruction(schemaPath, submitCmd)
 
-	// 8. Create task
+	// 7. Create task
 	task := &agent.AgentTask{
 		TaskID:           taskID,
 		Version:          1,
 		TaskType:         "distill_intake_to_knowledge",
 		Scope:            "current-branch",
 		BranchPackageID:  bpID,
+		BranchPackageKey: bpKey,
 		Instruction:      instruction,
 		Events:           events,
 		OutputSchemaPath: schemaPath,
@@ -155,17 +153,16 @@ func (h *Handler) findExistingTask(branch string) (*agent.AgentTask, error) {
 	return nil, fmt.Errorf("no existing task found")
 }
 
-// buildTaskEvents converts EventRecords to TaskEvents.
-// Reads the full event file to extract raw_notes, changed_paths, and flags.
-func (h *Handler) buildTaskEvents(records []storage.EventRecord) []agent.TaskEvent {
-	var events []agent.TaskEvent
+// buildTaskEventsAndBP converts EventRecords to TaskEvents and extracts
+// BranchPackageID and BranchPackageKey from the full event files.
+func (h *Handler) buildTaskEventsAndBP(records []storage.EventRecord) (events []agent.TaskEvent, bpID, bpKey string) {
 	for _, r := range records {
 		te := agent.TaskEvent{
 			EventID:     r.EventID,
 			TaskSummary: r.TaskSummary,
 		}
 
-		// Try to read full event for raw_notes, changed_paths, flags
+		// Try to read full event for raw_notes, changed_paths, flags, and branch_package
 		createdAt, err := time.Parse("2006-01-02T15:04:05Z", r.CreatedAt)
 		if err == nil {
 			fullEvent, err := h.fileStore.ReadEvent(r.EventID, createdAt)
@@ -173,6 +170,11 @@ func (h *Handler) buildTaskEvents(records []storage.EventRecord) []agent.TaskEve
 				te.RawNotes = fullEvent.RawNotes
 				te.ChangedPaths = fullEvent.EffectiveChangedPaths
 				te.Flags = fullEvent.Flags
+				// Extract BranchPackage info from first event that has it
+				if bpID == "" && fullEvent.BranchPackage != nil {
+					bpID = fullEvent.BranchPackage.ID
+					bpKey = fullEvent.BranchPackage.Key
+				}
 			}
 		}
 
@@ -183,7 +185,7 @@ func (h *Handler) buildTaskEvents(records []storage.EventRecord) []agent.TaskEve
 
 		events = append(events, te)
 	}
-	return events
+	return events, bpID, bpKey
 }
 
 // generateTaskID generates a new ULID-based task ID with "T-" prefix.

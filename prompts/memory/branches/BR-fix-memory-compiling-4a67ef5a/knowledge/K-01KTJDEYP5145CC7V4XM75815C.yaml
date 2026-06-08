@@ -1,0 +1,19 @@
+id: K-01KTJDEYP5145CC7V4XM75815C
+version: 1
+type: Fact
+title: Integration test fact
+body: This fact was created during integration testing of the full submit flow.
+status: draft
+importance: medium
+confidence: 0.9
+activation_hints:
+    positive:
+        - during integration testing
+source:
+    event_ids:
+        - E-01KTJDEYF3FMAFK0MRZR5HS634
+    branch_package_id: BR-fix-memory-compiling-4a67ef5a
+    agent: coding_agent
+    git_branch: fix-memory-compiling
+timestamps:
+    created_at: 2026-06-08T01:27:25.6379579Z
