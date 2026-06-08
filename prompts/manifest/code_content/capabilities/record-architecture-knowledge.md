@@ -40,7 +40,7 @@ under `prompts/memory/`.
 
 ```bash
 ./scripts/code/agent/notify.sh \
-  --agent "{{target:name}}" \
+  --agent "<your-agent-name>" \
   --summary "<one-line description of the architectural change>" \
   --changed-paths-from-git \
   <category-flags> \
@@ -53,7 +53,7 @@ under `prompts/memory/`.
 
 Every invocation **MUST** include:
 
-- `--agent "{{target:name}}"` : Identifies which agent is recording the knowledge
+- `--agent "<your-agent-name>"` : Your agent name (one of: `antigravity`, `claude-code`, `codex`, `cursor`)
 - `--summary "..."` : A one-line description of what changed
 - `--changed-paths-from-git` : Automatically detects changed files from git
 - At least one category flag (see below)
@@ -133,7 +133,7 @@ run a dry-run first:
 
 ```bash
 ./scripts/code/agent/notify.sh \
-  --agent "{{target:name}}" \
+  --agent "<your-agent-name>" \
   --summary "<description>" \
   --changed-paths-from-git \
   --architecture-impact \
@@ -149,7 +149,7 @@ If the notes feel like noise, skip the recording and report accordingly.
 ```bash
 # After adding a new package with CLI command
 ./scripts/code/agent/notify.sh \
-  --agent "{{target:name}}" \
+  --agent "<your-agent-name>" \
   --summary "Add agent assist handler and task CLI commands" \
   --changed-paths-from-git \
   --architecture-impact \
@@ -159,7 +159,7 @@ If the notes feel like noise, skip the recording and report accordingly.
 
 # After modifying data models
 ./scripts/code/agent/notify.sh \
-  --agent "{{target:name}}" \
+  --agent "<your-agent-name>" \
   --summary "Add knowledge-atom schema and batch processing types" \
   --changed-paths-from-git \
   --architecture-impact \
@@ -169,7 +169,7 @@ If the notes feel like noise, skip the recording and report accordingly.
 
 # After changing agent workflow or rules
 ./scripts/code/agent/notify.sh \
-  --agent "{{target:name}}" \
+  --agent "<your-agent-name>" \
   --summary "Update architecture-memory policy to enforce notify.sh usage" \
   --changed-paths-from-git \
   --agent-behavior-related \
@@ -179,7 +179,7 @@ If the notes feel like noise, skip the recording and report accordingly.
 
 # When unsure if a change qualifies, dry-run first
 ./scripts/code/agent/notify.sh \
-  --agent "{{target:name}}" \
+  --agent "<your-agent-name>" \
   --summary "Refactor error handling in auth middleware" \
   --changed-paths-from-git \
   --dry-run --print-payload
