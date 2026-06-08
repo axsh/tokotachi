@@ -115,40 +115,7 @@ disable-model-invocation: false
 > 「no update」の報告を出してから次に進んでください。
 
 全てのビルドとテストが成功し、コミットが完了した後、`git push` の**前に**、
-**notify-intake** スキルを使ってアーキテクチャ知識の記録を行ってください。
-
-1.  **判定**: 今回のコミットに含まれる変更が、以下のいずれかに該当するか確認する:
-    *   新しい Go パッケージ (`internal/`, `pkg/`, `cmd/`) の追加・削除
-    *   新しい CLI サブコマンドや API エンドポイントの追加
-    *   データモデルやデータベーススキーマの追加・変更
-    *   モジュール境界や依存関係の変更
-    *   新しいラッパースクリプト (`scripts/`) の作成
-    *   エージェント向け設定・ワークフローファイルの変更
-    *   将来のエージェントが知るべき設計判断
-2.  **該当する場合**: `./scripts/code/agent/notify.sh` を実行する。
-    使用方法の詳細は **notify-intake** スキルを参照すること。
-    ```bash
-    ./scripts/code/agent/notify.sh \
-      --summary "<変更の一行要約>" \
-      --changed-paths-from-git \
-      --architecture-impact \
-      --note "<アーキテクチャ上の知見 1>" \
-      --note "<アーキテクチャ上の知見 2>"
-    ```
-3.  **該当しない場合**: 以下を報告して次に進む:
-    ```text
-    Architecture intake: no update.
-    Reason: <簡潔な理由>
-    ```
-4.  **判断に迷う場合**: `--dry-run --print-payload` で事前確認する:
-    ```bash
-    ./scripts/code/agent/notify.sh \
-      --summary "<要約>" \
-      --changed-paths-from-git \
-      --architecture-impact \
-      --note "<知見>" \
-      --dry-run --print-payload
-    ```
+**notify-intake** スキルに従ってアーキテクチャ知識の記録を行ってください。
 
 ## 4. Git Push
 
