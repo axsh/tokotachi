@@ -7,9 +7,9 @@ capabilities:
   workflows: true
   subagents: false
 paths:
-  rules: .agent/rules/
-  skills: .agent/skills/
-  workflows: .agent/workflows/
+  rules: .agents/rules/
+  skills: .agents/skills/
+  workflows: .agents/workflows/
 limits:
   rules:
     max_file_size: 12000

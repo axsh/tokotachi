@@ -32,9 +32,9 @@ type ProcedureFrontmatter struct {
 
 // resolvePaths returns the target rules, skills, and workflows directory paths.
 func (a *AntigravityEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildDir string, apply bool) (string, string, string) {
-	rulesPath := ".agent/rules/"
-	skillsPath := ".agent/skills/"
-	workflowsPath := ".agent/workflows/"
+	rulesPath := ".agents/rules/"
+	skillsPath := ".agents/skills/"
+	workflowsPath := ".agents/workflows/"
 
 	// Extract overrides from target antigravity entity
 	for _, target := range resolved.Entities["target"] {
@@ -64,7 +64,7 @@ func (a *AntigravityEmitter) resolvePaths(resolved *manifest.ResolvedManifest, b
 		filepath.Join(buildDir, "antigravity", workflowsPath)
 }
 
-func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) error {
+func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error) {
 	rulesDir, skillsDir, workflowsDir := a.resolvePaths(resolved, buildDir, apply)
 
 	// Track emitted files for immune mode orphan cleanup
@@ -117,7 +117,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Rules, policy.ID, a.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -126,7 +126,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 
 		outputPath := filepath.Join(rulesDir, filename)
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
@@ -165,7 +165,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf("failed to marshal skill frontmatter for %s: %w", skill.ID, err)
+			return nil, fmt.Errorf("failed to marshal skill frontmatter for %s: %w", skill.ID, err)
 		}
 
 		content := fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
@@ -176,7 +176,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Skills, skill.ID, a.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -185,7 +185,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 
 		outputPath := filepath.Join(skillsDir, skill.ID, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
@@ -215,7 +215,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf("failed to marshal procedure frontmatter for %s: %w", proc.ID, err)
+			return nil, fmt.Errorf("failed to marshal procedure frontmatter for %s: %w", proc.ID, err)
 		}
 
 		content := fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
@@ -226,7 +226,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Workflows, proc.ID, a.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -235,28 +235,24 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 
 		outputPath := filepath.Join(workflowsDir, proc.ID+".md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
 
-	// 4. Immune mode: clean orphan files from target directories
-	if opts.Mode == EmitModeImmune {
-		targetDirs := []string{rulesDir, skillsDir, workflowsDir}
-		if _, err := CleanOrphanFiles(targetDirs, emittedFiles, opts.DryRun); err != nil {
-			return fmt.Errorf("failed to clean orphan files: %w", err)
-		}
-	}
-
-	return nil
+	// 4. Return EmitResult for coordinated orphan cleanup in deploy pipeline
+	return &EmitResult{
+		EmittedFiles: emittedFiles,
+		TargetDirs:   []string{rulesDir, skillsDir, workflowsDir},
+	}, nil
 }
 
 // resolveTargetPaths extracts the target paths from the antigravity target entity.
 func (a *AntigravityEmitter) resolveTargetPaths(resolved *manifest.ResolvedManifest) TargetPaths {
 	tp := TargetPaths{
-		Rules:     ".agent/rules/",
-		Skills:    ".agent/skills/",
-		Workflows: ".agent/workflows/",
+		Rules:     ".agents/rules/",
+		Skills:    ".agents/skills/",
+		Workflows: ".agents/workflows/",
 	}
 	for _, target := range resolved.Entities["target"] {
 		if target.ID == "antigravity" {
@@ -289,7 +285,7 @@ func (a *AntigravityEmitter) Check(resolved *manifest.ResolvedManifest, buildDir
 	}
 	defer os.RemoveAll(tempBuildDir)
 
-	if err := a.Emit(resolved, tempBuildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := a.Emit(resolved, tempBuildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		return false, fmt.Errorf("failed to dry-run emit: %w", err)
 	}
 
