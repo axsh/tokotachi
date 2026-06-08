@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/axsh/tokotachi/features/tt/internal/agent"
 )
@@ -82,3 +83,42 @@ func (fs *FileStore) Write(event *agent.IntakeEvent) (string, error) {
 	success = true
 	return relPath, nil
 }
+
+// MoveToProcessed moves an event file from pending/ to processed/.
+// The relative path structure (YYYY/MM/DD/event_id.json) is preserved.
+func (fs *FileStore) MoveToProcessed(eventID string, createdAt time.Time) error {
+	relPath := filepath.Join(
+		createdAt.Format("2006"), createdAt.Format("01"), createdAt.Format("02"),
+		eventID+".json")
+	srcPath := filepath.Join(fs.baseDir, "pending", relPath)
+	dstPath := filepath.Join(fs.baseDir, "processed", relPath)
+
+	// Create destination directory
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		return fmt.Errorf("failed to create processed directory: %w", err)
+	}
+
+	// Move file
+	if err := os.Rename(srcPath, dstPath); err != nil {
+		return fmt.Errorf("failed to move event to processed: %w", err)
+	}
+	return nil
+}
+
+// ReadEvent reads and unmarshals an IntakeEvent from the pending directory.
+func (fs *FileStore) ReadEvent(eventID string, createdAt time.Time) (*agent.IntakeEvent, error) {
+	relPath := filepath.Join(
+		createdAt.Format("2006"), createdAt.Format("01"), createdAt.Format("02"),
+		eventID+".json")
+	filePath := filepath.Join(fs.baseDir, "pending", relPath)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read event file: %w", err)
+	}
+	var event agent.IntakeEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal event: %w", err)
+	}
+	return &event, nil
+}
+

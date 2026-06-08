@@ -128,3 +128,143 @@ var ValidAgents = map[string]bool{
 	"cursor":       true,
 	"unknown":      true,
 }
+
+// --- Knowledge Atom types ---
+
+// KnowledgeAtomType enumerates the allowed knowledge types.
+type KnowledgeAtomType string
+
+const (
+	KnowledgeTypeFact       KnowledgeAtomType = "Fact"
+	KnowledgeTypeDecision   KnowledgeAtomType = "Decision"
+	KnowledgeTypeConstraint KnowledgeAtomType = "Constraint"
+	KnowledgeTypePattern    KnowledgeAtomType = "Pattern"
+	KnowledgeTypeWarning    KnowledgeAtomType = "Warning"
+	KnowledgeTypeSkill      KnowledgeAtomType = "Skill"
+)
+
+// ValidKnowledgeTypes is the set of valid knowledge atom types.
+var ValidKnowledgeTypes = map[KnowledgeAtomType]bool{
+	KnowledgeTypeFact: true, KnowledgeTypeDecision: true,
+	KnowledgeTypeConstraint: true, KnowledgeTypePattern: true,
+	KnowledgeTypeWarning: true, KnowledgeTypeSkill: true,
+}
+
+// KnowledgeAtom represents a self-contained unit of knowledge.
+type KnowledgeAtom struct {
+	ID              string            `json:"id" yaml:"id"`
+	Version         int               `json:"version" yaml:"version"`
+	Type            KnowledgeAtomType `json:"type" yaml:"type"`
+	Title           string            `json:"title" yaml:"title"`
+	Body            string            `json:"body" yaml:"body"`
+	Status          string            `json:"status" yaml:"status"`
+	Importance      string            `json:"importance" yaml:"importance"`
+	Confidence      float64           `json:"confidence" yaml:"confidence"`
+	ActivationHints ActivationHints   `json:"activation_hints" yaml:"activation_hints"`
+	Source          KnowledgeSource   `json:"source" yaml:"source"`
+	Timestamps      KnowledgeTS       `json:"timestamps" yaml:"timestamps"`
+}
+
+// ActivationHints provides retrieval context for a knowledge atom.
+type ActivationHints struct {
+	Positive []string `json:"positive" yaml:"positive"`
+	Negative []string `json:"negative,omitempty" yaml:"negative,omitempty"`
+}
+
+// KnowledgeSource tracks the origin of a knowledge atom.
+type KnowledgeSource struct {
+	EventIDs        []string `json:"event_ids" yaml:"event_ids"`
+	BranchPackageID string   `json:"branch_package_id" yaml:"branch_package_id"`
+	Agent           string   `json:"agent" yaml:"agent"`
+	GitBranch       string   `json:"git_branch" yaml:"git_branch"`
+}
+
+// KnowledgeTS holds creation timestamp for a knowledge atom.
+type KnowledgeTS struct {
+	CreatedAt time.Time `json:"created_at" yaml:"created_at"`
+}
+
+// KnowledgeAtomBatch represents the input from a coding agent.
+type KnowledgeAtomBatch struct {
+	Version int                      `json:"version"`
+	Atoms   []KnowledgeAtomCandidate `json:"atoms"`
+}
+
+// KnowledgeAtomCandidate is a single atom in the batch (no id/version/status/timestamps).
+type KnowledgeAtomCandidate struct {
+	Type            KnowledgeAtomType `json:"type"`
+	Title           string            `json:"title"`
+	Body            string            `json:"body"`
+	Importance      string            `json:"importance"`
+	Confidence      float64           `json:"confidence"`
+	ActivationHints ActivationHints   `json:"activation_hints"`
+	Source          CandidateSource   `json:"source"`
+}
+
+// CandidateSource holds only event_ids (other fields auto-filled by tt).
+type CandidateSource struct {
+	EventIDs []string `json:"event_ids"`
+}
+
+// --- Agent Task types ---
+
+// AgentTask represents a task for a coding agent.
+type AgentTask struct {
+	TaskID           string      `json:"task_id"`
+	Version          int         `json:"version"`
+	TaskType         string      `json:"task_type"`
+	Scope            string      `json:"scope"`
+	BranchPackageID  string      `json:"branch_package_id,omitempty"`
+	BranchPackageKey string      `json:"branch_package_key,omitempty"`
+	Instruction      string      `json:"instruction"`
+	Events           []TaskEvent `json:"events"`
+	OutputSchemaPath string      `json:"output_schema_path"`
+	SubmitCommand    string      `json:"submit_command"`
+	Status           string      `json:"status"`
+	CreatedAt        string      `json:"created_at"`
+}
+
+// TaskEvent is a summary of an intake event embedded in a task.
+type TaskEvent struct {
+	EventID      string   `json:"event_id"`
+	TaskSummary  string   `json:"task_summary"`
+	RawNotes     []string `json:"raw_notes"`
+	ChangedPaths []string `json:"changed_paths,omitempty"`
+	Flags        *Flags   `json:"flags,omitempty"`
+}
+
+// --- Assist / Submit result types ---
+
+// AssistResult is the output of tt agent assist.
+type AssistResult struct {
+	Status      string `json:"status"`
+	TaskID      string `json:"task_id,omitempty"`
+	TaskType    string `json:"task_type,omitempty"`
+	EventCount  int    `json:"event_count,omitempty"`
+	TaskFile    string `json:"task_file,omitempty"`
+	NextCommand string `json:"next_command,omitempty"`
+	Message     string `json:"message,omitempty"`
+}
+
+// SubmitResult is the output of tt agent task submit.
+type SubmitResult struct {
+	Status           string   `json:"status"`
+	TaskID           string   `json:"task_id"`
+	KnowledgeCreated int      `json:"knowledge_created"`
+	KnowledgeFiles   []string `json:"knowledge_files"`
+	ProcessedEvents  []string `json:"processed_events"`
+	Message          string   `json:"message,omitempty"`
+}
+
+// --- Branch Manifest ---
+
+// BranchManifest describes a branch package.
+type BranchManifest struct {
+	ID            string `yaml:"id"`
+	Key           string `yaml:"key"`
+	Branch        string `yaml:"branch"`
+	MergeBase     string `yaml:"merge_base"`
+	DefaultBranch string `yaml:"default_branch"`
+	CreatedAt     string `yaml:"created_at"`
+	Status        string `yaml:"status"`
+}

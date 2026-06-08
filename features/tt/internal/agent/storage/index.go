@@ -212,3 +212,50 @@ type EventRecord struct {
 	StoredAt        string
 	CreatedAt       string
 }
+
+// UpdateStatus updates the status of an event in the index.
+func (idx *Index) UpdateStatus(eventID, newStatus string) error {
+	result, err := idx.db.Exec(
+		"UPDATE intake_events SET status = ? WHERE event_id = ?",
+		newStatus, eventID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update status: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return fmt.Errorf("event %s not found", eventID)
+	}
+	return nil
+}
+
+// ListPendingByBranch returns all pending events for a given branch.
+func (idx *Index) ListPendingByBranch(branch string) ([]EventRecord, error) {
+	rows, err := idx.db.Query(`
+		SELECT event_id, content_hash, content_id, agent, branch, scope,
+		       branch_package, status, client_request_id, task_summary,
+		       stored_at, created_at
+		FROM intake_events
+		WHERE status = 'pending' AND branch = ?
+		ORDER BY created_at ASC
+	`, branch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pending events: %w", err)
+	}
+	defer rows.Close()
+
+	var records []EventRecord
+	for rows.Next() {
+		var r EventRecord
+		if err := rows.Scan(
+			&r.EventID, &r.ContentHash, &r.ContentID, &r.Agent, &r.Branch,
+			&r.Scope, &r.BranchPackage, &r.Status, &r.ClientRequestID,
+			&r.TaskSummary, &r.StoredAt, &r.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		records = append(records, r)
+	}
+	return records, rows.Err()
+}
+
