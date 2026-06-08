@@ -114,11 +114,11 @@ func TestScaffoldDefault(t *testing.T) {
 	// --- Sub-test: directory structure ---
 	t.Run("CreatesExpectedStructure", func(t *testing.T) {
 		expectedFiles := []string{
+			"AGENTS.md",
 			"features/README.md",
 			"prompts/phases/README.md",
-			"prompts/phases/000-foundation/ideas/.gitkeep",
-			"prompts/phases/000-foundation/plans/.gitkeep",
-			"prompts/rules/.gitkeep",
+			"prompts/phases/000-foundation/branches/.gitkeep",
+			"prompts/phases/000-foundation/refs/.gitkeep",
 			"scripts/.gitkeep",
 			"shared/README.md",
 			"shared/libs/README.md",
