@@ -113,18 +113,53 @@ description: Execute Implementation Plan
     *   実装計画に「既存仕様書の更新」が含まれている場合、実装完了後に該当する仕様書を更新します。
     *   更新内容が正確であることを確認してください。
 
-### 3.3 メモリの更新
+### 3.3 アーキテクチャメモリの記録 (Architecture Memory Intake)
 
-アーキテクチャに影響する変更を行った場合は、関連するメモリ文書を更新してください。
+> [!CAUTION]
+> **省略禁止**: `git push` の前に、このステップを**必ず**実行してください。
+> アーキテクチャに影響する変更がない場合でも、判定プロセスは実行し、
+> 「no update」の報告を出してから次に進んでください。
 
-*   モジュール構成の変更: `{{memory:current}}` の Repository Structure / Module Responsibilities を更新
-*   設計判断の追加: `{{memory:decisions}}` に記録
-*   新しい制約の発見: `{{memory:invariants}}` に追加
-*   分類不明な場合: `{{memory:inbox}}` に追記
+全てのビルドとテストが成功し、コミットが完了した後、`git push` の**前に**、
+**notify-intake** スキルを使ってアーキテクチャ知識の記録を行ってください。
+
+1.  **判定**: 今回のコミットに含まれる変更が、以下のいずれかに該当するか確認する:
+    *   新しい Go パッケージ (`internal/`, `pkg/`, `cmd/`) の追加・削除
+    *   新しい CLI サブコマンドや API エンドポイントの追加
+    *   データモデルやデータベーススキーマの追加・変更
+    *   モジュール境界や依存関係の変更
+    *   新しいラッパースクリプト (`scripts/`) の作成
+    *   エージェント向け設定・ワークフローファイルの変更
+    *   将来のエージェントが知るべき設計判断
+2.  **該当する場合**: `./scripts/code/agent/notify.sh` を実行する。
+    使用方法の詳細は **notify-intake** スキルを参照すること。
+    ```bash
+    ./scripts/code/agent/notify.sh \
+      --summary "<変更の一行要約>" \
+      --changed-paths-from-git \
+      --architecture-impact \
+      --note "<アーキテクチャ上の知見 1>" \
+      --note "<アーキテクチャ上の知見 2>"
+    ```
+3.  **該当しない場合**: 以下を報告して次に進む:
+    ```text
+    Architecture intake: no update.
+    Reason: <簡潔な理由>
+    ```
+4.  **判断に迷う場合**: `--dry-run --print-payload` で事前確認する:
+    ```bash
+    ./scripts/code/agent/notify.sh \
+      --summary "<要約>" \
+      --changed-paths-from-git \
+      --architecture-impact \
+      --note "<知見>" \
+      --dry-run --print-payload
+    ```
 
 ## 4. Git Push
 
-全てのビルドとテストが成功した後、`git push` を実施してリモートリポジトリに反映してください。
+全てのビルドとテストが成功し、§3.3 のアーキテクチャメモリ記録が完了した後、
+`git push` を実施してリモートリポジトリに反映してください。
 テストが失敗している状態ではプッシュしないでください。
 
 ```bash
