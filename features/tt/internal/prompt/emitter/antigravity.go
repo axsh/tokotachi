@@ -339,7 +339,7 @@ func (a *AntigravityEmitter) Check(resolved *manifest.ResolvedManifest, buildDir
 
 		for cat, liveDir := range liveDirs {
 			// Find override folder name from target definition
-			folderName := ".agent/" + cat + "/"
+			folderName := ".agents/" + cat + "/"
 			for _, target := range resolved.Entities["target"] {
 				if target.ID == "antigravity" {
 					if paths, ok := target.Raw["paths"].(map[string]any); ok {
