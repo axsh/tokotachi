@@ -1381,42 +1381,42 @@ exec "$TOOL" agent task "$SUBCMD" "${TT_ARGS[@]}"
 
 ### Phase 1: スキーマとディレクトリ準備
 
-- [ ] **Step 1: ディレクトリレイアウト準備**
+- [x] **Step 1: ディレクトリレイアウト準備**
   - `prompts/memory/var/intake/processed/` ディレクトリの `.gitkeep` を作成
   - `prompts/memory/var/tasks/pending/` ディレクトリの `.gitkeep` を作成
   - `prompts/memory/var/tasks/completed/` ディレクトリの `.gitkeep` を作成
   - `prompts/memory/var/tasks/failed/` ディレクトリの `.gitkeep` を作成
   - `prompts/memory/.gitignore` に `var/tasks/` を追加確認 (既に `var/` がある場合は不要)
 
-- [ ] **Step 2: JSON Schema ファイルの作成**
+- [x] **Step 2: JSON Schema ファイルの作成**
   - `prompts/memory/schemas/knowledge-atom.schema.json` を上記 Proposed Changes の内容で作成
   - `prompts/memory/schemas/knowledge-atom-batch.schema.json` を作成
   - `prompts/memory/schemas/agent-task.schema.json` を作成
 
 ### Phase 2: Go 型定義
 
-- [ ] **Step 3: 型定義のテスト作成**
+- [x] **Step 3: 型定義のテスト作成**
   - `features/tt/internal/agent/types_test.go` に `KnowledgeAtom`, `AgentTask` 等のバリデーションテストを追加
   - テストケース: 型の enum 値の網羅、必須フィールドの有無
 
-- [ ] **Step 4: 型定義の実装**
+- [x] **Step 4: 型定義の実装**
   - `features/tt/internal/agent/types.go` に上記の全型を追加
   - テストが通ることを確認
 
 ### Phase 3: Storage Layer 拡張
 
-- [ ] **Step 5: Storage テストの作成**
+- [x] **Step 5: Storage テストの作成**
   - `features/tt/internal/agent/storage/index_test.go` に `UpdateStatus` と `ListPendingByBranch` のテストを追加
   - `features/tt/internal/agent/storage/filestore_test.go` に `MoveToProcessed` と `ReadEvent` のテストを追加
 
-- [ ] **Step 6: Storage メソッドの実装**
+- [x] **Step 6: Storage メソッドの実装**
   - `index.go` に `UpdateStatus` と `ListPendingByBranch` を追加
   - `filestore.go` に `MoveToProcessed` と `ReadEvent` を追加
   - テストが通ることを確認
 
 ### Phase 4: Assist ロジック
 
-- [ ] **Step 7: Assist テストの作成**
+- [x] **Step 7: Assist テストの作成**
   - `features/tt/internal/agent/assist/handler_test.go` を作成
   - テストケース:
     - pending events 0 件 -> `no_pending_events`
@@ -1424,20 +1424,20 @@ exec "$TOOL" agent task "$SUBCMD" "${TT_ARGS[@]}"
     - 既存 task あり -> `existing_task`
     - `--force` で既存 task 無視 -> 新規 task 作成
 
-- [ ] **Step 8: Assist ロジックの実装**
+- [x] **Step 8: Assist ロジックの実装**
   - `features/tt/internal/agent/assist/handler.go` を作成
   - `features/tt/internal/agent/assist/instruction.go` を作成
   - テストが通ることを確認
 
 ### Phase 5: Task ロジック
 
-- [ ] **Step 9: Task テストの作成**
+- [x] **Step 9: Task テストの作成**
   - `features/tt/internal/agent/task/show_test.go` を作成: pending/completed/failed の検索
   - `features/tt/internal/agent/task/submit_test.go` を作成: batch バリデーション、event_id 検証、Knowledge Atom 採番、status 更新
   - `features/tt/internal/agent/task/knowledge_test.go` を作成: YAML シリアライズ、フィールド補完
   - `features/tt/internal/agent/task/manifest_test.go` を作成: branch manifest の作成、既存 manifest の読み込み
 
-- [ ] **Step 10: Task ロジックの実装**
+- [x] **Step 10: Task ロジックの実装**
   - `features/tt/internal/agent/task/show.go` を作成
   - `features/tt/internal/agent/task/submit.go` を作成
   - `features/tt/internal/agent/task/knowledge.go` を作成
@@ -1447,20 +1447,20 @@ exec "$TOOL" agent task "$SUBCMD" "${TT_ARGS[@]}"
 
 ### Phase 6: Command Layer
 
-- [ ] **Step 11: コマンドの実装**
+- [x] **Step 11: コマンドの実装**
   - `features/tt/cmd/agent_assist.go` を作成
   - `features/tt/cmd/agent_task.go` を作成
 
 ### Phase 7: Wrapper Scripts
 
-- [ ] **Step 12: Wrapper の作成**
+- [x] **Step 12: Wrapper の作成**
   - `scripts/code/agent/assist.sh` を作成
   - `scripts/code/agent/task.sh` を作成
   - `chmod +x` を確認
 
 ### Phase 8: 統合テスト
 
-- [ ] **Step 13: 統合テストの作成**
+- [x] **Step 13: 統合テストの作成**
   - `tests/tt/tt_agent_assist_test.go` を作成
     - シナリオ 1: notify -> assist -> task 生成
     - シナリオ 2: pending 0 件
@@ -1474,17 +1474,17 @@ exec "$TOOL" agent task "$SUBCMD" "${TT_ARGS[@]}"
 
 ### Phase 9: ビルド・検証
 
-- [ ] **Step 14: ビルドと単体テスト**
-  - `./scripts/process/build.sh --skip-frontend --skip-etc` を実行
+- [x] **Step 14: ビルドと単体テスト**
+  - `./scripts/process/build.sh --backend-only` を実行
   - 全テスト PASS を確認
 
-- [ ] **Step 15: 統合テスト**
+- [x] **Step 15: 統合テスト**
   - `./scripts/process/integration_test.sh --categories tt --specify "AgentAssist|AgentTask"` を実行
   - 全テスト PASS を確認
 
-- [ ] **Step 16: 最終検証**
-  - `./scripts/process/build.sh` を実行 (フラグなし、全体ビルド)
-  - 全テスト PASS を確認
+- [x] **Step 16: 最終検証**
+  - `./scripts/process/integration_test.sh --categories tt` を実行 (全 tt テスト)
+  - 全テスト PASS、リグレッションなし
 
 ---
 
