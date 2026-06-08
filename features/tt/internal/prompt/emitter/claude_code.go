@@ -55,7 +55,7 @@ func (c *ClaudeCodeEmitter) resolvePaths(resolved *manifest.ResolvedManifest, bu
 		filepath.Join(buildDir, "claude-code", skillsPath)
 }
 
-func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) error {
+func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error) {
 	rulesDir, skillsDir := c.resolvePaths(resolved, buildDir, apply)
 
 	// Track emitted files for immune mode orphan cleanup
@@ -92,7 +92,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 			fm := ClaudeCodeRuleFrontmatter{Paths: paths}
 			fmBytes, err := yaml.Marshal(fm)
 			if err != nil {
-				return fmt.Errorf("failed to marshal claude-code rule frontmatter for %s: %w", policy.ID, err)
+				return nil, fmt.Errorf("failed to marshal claude-code rule frontmatter for %s: %w", policy.ID, err)
 			}
 			content = fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
 		} else {
@@ -106,7 +106,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Rules, policy.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -115,7 +115,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 
 		outputPath := filepath.Join(rulesDir, filename)
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
@@ -142,7 +142,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf("failed to marshal claude-code skill frontmatter for %s: %w", skill.ID, err)
+			return nil, fmt.Errorf("failed to marshal claude-code skill frontmatter for %s: %w", skill.ID, err)
 		}
 
 		content := fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
@@ -153,7 +153,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Skills, skill.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -162,7 +162,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 
 		outputPath := filepath.Join(skillsDir, skill.ID, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
@@ -198,7 +198,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"failed to marshal procedure-as-skill frontmatter for %s: %w",
 				proc.ID, err)
 		}
@@ -211,7 +211,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Skills, proc.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -220,20 +220,16 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 
 		outputPath := filepath.Join(skillsDir, proc.ID, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
 
-	// 4. Immune mode: clean orphan files from target directories
-	if opts.Mode == EmitModeImmune {
-		targetDirs := []string{rulesDir, skillsDir}
-		if _, err := CleanOrphanFiles(targetDirs, emittedFiles, opts.DryRun); err != nil {
-			return fmt.Errorf("failed to clean orphan files: %w", err)
-		}
-	}
-
-	return nil
+	// 4. Return EmitResult for coordinated orphan cleanup in deploy pipeline
+	return &EmitResult{
+		EmittedFiles: emittedFiles,
+		TargetDirs:   []string{rulesDir, skillsDir},
+	}, nil
 }
 
 // Check verifies if generated files in project paths match the resolved manifest.
@@ -245,7 +241,7 @@ func (c *ClaudeCodeEmitter) Check(resolved *manifest.ResolvedManifest, buildDir 
 	}
 	defer os.RemoveAll(tempBuildDir)
 
-	if err := c.Emit(resolved, tempBuildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := c.Emit(resolved, tempBuildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		return false, fmt.Errorf("failed to dry-run emit: %w", err)
 	}
 

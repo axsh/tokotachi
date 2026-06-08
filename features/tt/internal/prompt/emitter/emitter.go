@@ -31,10 +31,22 @@ type EmitOptions struct {
 	DryRun bool
 }
 
+// EmitResult holds the result of an Emit operation.
+// It tracks which files were emitted and which directories were targeted,
+// enabling coordinated orphan cleanup across multiple emitters sharing
+// the same output directory.
+type EmitResult struct {
+	// EmittedFiles maps absolute file paths to true for all files written during emit.
+	EmittedFiles map[string]bool
+	// TargetDirs lists the target directories that were written to.
+	TargetDirs []string
+}
+
 // Emitter defines the interface for emitting resolved manifests to agent-specific config files.
 type Emitter interface {
 	// Emit generates target-specific files into buildDir or project paths.
-	Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) error
+	// Returns EmitResult with the list of emitted files for orphan cleanup coordination.
+	Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error)
 	// Check verifies if generated files in project paths match the resolved manifest.
 	Check(resolved *manifest.ResolvedManifest, buildDir string) (bool, error)
 }

@@ -56,7 +56,7 @@ func (c *CursorEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildD
 		filepath.Join(buildDir, "cursor", skillsPath)
 }
 
-func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) error {
+func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error) {
 	rulesDir, skillsDir := c.resolvePaths(resolved, buildDir, apply)
 
 	// Track emitted files for immune mode orphan cleanup
@@ -98,7 +98,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf("failed to marshal cursor rule frontmatter for %s: %w", policy.ID, err)
+			return nil, fmt.Errorf("failed to marshal cursor rule frontmatter for %s: %w", policy.ID, err)
 		}
 
 		content := fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
@@ -109,7 +109,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Rules, policy.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -118,7 +118,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 
 		outputPath := filepath.Join(rulesDir, filename)
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
@@ -146,7 +146,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf("failed to marshal cursor skill frontmatter for %s: %w", skill.ID, err)
+			return nil, fmt.Errorf("failed to marshal cursor skill frontmatter for %s: %w", skill.ID, err)
 		}
 
 		content := fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
@@ -157,7 +157,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Skills, skill.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -166,7 +166,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 
 		outputPath := filepath.Join(skillsDir, skill.ID, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
@@ -203,7 +203,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"failed to marshal procedure-as-skill frontmatter for %s: %w",
 				proc.ID, err)
 		}
@@ -216,7 +216,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Skills, proc.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -225,20 +225,16 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 
 		outputPath := filepath.Join(skillsDir, proc.ID, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
 
-	// 4. Immune mode: clean orphan files from target directories
-	if opts.Mode == EmitModeImmune {
-		targetDirs := []string{rulesDir, skillsDir}
-		if _, err := CleanOrphanFiles(targetDirs, emittedFiles, opts.DryRun); err != nil {
-			return fmt.Errorf("failed to clean orphan files: %w", err)
-		}
-	}
-
-	return nil
+	// 4. Return EmitResult for coordinated orphan cleanup in deploy pipeline
+	return &EmitResult{
+		EmittedFiles: emittedFiles,
+		TargetDirs:   []string{rulesDir, skillsDir},
+	}, nil
 }
 
 // Check verifies if generated files in project paths match the resolved manifest.
@@ -250,7 +246,7 @@ func (c *CursorEmitter) Check(resolved *manifest.ResolvedManifest, buildDir stri
 	}
 	defer os.RemoveAll(tempBuildDir)
 
-	if err := c.Emit(resolved, tempBuildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := c.Emit(resolved, tempBuildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		return false, fmt.Errorf("failed to dry-run emit: %w", err)
 	}
 

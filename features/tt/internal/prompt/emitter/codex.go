@@ -51,7 +51,7 @@ func (c *CodexEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildDi
 		filepath.Join(buildDir, "codex", skillsPath)
 }
 
-func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) error {
+func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error) {
 	rulesDir, skillsDir := c.resolvePaths(resolved, buildDir, apply)
 
 	// Track emitted files for immune mode orphan cleanup
@@ -85,7 +85,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Rules, policy.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -94,7 +94,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 
 		outputPath := filepath.Join(rulesDir, filename)
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 		emittedPolicies = append(emittedPolicies, policy)
@@ -122,7 +122,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf("failed to marshal codex skill frontmatter for %s: %w", skill.ID, err)
+			return nil, fmt.Errorf("failed to marshal codex skill frontmatter for %s: %w", skill.ID, err)
 		}
 
 		content := fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
@@ -133,7 +133,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Skills, skill.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -142,7 +142,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 
 		outputPath := filepath.Join(skillsDir, skill.ID, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 		skillIDs = append(skillIDs, skill.ID)
@@ -179,7 +179,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"failed to marshal procedure-as-skill frontmatter for %s: %w",
 				proc.ID, err)
 		}
@@ -192,7 +192,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 			var limitErr error
 			content, shouldWrite, limitErr = CheckAndApplyLimit(content, limits.Skills, proc.ID, c.RootDir)
 			if limitErr != nil {
-				return limitErr
+				return nil, limitErr
 			}
 			if !shouldWrite {
 				continue
@@ -201,7 +201,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 
 		outputPath := filepath.Join(skillsDir, proc.ID, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return err
+			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 		skillIDs = append(skillIDs, proc.ID)
@@ -214,31 +214,29 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		if apply {
 			agentsPath := filepath.Join(c.RootDir, indexFile)
 			if err := ReplaceMarkerSection(agentsPath, markerContent); err != nil {
-				return fmt.Errorf("failed to update %s marker section: %w", indexFile, err)
+				return nil, fmt.Errorf("failed to update %s marker section: %w", indexFile, err)
 			}
 		} else {
 			// Write marker content for check comparison
 			markerPath := filepath.Join(buildDir, "codex", indexFile+".marker")
 			dir := filepath.Dir(markerPath)
 			if err := os.MkdirAll(dir, 0755); err != nil {
-				return fmt.Errorf("failed to create directory %s: %w", dir, err)
+				return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 			}
 			if err := os.WriteFile(markerPath, []byte(markerContent), 0644); err != nil {
-				return fmt.Errorf("failed to write marker content: %w", err)
+				return nil, fmt.Errorf("failed to write marker content: %w", err)
 			}
 		}
 	}
 
-	// 5. Immune mode: clean orphan files from target directories
-	if opts.Mode == EmitModeImmune {
-		targetDirs := []string{rulesDir, skillsDir}
-		if _, err := CleanOrphanFiles(targetDirs, emittedFiles, opts.DryRun); err != nil {
-			return fmt.Errorf("failed to clean orphan files: %w", err)
-		}
-	}
-
-	return nil
+	// 5. Return EmitResult for coordinated orphan cleanup in deploy pipeline
+	return &EmitResult{
+		EmittedFiles: emittedFiles,
+		TargetDirs:   []string{rulesDir, skillsDir},
+	}, nil
 }
+
+
 
 // generateMarkerContent generates the content for the AGENT-MANAGED section
 // in the index file, listing emitted rules and skills with optional applies_when guidance.
@@ -296,7 +294,7 @@ func (c *CodexEmitter) Check(resolved *manifest.ResolvedManifest, buildDir strin
 	}
 	defer os.RemoveAll(tempBuildDir)
 
-	if err := c.Emit(resolved, tempBuildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := c.Emit(resolved, tempBuildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		return false, fmt.Errorf("failed to dry-run emit: %w", err)
 	}
 

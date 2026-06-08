@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/axsh/tokotachi/features/tt/internal/prompt/compiler"
+	"github.com/axsh/tokotachi/features/tt/internal/prompt/emitter"
 	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
@@ -43,6 +45,7 @@ var (
 	deployTarget  string
 	deployForce   bool
 	deployDryRun  bool
+	deployMode    string
 )
 
 // --- update ---
@@ -80,6 +83,8 @@ func init() {
 		false, "Force deploy even if no changes detected")
 	promptDeployCmd.Flags().BoolVar(&deployDryRun, "dry-run",
 		false, "Do not write files, print to stdout")
+	promptDeployCmd.Flags().StringVar(&deployMode, "mode",
+		"", "Emit mode: overwrite (default), skip, immune")
 
 	// update flags
 	promptUpdateCmd.Flags().StringVar(&updateProject, "project",
@@ -162,16 +167,31 @@ func runPromptDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Validate mode flag
+	mode := emitter.EmitMode(deployMode)
+	if mode != "" && !emitter.ValidEmitModes(mode) {
+		return fmt.Errorf("invalid mode %q: must be overwrite, skip, or immune", deployMode)
+	}
+
+	// Collect deploy results for immune mode coordination
+	type deployEntry struct {
+		target string
+		result *compiler.DeployResult
+	}
+	var entries []deployEntry
+
 	for _, t := range targets {
 		result, err := compiler.Deploy(compiler.DeployOptions{
 			ProjectPath: deployProject,
 			Target:      t,
 			Force:       deployForce,
 			DryRun:      deployDryRun,
+			Mode:        mode,
 		})
 		if err != nil {
 			return fmt.Errorf("deploy failed for target %s: %w", t, err)
 		}
+		entries = append(entries, deployEntry{target: t, result: result})
 		if result.Skipped {
 			fmt.Printf("No changes detected for target %s. Skipping deploy.\n", t)
 		} else if deployDryRun {
@@ -180,7 +200,42 @@ func runPromptDeploy(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Deploy succeeded for target %s.\n", t)
 		}
 	}
+
+	// Immune mode: coordinated orphan cleanup across all deployed targets
+	if mode == emitter.EmitModeImmune && !deployDryRun {
+		mergedEmitted := make(map[string]bool)
+		var allTargetDirs []string
+		for _, e := range entries {
+			if e.result.EmitResult != nil {
+				for k, v := range e.result.EmitResult.EmittedFiles {
+					mergedEmitted[k] = v
+				}
+				allTargetDirs = append(allTargetDirs, e.result.EmitResult.TargetDirs...)
+			}
+		}
+		uniqueDirs := deduplicateDirs(allTargetDirs)
+		if len(uniqueDirs) > 0 {
+			if _, err := emitter.CleanOrphanFiles(uniqueDirs, mergedEmitted, false); err != nil {
+				return fmt.Errorf("immune orphan cleanup failed: %w", err)
+			}
+		}
+	}
+
 	return nil
+}
+
+// deduplicateDirs removes duplicate directory paths from the list.
+func deduplicateDirs(dirs []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, d := range dirs {
+		clean := filepath.Clean(d)
+		if !seen[clean] {
+			seen[clean] = true
+			result = append(result, clean)
+		}
+	}
+	return result
 }
 
 func runPromptUpdate(cmd *cobra.Command, args []string) error {

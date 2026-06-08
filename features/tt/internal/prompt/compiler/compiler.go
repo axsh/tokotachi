@@ -26,6 +26,7 @@ type CompileResult struct {
 	ResolvedYAML string // generated resolved manifest content
 	Resolved     *manifest.ResolvedManifest
 	Errors       []manifest.ValidationError
+	EmitResult   *emitter.EmitResult // emitted files info for coordinated cleanup
 }
 
 // Compile executes the full parse -> validate -> resolve -> generate pipeline
@@ -141,9 +142,11 @@ func Compile(opts CompileOptions) (*CompileResult, error) {
 		if emitOpts.Mode == "" {
 			emitOpts.Mode = emitter.EmitModeOverwrite
 		}
-		if err := emitObj.Emit(resolved, buildDir, apply, emitOpts); err != nil {
+		emitResult, err := emitObj.Emit(resolved, buildDir, apply, emitOpts)
+		if err != nil {
 			return nil, fmt.Errorf("failed to emit target %s: %w", opts.Target, err)
 		}
+		result.EmitResult = emitResult
 	}
 
 	return result, nil
