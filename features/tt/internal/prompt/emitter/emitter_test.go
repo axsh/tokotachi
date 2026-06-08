@@ -126,7 +126,7 @@ func TestEmit_Antigravity(t *testing.T) {
 
 	// Test dry-run Emit (apply = false) -> should write to tempDir/build_dir/antigravity/...
 	buildDir := filepath.Join(tempDir, "build_output")
-	if err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (dry-run) failed: %v", err)
 	}
 
@@ -172,7 +172,7 @@ func TestEmit_Antigravity(t *testing.T) {
 	}
 
 	// Test apply Emit (apply = true) -> should write to tempDir/rules_dir/...
-	if err := emitter.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := emitter.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (apply) failed: %v", err)
 	}
 
@@ -214,7 +214,7 @@ func TestEmit_Antigravity(t *testing.T) {
 	}
 
 	// Reset instructions and test Check when an untracked file is present (drift)
-	if err := emitter.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := emitter.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("re-emit failed: %v", err)
 	}
 
@@ -284,7 +284,7 @@ func TestEmit_Antigravity_WithLimits(t *testing.T) {
 
 		buildDir := filepath.Join(tempDir, "build_skip")
 		emitter := NewAntigravityEmitter(tempDir)
-		if err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit failed: %v", err)
 		}
 
@@ -337,7 +337,7 @@ func TestEmit_Antigravity_WithLimits(t *testing.T) {
 
 		buildDir := filepath.Join(tempDir, "build_warn")
 		emitter := NewAntigravityEmitter(tempDir)
-		if err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit failed: %v", err)
 		}
 
@@ -390,7 +390,7 @@ func TestEmit_Antigravity_WithLimits(t *testing.T) {
 
 		buildDir := filepath.Join(tempDir, "build_truncate")
 		emitter := NewAntigravityEmitter(tempDir)
-		if err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit failed: %v", err)
 		}
 

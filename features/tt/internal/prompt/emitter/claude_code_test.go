@@ -114,7 +114,7 @@ func TestEmit_ClaudeCode(t *testing.T) {
 
 	// Test dry-run Emit (apply = false)
 	buildDir := filepath.Join(tempDir, "build_output")
-	if err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (dry-run) failed: %v", err)
 	}
 
@@ -188,7 +188,7 @@ func TestEmit_ClaudeCode(t *testing.T) {
 	}
 
 	// Test apply Emit (apply = true)
-	if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (apply) failed: %v", err)
 	}
 
@@ -215,7 +215,7 @@ func TestCheck_ClaudeCode(t *testing.T) {
 	buildDir := filepath.Join(tempDir, "build_output")
 
 	// Deploy files
-	if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (apply) failed: %v", err)
 	}
 
@@ -243,7 +243,7 @@ func TestCheck_ClaudeCode(t *testing.T) {
 	}
 
 	// Reset and test untracked file drift
-	if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("re-emit failed: %v", err)
 	}
 
