@@ -553,3 +553,31 @@ func TestPendingChanges_TotalCount(t *testing.T) {
 		})
 	}
 }
+
+func TestClose_SubmoduleDeinit_CalledBeforeRemove(t *testing.T) {
+	env := newTestEnv(t)
+	branch := "test-branch"
+
+	// Create worktree directory with .gitmodules
+	wtDir := filepath.Join(env.RepoRoot, "work", branch)
+	require.NoError(t, os.MkdirAll(wtDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".git"),
+		[]byte("gitdir: ../../.git/worktrees/test-branch\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(wtDir, ".gitmodules"),
+		[]byte("[submodule \"sub\"]\n\tpath = sub\n\turl = https://example.com/sub.git\n"),
+		0o644))
+
+	err := env.Runner.Close(action.CloseOptions{
+		Branch:      branch,
+		Force:       false,
+		RepoRoot:    env.RepoRoot,
+		ProjectName: "test",
+		Yes:         true,
+		Depth:       10,
+	}, env.WM)
+	require.NoError(t, err)
+
+	recs := env.Recorder.Records()
+	assert.True(t, hasRecordContaining(recs, "submodule deinit"),
+		"submodule deinit should be called during close, recs: %v", recs)
+}

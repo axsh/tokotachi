@@ -1,12 +1,12 @@
 {
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Tokotachi CLI - Project scaffolding and management tool",
   "homepage": "https://github.com/axsh/tokotachi",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/axsh/tokotachi/releases/download/v0.6.0/tt_windows_amd64.zip",
-      "hash": "872e5d806699f418ff66d6ec7839edc892efecba13502b15f4e33e1ecd71ef29"
+      "url": "https://github.com/axsh/tokotachi/releases/download/v0.6.1/tt_windows_amd64.zip",
+      "hash": "993bc040c167ef57a2fbb9832f4c9675cf8cc8fb9d03e6c05ed622c528a5738b"
     }
   },
   "bin": "tt.exe",
