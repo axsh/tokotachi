@@ -101,7 +101,7 @@ func TestEmit_Codex(t *testing.T) {
 	e := NewCodexEmitter(tempDir)
 
 	buildDir := filepath.Join(tempDir, "build_output")
-	if err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+	if _, err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (dry-run) failed: %v", err)
 	}
 
@@ -155,7 +155,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		e := NewCodexEmitter(tempDir)
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -193,7 +193,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		}
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -231,7 +231,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		}
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -264,7 +264,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		e := NewCodexEmitter(tempDir)
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -293,7 +293,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		e := NewCodexEmitter(tempDir)
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -334,7 +334,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		e := NewCodexEmitter(tempDir)
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -359,7 +359,7 @@ func TestCheck_Codex(t *testing.T) {
 		e := NewCodexEmitter(tempDir)
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -378,7 +378,7 @@ func TestCheck_Codex(t *testing.T) {
 		e := NewCodexEmitter(tempDir)
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -403,7 +403,7 @@ func TestCheck_Codex(t *testing.T) {
 		e := NewCodexEmitter(tempDir)
 
 		buildDir := filepath.Join(tempDir, "build_output")
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
@@ -435,7 +435,7 @@ func TestCheck_Codex(t *testing.T) {
 		buildDir := filepath.Join(tempDir, "build_output")
 
 		// Deploy files but then remove markers from AGENTS.md
-		if err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 

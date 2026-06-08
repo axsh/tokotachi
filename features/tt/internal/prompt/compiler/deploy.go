@@ -23,6 +23,7 @@ type DeployResult struct {
 	DigestPrev    string   // previous stored digest
 	CompileResult *CompileResult
 	Warnings      []string // untracked file warnings
+	EmitResult    *emitter.EmitResult // emitted files info for coordinated cleanup
 }
 
 // Deploy executes the full deploy pipeline:
@@ -84,6 +85,7 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 		return nil, fmt.Errorf("compile failed: %w", err)
 	}
 	result.CompileResult = compileResult
+	result.EmitResult = compileResult.EmitResult
 
 	// 9. If validation errors, return without saving digest
 	if len(compileResult.Errors) > 0 {

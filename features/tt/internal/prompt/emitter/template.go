@@ -21,9 +21,9 @@ type TemplateContext struct {
 // TargetPaths holds the target-specific output paths.
 // All paths must end with a trailing slash.
 type TargetPaths struct {
-	Rules     string // e.g., ".agent/rules/"
-	Skills    string // e.g., ".agent/skills/"
-	Workflows string // e.g., ".agent/workflows/"
+	Rules     string // e.g., ".agents/rules/"
+	Skills    string // e.g., ".agents/skills/"
+	Workflows string // e.g., ".agents/workflows/"
 }
 
 // ResolveTemplateVars replaces all {{kind:id}} occurrences in text
