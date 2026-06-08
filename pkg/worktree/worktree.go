@@ -5,8 +5,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
+	pkglog "github.com/axsh/tokotachi/pkg/log"
+)
+
+const (
+	// removeRetryDelay is the wait time before retrying git worktree remove.
+	// This primarily addresses Windows file-lock issues where editors
+	// may still hold references to worktree files.
+	removeRetryDelay = 500 * time.Millisecond
+
+	// removeMaxRetries is the maximum number of retries for git worktree remove.
+	removeMaxRetries = 1
 )
 
 // WorktreeInfo represents a worktree entry.
@@ -57,6 +69,11 @@ func (m *Manager) Create(branch string) error {
 	}
 	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 
+	// Prune stale worktree metadata before creating (R5).
+	// This handles cases where a previous close failed and left
+	// .git/worktrees/<name>/ metadata behind without the actual directory.
+	m.Prune()
+
 	// Check if branch already exists locally
 	_, err := m.CmdRunner.RunWithOpts(cmdexec.CheckOpt(), gitCmd, "rev-parse", "--verify", branch)
 	branchExists := err == nil
@@ -86,16 +103,36 @@ func (m *Manager) Create(branch string) error {
 }
 
 // Remove removes a git worktree.
+// Before removal, it deinitializes any git submodules to prevent
+// "working trees containing submodules cannot be moved or removed" errors.
+// On failure, it retries after a short delay to handle Windows file-lock issues.
 func (m *Manager) Remove(branch string, force bool) error {
 	wtPath := m.Path(branch)
 	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 
+	// Step 1: Deinit submodules if present (R1)
+	m.deinitSubmodules(wtPath)
+
+	// Step 2: Try git worktree remove
 	args := []string{"worktree", "remove", wtPath}
 	if force {
 		args = []string{"worktree", "remove", "-f", wtPath}
 	}
 
-	if _, err := m.CmdRunner.RunWithOpts(cmdexec.ToleratedOpt(), gitCmd, args...); err != nil {
+	_, err := m.CmdRunner.RunWithOpts(cmdexec.ToleratedOpt(), gitCmd, args...)
+
+	// Step 3: Retry on failure (R3)
+	if err != nil {
+		for range removeMaxRetries {
+			time.Sleep(removeRetryDelay)
+			_, err = m.CmdRunner.RunWithOpts(cmdexec.ToleratedOpt(), gitCmd, args...)
+			if err == nil {
+				break
+			}
+		}
+	}
+
+	if err != nil {
 		return fmt.Errorf("git worktree remove failed: %w", err)
 	}
 
@@ -104,6 +141,26 @@ func (m *Manager) Remove(branch string, force bool) error {
 		os.RemoveAll(wtPath)
 	}
 	return nil
+}
+
+// deinitSubmodules deinitializes git submodules in the worktree directory.
+// This is a prerequisite for git worktree remove when submodules are present.
+// Failures are tolerated (logged at WARN level) since the worktree may
+// not have initialized submodules.
+func (m *Manager) deinitSubmodules(wtPath string) {
+	gitmodulesPath := filepath.Join(wtPath, ".gitmodules")
+	if _, err := os.Stat(gitmodulesPath); os.IsNotExist(err) {
+		return
+	}
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
+	opts := cmdexec.RunOption{
+		Dir:          wtPath,
+		FailLevelSet: true,
+		FailLevel:    pkglog.LevelWarn,
+		FailLabel:    "SKIP",
+		QuietCmd:     false,
+	}
+	m.CmdRunner.RunWithOpts(opts, gitCmd, "submodule", "deinit", "--all", "-f")
 }
 
 // DeleteBranch deletes the local branch.

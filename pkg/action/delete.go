@@ -107,6 +107,7 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 	}
 
 	// Phase 4: Remove worktree, branch, and state file
+	needsPrune := false
 	if wm.Exists(opts.Branch) {
 		r.Logger.Info("Removing worktree work/%s...", opts.Branch)
 		if err := wm.Remove(opts.Branch, effectiveForce); err != nil {
@@ -117,25 +118,30 @@ func (r *Runner) Delete(opts DeleteOptions, wm *worktree.Manager) error {
 				r.Logger.Warn("Directory cleanup also failed: %v", removeErr)
 			} else {
 				r.Logger.Info("Cleaned up worktree directory directly")
+				needsPrune = true // Must prune after manual removal (R2)
 			}
 		}
 	}
 
-	r.Logger.Info("Deleting branch %s...", opts.Branch)
-	if err := wm.DeleteBranch(opts.Branch, effectiveForce); err != nil {
-		r.Logger.Warn("Branch delete failed: %v", err)
-	}
-
-	if err := state.Remove(statePath); err != nil {
-		r.Logger.Warn("State file remove failed: %v", err)
-	}
-
-	r.Logger.Info("Delete completed for branch %s", opts.Branch)
-	if effectiveForce {
+	// Prune stale metadata: always after fallback removal, or when force is set (R4)
+	if needsPrune || effectiveForce {
 		r.Logger.Info("Pruning stale worktree metadata...")
 		if err := wm.Prune(); err != nil {
 			r.Logger.Warn("Worktree prune failed: %v", err)
 		}
 	}
+
+	// Branch delete (after prune, so metadata is cleared) (R4)
+	r.Logger.Info("Deleting branch %s...", opts.Branch)
+	if err := wm.DeleteBranch(opts.Branch, effectiveForce); err != nil {
+		r.Logger.Warn("Branch delete failed: %v", err)
+	}
+
+	// State file cleanup
+	if err := state.Remove(statePath); err != nil {
+		r.Logger.Warn("State file remove failed: %v", err)
+	}
+
+	r.Logger.Info("Delete completed for branch %s", opts.Branch)
 	return nil
 }
