@@ -1,6 +1,6 @@
 ---
 description: Project Instructions
-alwaysApply: true
+alwaysApply: false
 ---
 
 # プロジェクト共通指示書 (`.agent/instructions.md`)

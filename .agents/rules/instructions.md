@@ -1,7 +1,3 @@
----
-trigger: always_on
----
-
 # プロジェクト共通指示書 (`.agent/instructions.md`)
 
 ## 技術スタック (想定)
