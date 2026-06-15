@@ -57,14 +57,17 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	// Track emitted files for immune mode orphan cleanup
 	emittedFiles := make(map[string]bool)
 
-	// Extract size limits from the codex target entity
-	limits := ExtractLimits(FindTarget(resolved, "codex"))
+	// Extract size limits and includes from the codex target entity
+	codexTarget := FindTarget(resolved, "codex")
+	limits := ExtractLimits(codexTarget)
+	inc := ExtractIncludes(codexTarget)
 
 	// Track emitted entity data for AGENTS.md marker content
 	var emittedPolicies []*manifest.Entity
 	var skillIDs []string
 
 	// 1. Emit Policies as pure Markdown (no frontmatter)
+	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
 		filename := policy.ID + ".md"
 
@@ -99,10 +102,12 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		emittedFiles[filepath.Clean(outputPath)] = true
 		emittedPolicies = append(emittedPolicies, policy)
 	}
+	} // end if inc.Policy
 
 	// NOTE: resolved.Entities["skip"] is intentionally NOT emitted.
 
 	// 2. Emit Capabilities as SKILL.md
+	if inc.Capability {
 	for _, skill := range resolved.Entities["capability"] {
 		var body string
 		if b, ok := skill.Raw["body"].(string); ok {
@@ -147,8 +152,10 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		emittedFiles[filepath.Clean(outputPath)] = true
 		skillIDs = append(skillIDs, skill.ID)
 	}
+	} // end if inc.Capability
 
 	// 3. Emit Procedures as Skills
+	if inc.Procedure {
 	for _, proc := range resolved.Entities["procedure"] {
 		var body string
 		if b, ok := proc.Raw["body"].(string); ok {
@@ -206,6 +213,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		emittedFiles[filepath.Clean(outputPath)] = true
 		skillIDs = append(skillIDs, proc.ID)
 	}
+	} // end if inc.Procedure
 
 	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
 	branchSkills, err := ScanBranchSkills(c.RootDir)

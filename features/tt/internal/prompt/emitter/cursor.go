@@ -62,10 +62,13 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 	// Track emitted files for immune mode orphan cleanup
 	emittedFiles := make(map[string]bool)
 
-	// Extract size limits from the cursor target entity
-	limits := ExtractLimits(FindTarget(resolved, "cursor"))
+	// Extract size limits and includes from the cursor target entity
+	cursorTarget := FindTarget(resolved, "cursor")
+	limits := ExtractLimits(cursorTarget)
+	inc := ExtractIncludes(cursorTarget)
 
 	// 1. Emit Policies as .mdc files
+	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
 		filename := policy.ID + ".mdc"
 
@@ -122,11 +125,13 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
+	} // end if inc.Policy
 
 	// NOTE: resolved.Entities["skip"] is intentionally NOT emitted.
 	// Skip entities are documentation-only and not deployed to agent targets.
 
 	// 2. Emit Capabilities as SKILL.md (same format as Antigravity skills)
+	if inc.Capability {
 	for _, skill := range resolved.Entities["capability"] {
 		var body string
 		if b, ok := skill.Raw["body"].(string); ok {
@@ -170,9 +175,11 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
+	} // end if inc.Capability
 
 	// 3. Emit Procedures as Skills (Cursor has no workflow equivalent,
 	//    but skills serve as on-demand procedure guides)
+	if inc.Procedure {
 	for _, proc := range resolved.Entities["procedure"] {
 		var body string
 		if b, ok := proc.Raw["body"].(string); ok {
@@ -229,6 +236,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
+	} // end if inc.Procedure
 
 	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
 	branchSkills, err := ScanBranchSkills(c.RootDir)

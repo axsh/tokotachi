@@ -7,9 +7,8 @@ import (
 func TestResolveTemplateVars(t *testing.T) {
 	ctx := &TemplateContext{
 		Paths: TargetPaths{
-			Rules:     ".agents/rules/",
-			Skills:    ".agents/skills/",
-			Workflows: ".agents/workflows/",
+			Rules:  ".agents/rules/",
+			Skills: ".agents/skills/",
 		},
 		MemBase:    "prompts/memory",
 		TargetName: "antigravity",
@@ -31,9 +30,9 @@ func TestResolveTemplateVars(t *testing.T) {
 			want:  "See .agents/rules/instructions.md for setup.",
 		},
 		{
-			name:  "procedure reference resolves to workflows path",
+			name:  "procedure reference resolves to skills path",
 			input: "Run {{procedure:arch-correct}} when needed.",
-			want:  "Run .agents/workflows/arch-correct.md when needed.",
+			want:  "Run .agents/skills/arch-correct/SKILL.md when needed.",
 		},
 		{
 			name:  "capability reference resolves to skills path",
@@ -91,9 +90,8 @@ func TestResolveTemplateVars_CustomPaths(t *testing.T) {
 	// Verify that custom target paths are respected
 	ctx := &TemplateContext{
 		Paths: TargetPaths{
-			Rules:     "custom/rules/",
-			Skills:    "custom/skills/",
-			Workflows: "custom/workflows/",
+			Rules:  "custom/rules/",
+			Skills: "custom/skills/",
 		},
 		MemBase: "custom/memory",
 	}
@@ -109,9 +107,9 @@ func TestResolveTemplateVars_CustomPaths(t *testing.T) {
 			want:  "custom/rules/coding-rules.md",
 		},
 		{
-			name:  "procedure with custom workflows path",
+			name:  "procedure with custom skills path",
 			input: "{{procedure:build-pipeline}}",
-			want:  "custom/workflows/build-pipeline.md",
+			want:  "custom/skills/build-pipeline/SKILL.md",
 		},
 		{
 			name:  "capability with custom skills path",

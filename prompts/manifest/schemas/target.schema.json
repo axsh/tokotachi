@@ -3,7 +3,7 @@
   "$id": "target.schema.json",
   "title": "Target Definition",
   "type": "object",
-  "required": ["apiVersion", "kind", "id", "capabilities", "paths"],
+  "required": ["apiVersion", "kind", "id", "paths"],
   "properties": {
     "apiVersion": { "type": "string", "const": "agent.meta/v1" },
     "kind": { "type": "string", "const": "target" },
@@ -11,13 +11,13 @@
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
     },
-    "capabilities": {
+    "includes": {
       "type": "object",
       "properties": {
-        "rules": { "type": "boolean" },
-        "skills": { "type": "boolean" },
-        "workflows": { "type": "boolean" },
-        "subagents": { "type": "boolean" }
+        "policy": { "type": "boolean" },
+        "capability": { "type": "boolean" },
+        "procedure": { "type": "boolean" },
+        "subagent": { "type": "boolean" }
       },
       "additionalProperties": false
     },
@@ -25,8 +25,7 @@
       "type": "object",
       "properties": {
         "rules": { "type": "string" },
-        "skills": { "type": "string" },
-        "workflows": { "type": "string" }
+        "skills": { "type": "string" }
       },
       "additionalProperties": false
     },
