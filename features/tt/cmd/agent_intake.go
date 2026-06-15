@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/axsh/tokotachi/features/tt/internal/agent/intake"
 	"github.com/axsh/tokotachi/features/tt/internal/agent/status"
 )
 
@@ -26,6 +27,13 @@ var agentIntakeShowCmd = &cobra.Command{
 	Short: "Show a single intake event",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runAgentIntakeShow,
+}
+
+var agentIntakeProcessedCmd = &cobra.Command{
+	Use:   "processed [event-id]",
+	Short: "Move an intake event from pending to processed",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAgentIntakeProcessed,
 }
 
 // Filter flags
@@ -56,6 +64,7 @@ func init() {
 
 	agentIntakeCmd.AddCommand(agentIntakeListCmd)
 	agentIntakeCmd.AddCommand(agentIntakeShowCmd)
+	agentIntakeCmd.AddCommand(agentIntakeProcessedCmd)
 	agentCmd.AddCommand(agentIntakeCmd)
 }
 
@@ -103,5 +112,17 @@ func runAgentIntakeShow(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 	fmt.Println(string(data))
+	return nil
+}
+
+func runAgentIntakeProcessed(cmd *cobra.Command, args []string) error {
+	varDir := filepath.Join("prompts", "memory", "var")
+	eventID := args[0]
+
+	if err := intake.MoveToProcessed(varDir, eventID); err != nil {
+		return fmt.Errorf("failed to move event to processed: %w", err)
+	}
+
+	fmt.Printf("Event %s moved to processed\n", eventID)
 	return nil
 }
