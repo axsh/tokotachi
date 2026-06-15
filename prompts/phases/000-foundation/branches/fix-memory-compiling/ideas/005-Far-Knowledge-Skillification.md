@@ -459,12 +459,51 @@ prompts/manifest/code_content/capabilities/
 | `prompts/manifest/code_content/policies/architecture-memory.md` | `far-knowledge-memory.md` に改名・内容拡張 |
 | `prompts/manifest/code_content/procedures/execute-implementation-plan.md` | Section 3.3 を軽量化 (notify のみ) |
 
-#### 新規ファイル
-
 | ファイル | 用途 |
 |:---|:---|
 | `prompts/memory/knowledge/.gitkeep` | カテゴリ別遠方知識ディレクトリ (初期は空) |
 | `prompts/manifest/code_content/procedures/systematize-far-knowledge.md` | 体系化ワークフロー (新規) |
+
+#### Wrapper スクリプトの整理 (`scripts/code/agent/`)
+
+Wrapper スクリプトはワークフローからの呼び出し I/F であり、内部で使う tt コマンドへの依存を下げる目的で存在する。`tt agent task` 廃止に伴い、以下の通り整理する:
+
+**廃止するスクリプト**:
+
+| スクリプト | 理由 |
+|:---|:---|
+| `assist.sh` | `tt agent assist` を廃止するため不要 |
+| `task.sh` | `tt agent task` を廃止するため不要 |
+
+**維持するスクリプト (変更あり)**:
+
+| 現行名 | 新名称 | 変更内容 |
+|:---|:---|:---|
+| `notify.sh` | `record.sh` | **改名**。役割は「遠方知識を記録する」であり、notify (通知) より record (記録) が適切。新規フラグ (`--design-pattern`, `--convention`, `--lesson-learned`, `--preference`) の対応を追加 |
+| `intake.sh` | `intake.sh` | 維持。`processed` サブコマンドを追加 (`intake.sh processed <event-id>`) |
+| `status.sh` | `status.sh` | 維持。変更なし |
+
+**新設するスクリプト**:
+
+| スクリプト | 役割 |
+|:---|:---|
+| `knowledge.sh` | `tt agent knowledge` の Wrapper。カテゴリ操作 (list/split/merge/rename/move) を提供 |
+
+**整理後のファイル構成**:
+
+```text
+scripts/code/
+  _resolve_tool.sh        # 維持 (tt バイナリの解決)
+  agent/
+    record.sh             # 改名 (旧 notify.sh): 遠方知識の記録
+    intake.sh             # 維持 + 拡張: pending 一覧・詳細・processed 移行
+    status.sh             # 維持: メモリシステム状態表示
+    knowledge.sh          # 新設: カテゴリ操作
+  prompt/
+    compile.sh            # 維持
+    deploy.sh             # 維持
+    update.sh             # 維持
+```
 
 ### 体系化プロセスの実行方式
 
