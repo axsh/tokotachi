@@ -532,12 +532,42 @@ scripts/code/
     update.sh             # 維持
 ```
 
+#### スキーマファイルの整理 (`prompts/memory/schemas/`)
+
+`tt agent task` 廃止と `notify` -> `record` 改名に伴い、スキーマファイルを整理する:
+
+| 現行ファイル | 新ファイル | 変更種別 | 理由 |
+|:---|:---|:---|:---|
+| `agent-notify-payload.schema.json` | `agent-record-payload.schema.json` | **改名** | コマンド名変更に連動。新規フラグフィールドも追加 |
+| `agent-notify-result.schema.json` | `agent-record-result.schema.json` | **改名** | コマンド名変更に連動 |
+| `intake-event.schema.json` | `intake-event.schema.json` | 維持 | 変更なし |
+| `agent-task.schema.json` | -- | **廃止** | `tt agent task` の廃止 |
+| `knowledge-atom-batch.schema.json` | -- | **廃止** | Knowledge Atom パイプラインの廃止 |
+| `knowledge-atom.schema.json` | -- | **廃止** | Knowledge Atom パイプラインの廃止 |
+
+#### 既存 capability / policy スキルの整理
+
+`prompts/manifest/code_content/` 配下のスキルを改名・改修する。これらはワークフローから参照されるスキルテンプレートであり、005 の遠方知識モデルに合わせて更新する:
+
+**capabilities (スキル)**:
+
+| 現行ファイル | 新ファイル | 変更内容 |
+|:---|:---|:---|
+| `record-architecture-knowledge.md` | `record-far-knowledge.md` | **改名 + 内容改修**。「アーキテクチャ知識」を「遠方知識」に拡大。コマンド参照を `record.sh` に統一。新規フラグ (`--design-pattern`, `--convention`, `--lesson-learned`, `--preference`) の使用ガイドを追加 |
+| `pre-push-architecture-check.md` | `pre-push-knowledge-check.md` | **改名 + 内容改修**。アーキテクチャチェック -> 遠方知識チェックに拡大。Step 4 の `record-architecture-knowledge` 参照を `record-far-knowledge` に変更 |
+
+**policies (ルール)**:
+
+| 現行ファイル | 新ファイル | 変更内容 |
+|:---|:---|:---|
+| `architecture-memory.md` | `far-knowledge-memory.md` | **改名 + 内容改修**。ポリシー対象を「アーキテクチャ」から「遠方知識全般」に拡大。コマンド参照を `record.sh` に統一 |
+
 ### 体系化プロセスの実行方式
 
 体系化は `execute-implementation-plan` とは**独立したワークフロー** (`systematize-far-knowledge`) として行う。
 
 **execute-implementation-plan 内の処理 (軽量)**:
-- Section 3.3 で `record-far-knowledge` スキルに従って notify.sh を実行するのみ
+- Section 3.3 で `record-far-knowledge` スキルに従って record.sh を実行するのみ
 - 体系化やスキル化は行わない
 
 **systematize-far-knowledge ワークフロー (別途実行)**:
