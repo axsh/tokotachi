@@ -109,7 +109,20 @@ EOF
    - id には `__far-knowledge-` プレフィックスを付与
    - `user_visible: false` を設定
    - `manual_only: false` を設定
-3. `prompts/memory/branches/<branch-package-id>/skills/` に配置
+   - `status: current` を設定
+3. `prompts/memory/branches/<branch-package-id>/skills/<id>/SKILL.md` に配置
+   - 重要: `<id>/SKILL.md` のサブディレクトリ構造にすること (フラットファイル不可)
+   - `ScanBranchSkills()` がこの構造を期待する
+
+配置例:
+
+```
+prompts/memory/branches/BR-xxx/skills/
+  __far-knowledge-agent-record-branch-package/
+    SKILL.md
+  __far-knowledge-prompt-memory-architecture/
+    SKILL.md
+```
 
 ### Step 8: デプロイ
 
