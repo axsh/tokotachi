@@ -17,10 +17,6 @@ description: Create Implementation Plan
     *   `scripts/utils/show_current_status.sh` を実行します。
     *   JSON出力から `phase`, `branch`, `next_plan_id` を取得します。
     *   以下、`[Phase]`, `[Branch]`, `[NextID]` とします。
-4.  **メモリの確認**:
-    *   `prompts/memory/index.md` を読み、設計制約（`prompts/memory/invariants.md`）を確認してください。
-    *   実装対象に関連する既存の設計判断を把握してください。
-
 ## 2. 出力先の決定
 
 1.  **出力ディレクトリの特定**:

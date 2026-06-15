@@ -5,6 +5,5 @@ title: Default Safety Bundle
 description: Default bundle of safety policies, guards, and skills.
 includes:
   - protect-generated-files
-  - deny-direct-edit-of-index
   - require-review-for-major-arch-changes
   - verifier

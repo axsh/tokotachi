@@ -12,9 +12,6 @@ description: Create Specification
     *   `scripts/utils/show_current_status.sh` を実行します。
     *   JSON出力から `phase`, `branch`, `next_idea_id` を取得します。
     *   以下、`[Phase]`, `[Branch]`, `[NextID]` とします。
-2.  **メモリの確認**:
-    *   `prompts/memory/index.md` を読み、既存の設計判断（`prompts/memory/decisions.md`）やオープンクエスチョン（`prompts/memory/open-questions.md`）を確認してください。
-    *   これらの情報を仕様策定に反映してください。
 
 ## 2. 出力先の決定
 

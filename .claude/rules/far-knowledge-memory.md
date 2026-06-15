@@ -1,8 +1,4 @@
 
-Before changing architecture-sensitive code, read prompts/memory/index.md.
-After such changes, update the relevant memory document.
-If unsure where to write, append to prompts/memory/inbox.md.
-
 ## Mandatory Record After Far-Knowledge Changes
 
 When you complete a coherent task boundary (e.g. after `git commit`, before `git push`),

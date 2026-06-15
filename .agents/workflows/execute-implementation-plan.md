@@ -14,9 +14,6 @@ description: Execute Implementation Plan
     *   以下のルールファイルを読み込み、作業全体を通して遵守してください。
         *   `.agents/rules/coding-rules.md` (コーディングルール)
         *   `.agents/rules/testing-rules.md` (テスト実施ルール)
-3.  **メモリの確認**:
-    *   `prompts/memory/index.md` を読み、実装対象に関連するメモリ文書を確認してください。
-    *   特に `prompts/memory/invariants.md` の設計制約を確認し、違反しないことを確認してください。
 
 ## 2. 実装の実行
 
