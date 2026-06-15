@@ -1,0 +1,493 @@
+# 仕様書: 遠方知識のスキル化 (Far-Knowledge Skillification)
+
+## 背景 (Background)
+
+### 現状
+
+[000-Agentic-Memory-Intake](./000-Agentic-Memory-Intake.md) および [003-Agentic-Memory-Assist-MVP](./003-Agentic-Memory-Assist-MVP.md) により、以下の仕組みが稼働している:
+
+1. `tt agent notify` で raw event を `prompts/memory/var/intake/pending/` に deferred 保存する (Phase 1: Intake)
+2. `tt agent assist` が Agent Task を生成し、Coding Agent が Knowledge Atom に蒸留する (Phase 2: Distill)
+
+しかし、以下の問題がある:
+
+- **Phase 2 がワークフローに統合されておらず**、手動実行のみで事実上未使用
+- **Phase 1 の notify が「アーキテクチャ知識」に限定**されており、真に価値ある知識を収集できていない
+- **Knowledge Atom がスキル化されるパイプラインが存在しない**ため、蒸留された知識がCoding Agentに還元されない
+
+### 核心的な洞察: 遠方知識
+
+Coding Agent は現在の作業ファイルの近傍をエージェンティックに検索・解析できる。従って、近傍で得られる知識をスキル化する価値は低い。真にスキル化すべきは「**遠方知識 (Far Knowledge)**」である:
+
+| 距離 | 到達手段 | スキル化の価値 |
+|:---|:---|:---|
+| 距離0-2: 同パッケージ、import先/元 | grep、コード追跡で到達可能 | 低い |
+| **距離3: 無関係なモジュール間の共通パターン** | 知らなければ探せない | **高い** |
+| **距離4: 過去の判断・フィードバック** | 消えている | **非常に高い** |
+| **距離5: エンジニアの好み・品質基準** | 言語化されていない | **最高** |
+
+これは従来、同一エンジニアの暗黙知として自然に機能していたもの。「モジュールAを開発した経験が、無関係なモジュールBの開発時にも活きる」という現象のメカニズム化である。
+
+### 本仕様の目標
+
+「知識が自然に、自動で組み立てられる」状態を実現する:
+
+1. **知識の種をためる** -- notify.sh で遠方知識となりうるものを蓄積する
+2. **知識の種を体系化する** -- ワークフローをトリガーにした assist 処理で、カテゴリ化・重複排除・整理を行う
+3. **知識をスキルに変換する** -- capability スキーマ形式に変換する
+4. **スキルを各 Coding Agent 向けに配備する** -- `tt prompt update` で `.agents/skills/` 等にデプロイする
+
+### 本仕様と既存仕様の関係
+
+| 既存仕様 | 本仕様での扱い |
+|:---|:---|
+| 000-Agentic-Memory-Intake | notify.sh の収集対象を拡張 (アーキテクチャ -> 遠方知識全般) |
+| 003-Agentic-Memory-Assist-MVP | assist/task の Go 実装は維持。ワークフロー統合と体系化プロセスを新規定義 |
+
+---
+
+## 要件 (Requirements)
+
+### 必須要件 (MUST)
+
+#### R1: notify.sh の収集対象の拡張
+
+現行の `record-architecture-knowledge` capability を拡張し、「アーキテクチャ知識」に限定されない**遠方知識全般**を収集対象にする。
+
+**拡張するカテゴリフラグ**:
+
+現行のフラグ (維持):
+- `--architecture-impact` (アーキテクチャ影響)
+- `--memory-related` (メモリシステム関連)
+- `--prompt-related` (プロンプト関連)
+- `--agent-behavior-related` (エージェント行動関連)
+
+追加するフラグ:
+- `--design-pattern` (横断的設計パターン: モジュール間で共有すべき設計判断)
+- `--convention` (規約・スタイル: ログ形式、DB設計、API設計、コメントの書き方)
+- `--lesson-learned` (過去の失敗/指摘からの学び)
+- `--preference` (エンジニアの好み/品質基準)
+
+**Good Note の例 (追加分)**:
+
+```text
+--design-pattern --note "Error responses in API handlers use pkg/apierror types; internal errors are logged but clients receive generic messages"
+--convention --note "Integration test names follow TestXxx_Scenario format to allow --specify filtering"
+--lesson-learned --note "Test for nil pointer on optional fields was missed in auth handler review; always check optional fields in validation"
+--preference --note "Prefer explicit error wrapping with fmt.Errorf and %w over bare error returns for traceability"
+```
+
+**距離判定のガイドライン (Note Content Guidelines への追加)**:
+
+Coding Agent は以下の基準で notify すべきか判断する:
+
+1. **この知識は、現在の作業ファイルの近傍 (同パッケージ、import 先/元) を検索すれば得られるか?** -- はいなら、スキップ
+2. **この知識は、無関係なモジュールの開発時にも適用できるか?** -- はいなら、`--design-pattern` で記録
+3. **この知識は、過去の判断や指摘に基づいており、コードからは読み取れないか?** -- はいなら、`--lesson-learned` で記録
+4. **この知識は、エンジニアの好みや品質基準に関するものか?** -- はいなら、`--preference` で記録
+
+#### R2: capability の rename と拡張
+
+現行の capability を以下のように変更する:
+
+| 変更前 | 変更後 | 理由 |
+|:---|:---|:---|
+| `record-architecture-knowledge` | `record-far-knowledge` | 対象がアーキテクチャに限定されないため |
+| `pre-push-architecture-check` | `pre-push-knowledge-check` | 同上 |
+| `architecture-memory` policy | `far-knowledge-memory` policy | 同上 |
+
+capability の `description` も更新し、遠方知識全般を対象とする旨を明記する。
+
+#### R3: 知識の体系化ワークフロー (assist 処理)
+
+`execute-implementation-plan` ワークフローの Section 3.3 を拡張し、以下の処理を義務付ける。
+
+**トリガー**: `git push` の前 (現行の Section 3.3 のタイミング)
+
+**処理フロー**:
+
+```mermaid
+flowchart TD
+    A["1. notify.sh で遠方知識を記録\n(現行 Section 3.3 の前半)"] --> B["2. assist.sh を実行\n(pending events の確認)"]
+    B -->|"pending 0件"| C["スキップ\n(no update 報告)"]
+    B -->|"pending 1件以上"| D["3. 既存のカテゴリ一覧を読み込む\n(prompts/memory/knowledge/)"]
+    D --> E["4. 各 pending event の距離を判定"]
+    E -->|"距離0-2: 近傍知識"| F["スキップ (processed に移動)"]
+    E -->|"距離3+: 遠方知識"| G["5. カテゴリの判定"]
+    G -->|"既存カテゴリに該当"| H["6a. 既存カテゴリファイルに追記"]
+    G -->|"新規カテゴリ"| I["6b. 新規カテゴリファイルを作成"]
+    H --> J["7. 重複排除・再整理の検討"]
+    I --> J
+    J --> K["8. pending events を processed に移動\n空フォルダを削除"]
+    K --> L["9. カテゴリ別にスキル化の検討"]
+    L --> M["10. capability スキーマに変換"]
+    M --> N["11. update.sh を実行\n(compile + deploy)"]
+```
+
+**ステップ詳細**:
+
+**ステップ 3: 既存カテゴリの読み込み**
+
+カテゴリ別の遠方知識は以下に格納する:
+
+```
+prompts/memory/knowledge/
+  error-handling.md
+  test-patterns.md
+  api-design.md
+  ...
+```
+
+このディレクトリは Git 管理される (`.gitignore` の `var/` 外)。
+
+**ステップ 4-5: 距離判定とカテゴリ判定**
+
+Coding Agent が LLM の力で以下を判断する:
+- この知識はエージェンティックな検索で到達可能か? (距離判定)
+- どのカテゴリに属するか? 既存カテゴリか新規か?
+
+**ステップ 6: カテゴリファイルへの埋め込み**
+
+カテゴリファイルは以下の構造を持つ:
+
+```markdown
+---
+category_id: error-handling
+title: "エラーハンドリングパターン"
+description: >-
+  Go APIハンドラーにおけるエラーレスポンスの設計パターン、
+  エラーラッピングの規約、バリデーションエラーの返却方法。
+  APIハンドラーの実装時、エラーハンドリング設計時に参照すべき。
+last_updated: 2026-06-15T00:00:00Z
+source_event_ids:
+  - E-01KTJM6PQ48MDZY13AJT6DMDF2
+  - E-01KTxxx
+---
+
+# エラーハンドリングパターン
+
+## パターン
+
+1. エラーは必ず `pkg/apierror` の型を使って返す
+2. 内部エラーの詳細はログに出し、クライアントには汎用メッセージを返す
+3. バリデーションエラーはフィールド単位で返す
+
+## 判断基準
+
+- 新しいAPIエンドポイントを追加するときは、このパターンを必ず適用する
+
+## コード例
+
+- `internal/api/handler/user.go` の `handleCreateUser` 関数を参照
+
+## 適用済みコード
+
+- internal/api/handler/user.go
+- internal/api/handler/project.go
+
+## 過去の指摘・教訓
+
+- 2026-06-10: auth handlerでnilチェック漏れを指摘された (E-01KTxxx)
+```
+
+**ステップ 7: 重複排除・再整理**
+
+Coding Agent は既存カテゴリファイルに追記する際に、以下を検討する:
+- 既存の知識と重複していないか (重複排除)
+- カテゴリが大きくなりすぎていないか (分割の検討)
+- 複数カテゴリに跨がる知識がないか (統合の検討)
+- 全体の一貫性は保たれているか (再整理)
+
+**ステップ 8: クリーンアップ**
+
+- 処理済みの intake event を `pending/` から `processed/` に移動する
+  - `tt agent task submit` の既存機能を使用
+- 空になった日付ディレクトリを削除する
+  - `find prompts/memory/var/intake/pending -type d -empty -delete` 相当の処理
+
+**ステップ 9-10: スキル化**
+
+カテゴリファイルの内容を、[capability.schema.json](file:///c:/Users/yamya/myprog/tokotachi/work/fix-memory-compiling/prompts/manifest/schemas/capability.schema.json) に準拠した形式に変換する:
+
+```yaml
+---
+apiVersion: agent.meta/v1
+kind: capability
+id: far-knowledge-error-handling
+title: "エラーハンドリングパターン"
+description: >-
+  Go APIハンドラーにおけるエラーレスポンスの設計パターン。
+  APIハンドラーの実装時、エラーハンドリング設計時、
+  新しいエンドポイント追加時に参照すべき。
+body: |
+  # エラーハンドリングパターン
+
+  ## パターン
+  1. エラーは必ず pkg/apierror の型を使って返す
+  ...
+manual_only: false
+user_visible: true
+---
+```
+
+**配置先**: `prompts/manifest/code_content/capabilities/far-knowledge/`
+
+このディレクトリ配下に、カテゴリ別の capability ファイル (`skill.md` 形式) を配置する。
+`prompts/manifest/project.yaml` の `sources.capabilities` で既に `capabilities/**/skill.md` をglobしているため、サブディレクトリ `far-knowledge/` 配下に `skill.md` として配置すれば自動的にcompile対象になる。
+
+**スキル分割の判断基準**:
+
+- 1カテゴリ = 1スキル が基本
+- ただし、以下の場合は分割する:
+  - スキル本文が 4000 文字を超える場合
+  - 2つ以上の明確に異なる知識ドメインを含む場合
+    - 例: 「エラーハンドリング」と「ログ設計」が1つのカテゴリに混在 -> 分割
+
+**ステップ 11: デプロイ**
+
+```bash
+./scripts/code/prompt/update.sh
+```
+
+これにより `tt prompt update` が実行され、capability がcompileされて各ターゲット (`.agents/skills/`, `.cursor/skills/` 等) にデプロイされる。
+
+#### R4: execute-implementation-plan ワークフローの Section 3.3 の改訂
+
+現行:
+
+```
+### 3.3 アーキテクチャメモリの記録 (Architecture Memory Intake)
+-> record-architecture-knowledge スキルに従ってアーキテクチャ知識の記録を行う
+```
+
+改訂後:
+
+```
+### 3.3 遠方知識の記録と体系化 (Far-Knowledge Recording & Systematization)
+
+Step 1: record-far-knowledge スキルに従って遠方知識を記録する
+Step 2: assist.sh を実行して pending events を確認する
+Step 3: pending がある場合、カテゴリ化・体系化・スキル化を実施する
+Step 4: update.sh を実行してスキルをデプロイする
+```
+
+#### R5: ディレクトリレイアウト
+
+本仕様で新規追加/変更するディレクトリとファイル:
+
+```text
+prompts/memory/
+  knowledge/                              # 新規: カテゴリ別遠方知識 (Git管理)
+    error-handling.md
+    test-patterns.md
+    api-design.md
+    ...
+
+prompts/manifest/code_content/capabilities/
+  far-knowledge/                          # 新規: 遠方知識から生成されたスキル
+    error-handling/
+      skill.md                            # capability スキーマ準拠
+    test-patterns/
+      skill.md
+    ...
+  record-far-knowledge.md                 # 改名: record-architecture-knowledge -> record-far-knowledge
+  pre-push-knowledge-check.md             # 改名: pre-push-architecture-check -> pre-push-knowledge-check
+```
+
+| パス | Git管理 | 用途 |
+|:---|:---|:---|
+| `prompts/memory/knowledge/` | する | カテゴリ化された遠方知識 (スキルの元ネタ) |
+| `prompts/manifest/code_content/capabilities/far-knowledge/` | する | スキル化された遠方知識 |
+| `prompts/memory/var/intake/pending/` | しない | 未処理の知識の種 (既存) |
+| `prompts/memory/var/intake/processed/` | しない | 処理済みの知識の種 (既存) |
+
+### 任意要件 (SHOULD)
+
+#### R6: カテゴリの自動提案
+
+初回のassist処理で、以下の初期カテゴリを提案する:
+
+- `error-handling` -- エラーハンドリング、エラーレスポンス設計
+- `test-patterns` -- テスト設計、テスト観点、テスト命名規約
+- `api-design` -- Web API設計、エンドポイント設計
+- `db-design` -- データベース設計、クエリパターン
+- `logging` -- ログ設計、ログレベル使い分け
+- `code-style` -- コーディングスタイル、命名規約
+- `review-lessons` -- レビュー指摘事項、チェック漏れの教訓
+
+ただし、これは提案であり、実際のカテゴリは蓄積された知識の内容に応じて動的に決定される。
+
+#### R7: 既存 Knowledge Atom のマイグレーション
+
+現在 `prompts/memory/branches/BR-xxx/knowledge/` に保存されている Knowledge Atom (テストデータ3件) は、本仕様の `prompts/memory/knowledge/` カテゴリ構造には移行しない。テストデータのため削除しても良い。
+
+### 非要件 (NOT)
+
+- 現行 `tt agent assist` / `tt agent task` の Go 実装の変更は不要。ワークフロー上で Coding Agent が実行する体系化プロセスは、既存のttコマンドの組み合わせと Coding Agent のLLM能力で実現する
+- A-MEM 的な relation generation は本仕様のスコープ外
+- Knowledge Atom スキーマの変更は不要。カテゴリファイル (.md) を中間形式として新規導入する
+- `tt prompt compile` の Go コード変更は不要。capability として配置すれば既存のパイプラインで処理される
+
+---
+
+## 実現方針 (Implementation Approach)
+
+### Go コードの変更
+
+**不要**。本仕様の変更は全てプロンプト/ワークフロー/capability 層の変更で実現する。`tt` バイナリの変更は行わない。
+
+ただし、`tt agent notify` の `--design-pattern`, `--convention`, `--lesson-learned`, `--preference` フラグの追加は Go コードの変更が必要。これらのフラグは `flags` オブジェクト内の新しいフィールドとして追加する。
+
+### 変更対象のファイル一覧
+
+#### Goコード変更 (フラグ追加のみ)
+
+| ファイル | 変更内容 |
+|:---|:---|
+| `features/tt/cmd/agent_notify.go` | 新規フラグ (`--design-pattern` 等) の CLI 定義追加 |
+| `features/tt/internal/agent/notify/handler.go` | フラグを `flags` オブジェクトに反映するロジック追加 |
+| `prompts/memory/schemas/agent-notify-payload.schema.json` | `flags` に新規フィールド追加 |
+
+#### プロンプト/ワークフロー変更
+
+| ファイル | 変更内容 |
+|:---|:---|
+| `prompts/manifest/code_content/capabilities/record-architecture-knowledge.md` | `record-far-knowledge.md` に改名・内容拡張 |
+| `prompts/manifest/code_content/capabilities/pre-push-architecture-check.md` | `pre-push-knowledge-check.md` に改名・内容拡張 |
+| `prompts/manifest/code_content/policies/architecture-memory.md` | `far-knowledge-memory.md` に改名・内容拡張 |
+| `prompts/manifest/code_content/procedures/execute-implementation-plan.md` | Section 3.3 の改訂 |
+
+#### 新規ファイル
+
+| ファイル | 用途 |
+|:---|:---|
+| `prompts/memory/knowledge/.gitkeep` | カテゴリ別遠方知識ディレクトリ (初期は空) |
+| `prompts/manifest/code_content/capabilities/far-knowledge/.gitkeep` | スキル配置先 (初期は空) |
+
+### 体系化プロセスの実行方式
+
+体系化は **Coding Agent のワークフロー実行** として行う。具体的には:
+
+1. `execute-implementation-plan` Section 3.3 の中で、Coding Agent が `assist.sh` を実行
+2. pending events があれば、Coding Agent が `prompts/memory/knowledge/` を読み込む
+3. Coding Agent が LLM の力でカテゴリ判定・体系化・スキル化を行う
+4. 結果を `prompts/memory/knowledge/` と `prompts/manifest/code_content/capabilities/far-knowledge/` に書き出す
+5. `tt agent task submit` で pending -> processed 移行
+6. `update.sh` でデプロイ
+
+`tt` バイナリは知識の保存/移行の実行エンジンとして機能し、体系化のロジック (何をどのカテゴリに分類するか、スキルにどう変換するか) は Coding Agent に委ねる。
+
+---
+
+## 検証シナリオ (Verification Scenarios)
+
+### シナリオ 1: 遠方知識の notify (フラグ追加)
+
+1. `--design-pattern` フラグを付けて `tt agent notify` を実行する
+2. exit code が 0 であることを確認
+3. 保存された JSON の `flags` に `design_pattern: true` が含まれることを確認
+4. `--convention`, `--lesson-learned`, `--preference` でも同様に確認
+
+### シナリオ 2: 体系化の実行 (新規カテゴリ)
+
+1. pending に遠方知識の intake event を 2 件以上保存する (例: エラーハンドリング関連)
+2. `prompts/memory/knowledge/` が空であることを確認
+3. ワークフローの Section 3.3 を実行する
+4. `prompts/memory/knowledge/error-handling.md` (例) が作成されることを確認
+5. ファイル内に frontmatter (category_id, title, description, source_event_ids) が含まれることを確認
+6. pending events が processed に移動していることを確認
+7. 空の日付ディレクトリが削除されていることを確認
+
+### シナリオ 3: 体系化の実行 (既存カテゴリへの追記)
+
+1. シナリオ 2 の後、同じカテゴリに該当する新しい intake event を追加
+2. ワークフローの Section 3.3 を実行する
+3. 既存の `error-handling.md` に新しい知識が追記されることを確認
+4. frontmatter の `source_event_ids` に新しい event_id が追加されることを確認
+
+### シナリオ 4: スキル化とデプロイ
+
+1. シナリオ 2 の後、体系化が完了した状態から開始
+2. `prompts/manifest/code_content/capabilities/far-knowledge/error-handling/skill.md` が作成されることを確認
+3. capability スキーマ (apiVersion, kind, id, title, description, body) に準拠していることを確認
+4. `./scripts/code/prompt/update.sh` を実行する
+5. `.agents/skills/` に対応するスキルがデプロイされることを確認
+6. デプロイされたスキルの `name` と `description` が検索可能な形式であることを確認
+
+### シナリオ 5: record-far-knowledge capability の動作
+
+1. Coding Agent が実装作業中に遠方知識を発見する
+2. `record-far-knowledge` capability に従って notify.sh を実行する
+3. 新しいフラグ (`--design-pattern` 等) が正しく使用されることを確認
+
+---
+
+## テスト項目 (Testing for the Requirements)
+
+### Goコード変更分 (フラグ追加)
+
+#### ビルド + 単体テスト
+
+```bash
+scripts/process/build.sh --skip-frontend --skip-etc
+```
+
+#### 統合テスト (notify フラグ追加)
+
+```bash
+scripts/process/integration_test.sh --categories "common" --specify "AgentNotify"
+```
+
+### プロンプト/ワークフロー変更分
+
+#### capability のデプロイ確認
+
+```bash
+# compile + deploy の動作確認
+./scripts/code/prompt/update.sh --dry-run
+./scripts/code/prompt/update.sh
+```
+
+#### スキル配置の確認
+
+以下のパスにファイルが正しくデプロイされることを手動確認:
+- `.agents/skills/` 配下に far-knowledge 系スキルが配置されること
+- `.agents/rules/` 配下のポリシーが更新されること
+
+> [!NOTE]
+> 体系化プロセス自体 (カテゴリ化、重複排除、スキル化) は Coding Agent の LLM 処理であるため、自動テストの対象外とする。ワークフローの記述が正しいこと、デプロイパイプラインが機能することを検証する。
+
+### ビルド・全体検証
+
+1. ビルド + 単体テスト:
+   ```bash
+   scripts/process/build.sh --skip-frontend --skip-etc
+   ```
+
+2. バックエンド統合テスト (notify フラグ追加分):
+   ```bash
+   scripts/process/integration_test.sh --categories "common" --specify "AgentNotify"
+   ```
+
+---
+
+## 調査レポートとの対応分析
+
+### investigation_pending_processed_flow.md との対応
+
+| レポートの指摘 | 本仕様での対応 |
+|:---|:---|
+| pending -> processed は単なるジョブキューのステータス管理 | R3 で体系化プロセスの一部として再定義。processed への移動は体系化完了の証跡 |
+| ステップ3 (Knowledge Atom -> スキル変換) が完全に欠落 | R3 ステップ 9-10 でcapabilityスキーマへの変換を定義 |
+| ステップ4 (配備) のパイプラインは存在するが入力がない | R3 ステップ 11 で update.sh 実行を義務付け |
+
+### investigation_knowledge_systematization.md との対応
+
+| レポートの指摘 | 本仕様での対応 |
+|:---|:---|
+| 「近傍知識はスキル化する価値が低い」 | R1 の距離判定ガイドラインで明文化 |
+| 「横断的設計パターン」の類型化 | R1 のカテゴリフラグ追加 (--design-pattern 等) |
+| 「アーキテクチャ知識」ではなく「エンジニアの観察記録」 | R2 で名前を変更 (architecture -> far-knowledge) |
+| 体系化は「新規作成」だけでなく「既存への追記」も含む | R3 ステップ 6 で既存カテゴリへの追記を明示 |
+| Knowledge Atom スキーマに「コード例」「適用済み一覧」が欠落 | カテゴリファイル (.md) で補完。KA スキーマは変更しない |
+| 方向性A (簡略化) vs 方向性B (現行維持) | 方向性B をベースに、ワークフロー統合で実質的に自動化 |
