@@ -132,21 +132,25 @@ func (s *Store) List() ([]CategoryInfo, error) {
 		return result, nil
 	}
 
-	entries, err := os.ReadDir(s.RootDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read knowledge root: %w", err)
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
+	err := filepath.WalkDir(s.RootDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || !d.IsDir() {
+			return nil
 		}
-		catDir := filepath.Join(s.RootDir, entry.Name())
-		info, err := s.gatherCategoryInfo(catDir, entry.Name())
-		if err != nil {
-			continue // skip broken categories
+		// Check if this directory has _category.yaml
+		if _, statErr := os.Stat(filepath.Join(path, categoryMetaFile)); statErr != nil {
+			return nil
+		}
+		relPath, _ := filepath.Rel(s.RootDir, path)
+		relPath = filepath.ToSlash(relPath)
+		info, gatherErr := s.gatherCategoryInfo(path, relPath)
+		if gatherErr != nil {
+			return nil // skip broken categories
 		}
 		result = append(result, *info)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk knowledge root: %w", err)
 	}
 
 	return result, nil

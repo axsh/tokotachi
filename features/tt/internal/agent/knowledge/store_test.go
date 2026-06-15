@@ -272,3 +272,32 @@ func TestSlugify(t *testing.T) {
 		})
 	}
 }
+
+func TestStore_List_NestedCategories(t *testing.T) {
+	root := t.TempDir()
+	s := NewStore(root)
+	contentDir := t.TempDir()
+
+	cf1 := writeContentFile(t, contentDir, "c1.md", "Branch package content")
+	cf2 := writeContentFile(t, contentDir, "c2.md", "Memory architecture content")
+	cf3 := writeContentFile(t, contentDir, "c3.md", "Flat category content")
+
+	// Create nested categories
+	require.NoError(t, s.Add("agent/record/branch-package", "Branch Package Info", "Branch package desc", cf1, []string{"E-001"}))
+	require.NoError(t, s.Add("prompt/memory-architecture", "Memory Architecture", "Arch desc", cf2, []string{"E-002"}))
+	// Create a flat (single-level) category
+	require.NoError(t, s.Add("testing", "Testing", "Test desc", cf3, []string{"E-003"}))
+
+	result, err := s.List()
+	require.NoError(t, err)
+
+	// Should find all 3 categories (2 nested + 1 flat)
+	paths := make([]string, len(result))
+	for i, r := range result {
+		paths[i] = r.Path
+	}
+	assert.Contains(t, paths, "agent/record/branch-package")
+	assert.Contains(t, paths, "prompt/memory-architecture")
+	assert.Contains(t, paths, "testing")
+	assert.Len(t, result, 3)
+}
