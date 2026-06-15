@@ -1,6 +1,6 @@
 ---
 activation:
-    mode: always
+    mode: trigger
 apiVersion: agent.meta/v1
 id: planning-rules
 kind: policy
