@@ -9,7 +9,6 @@ description: >-
   ./scripts/code/agent/record.sh.
   Referenced by far-knowledge-memory policy and pre-push-knowledge-check capability.
 references:
-  - "prompts/memory/index.md"
   - "prompts/memory/schemas/agent-record-payload.schema.json"
 scripts:
   - "scripts/code/agent/record.sh"

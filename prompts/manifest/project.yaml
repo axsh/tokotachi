@@ -14,7 +14,6 @@ sources:
 
 outputs:
   resolved_manifest: tmp/dist/manifest.resolved.yaml
-  memory_index: prompts/memory/index.md
 
 defaults:
   language: ja

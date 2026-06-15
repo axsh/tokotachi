@@ -22,9 +22,6 @@ description: Execute Implementation Plan
     *   以下のルールファイルを読み込み、作業全体を通して遵守してください。
         *   `{{policy:coding-rules}}` (コーディングルール)
         *   `{{policy:testing-rules}}` (テスト実施ルール)
-3.  **メモリの確認**:
-    *   `{{memory:index}}` を読み、実装対象に関連するメモリ文書を確認してください。
-    *   特に `{{memory:invariants}}` の設計制約を確認し、違反しないことを確認してください。
 
 ## 2. 実装の実行
 
