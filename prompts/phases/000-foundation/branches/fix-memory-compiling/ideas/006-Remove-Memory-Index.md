@@ -29,13 +29,13 @@
 5. **テンプレート変数削除**: `features/tt/internal/prompt/emitter/template.go` の `memory` kind 解決ロジックを削除 (L58-59)
 6. **テンプレートテスト修正**: `features/tt/internal/prompt/emitter/template_test.go` の `{{memory:index}}` テストケースを削除
 7. **ガード削除**: `prompts/manifest/safety/guards/deny-direct-edit-of-index.yaml` を削除
-8. **ワークフロー参照除去**: 以下のファイルから `{{memory:index}}` や `prompts/memory/index.md` への参照を削除
-   - `prompts/manifest/code_content/procedures/execute-implementation-plan.md` (L26)
-   - `prompts/manifest/code_content/procedures/create-specification.md` (L24)
-   - `prompts/manifest/code_content/procedures/create-implementation-plan.md` (L29)
-   - `prompts/manifest/code_content/policies/far-knowledge-memory.md` (L12)
-   - `prompts/manifest/code_content/capabilities/record-far-knowledge.md` (references 欄)
-   - `prompts/manifest/code_content/capabilities/pre-push-knowledge-check.md` (references 欄)
+8. **ワークフロー参照除去**: 以下のファイルから `{{memory:index}}` や `prompts/memory/index.md` への参照を削除する。「メモリの確認」ステップは代替なしで完全削除する
+   - `prompts/manifest/code_content/procedures/execute-implementation-plan.md` -- Section 1.3「メモリの確認」ステップ (L25-27) を完全削除
+   - `prompts/manifest/code_content/procedures/create-specification.md` -- Section 1.2「メモリの確認」ステップ (L23-25) を完全削除
+   - `prompts/manifest/code_content/policies/far-knowledge-memory.md` (L12) -- `prompts/memory/index.md` への言及を削除
+   - `prompts/manifest/code_content/capabilities/record-far-knowledge.md` (references 欄) -- 参照除去
+   - `prompts/manifest/code_content/capabilities/pre-push-knowledge-check.md` (references 欄) -- 参照除去
+   - 注: `create-implementation-plan.md` には既に `{{memory:*}}` 参照が存在しないため対象外
 9. **prompt update 後のデプロイ確認**: 変更後に `tt prompt update` が正常に完了すること
 
 ### 任意要件
@@ -75,7 +75,7 @@
 
 ## 懸念事項
 
-### 低リスク: memory_docs ソースパターンの影響
+### 低リスク: memory_docs ソースパターンの影響 (本仕様の対象外)
 
 `project.yaml` の `memory_docs: prompts/memory/**/*.md` は、旧メモリ文書 (current.md, decisions.md, invariants.md 等) を走査対象としていた。今回 `README.md` を追加したことで、README.md がメモリ文書としてパースされる可能性がある (フロントマターが無ければパースエラーにはならず無視されるが、不要な走査は行われる)。
 
@@ -85,7 +85,7 @@ index.md を廃止する場合、`memory_docs` パターン自体も削除して
 
 ### 無リスク: テンプレート変数 `{{memory:*}}` の消失
 
-`{{memory:index}}` 以外の `{{memory:*}}` パターン (例: `{{memory:invariants}}`, `{{memory:decisions}}`) を使っているワークフローが存在するか確認が必要。存在する場合、template.go の `memory` case を削除すると未解決変数として残る。ただし、現在これらのメモリ文書は0件であるため、テンプレート変数自体が死んだ参照である。
+`{{memory:index}}` 以外の `{{memory:*}}` パターン (`{{memory:invariants}}`, `{{memory:decisions}}` 等) は、`execute-implementation-plan.md` と `create-specification.md` の「メモリの確認」ステップ内でのみ使用されていた。これらのステップ自体を完全削除するため、未解決変数が残る問題は発生しない。
 
 **判断**: `memory` case ごと削除する。将来必要になれば再追加すればよい。
 
