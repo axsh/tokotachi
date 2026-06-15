@@ -129,17 +129,45 @@ flowchart TD
 
 **ステップ 2: 既存カテゴリの読み込み**
 
-カテゴリ別の遠方知識は以下に格納する:
+知識は**階層構造**で管理する。カテゴリはディレクトリとして表現され、最下層に知識ファイル (.md) が配置される:
 
 ```
 prompts/memory/knowledge/
-  error-handling.md
-  test-patterns.md
-  api-design.md
-  ...
+  error-handling/                 # カテゴリ = ディレクトリ
+    _category.yaml                # カテゴリメタデータ
+    api-error-responses.md        # 知識ファイル (リーフ)
+    validation-errors.md          # 知識ファイル (リーフ)
+  testing/
+    _category.yaml
+    naming-conventions.md
+    table-driven-tests.md
+  observability/                  # 階層化の例: サブカテゴリあり
+    _category.yaml
+    logging/                      # サブカテゴリ = サブディレクトリ
+      _category.yaml
+      structured-logging.md
+      log-levels.md
+    error-tracking/
+      _category.yaml
+      sentry-patterns.md
 ```
 
-このディレクトリは Git 管理される (`.gitignore` の `var/` 外)。
+- **カテゴリ**: ディレクトリで表現。`_category.yaml` にメタデータを持つ
+- **知識ファイル**: 最下層のマークダウンファイル。1つの知識単位 = 1ファイル
+- **サブカテゴリ**: カテゴリ内のサブディレクトリ。段階3 (階層化) で自然に生まれる
+- このディレクトリは Git 管理される (`.gitignore` の `var/` 外)
+
+`_category.yaml` のフォーマット:
+
+```yaml
+category_id: error-handling
+title: "エラーハンドリングパターン"
+description: >-
+  Go APIハンドラーにおけるエラーレスポンスの設計パターン、
+  エラーラッピングの規約、バリデーションエラーの返却方法。
+created_at: 2026-06-15T00:00:00Z
+last_updated: 2026-06-15T00:00:00Z
+```
 
 **ステップ 3-4: 距離判定とカテゴリ判定**
 
@@ -147,25 +175,23 @@ Coding Agent が LLM の力で以下を判断する:
 - この知識はエージェンティックな検索で到達可能か? (距離判定)
 - どのカテゴリに属するか? 既存カテゴリか新規か?
 
-**ステップ 5: カテゴリファイルへの埋め込み**
+**ステップ 5: 知識ファイルの作成**
 
-カテゴリファイルは以下の構造を持つ:
+知識ファイルは以下の構造を持つ:
 
 ```markdown
 ---
-category_id: error-handling
-title: "エラーハンドリングパターン"
-description: >-
-  Go APIハンドラーにおけるエラーレスポンスの設計パターン、
-  エラーラッピングの規約、バリデーションエラーの返却方法。
-  APIハンドラーの実装時、エラーハンドリング設計時に参照すべき。
+knowledge_id: api-error-responses
+title: "APIエラーレスポンスの設計パターン"
+category_path: error-handling
+created_at: 2026-06-15T00:00:00Z
 last_updated: 2026-06-15T00:00:00Z
 source_event_ids:
   - E-01KTJM6PQ48MDZY13AJT6DMDF2
   - E-01KTxxx
 ---
 
-# エラーハンドリングパターン
+# APIエラーレスポンスの設計パターン
 
 ## パターン
 
@@ -197,65 +223,81 @@ source_event_ids:
 
 | 段階 | 名称 | トリガー | 操作 |
 |:---|:---|:---|:---|
-| 1 | 収集 | 最初の知識が入る | 新規カテゴリの作成 |
-| 2 | 分類 (細分化) | 1つのカテゴリが肥大化し、異なる属性の知識が混在 | カテゴリの **分割 (split)** |
-| 3 | 階層化 | 特定のサブ領域のメモが爆発的に増加 | 新規サブカテゴリの作成、知識の **移動 (move)** |
-| 4 | 再構築 (統合) | 複数のカテゴリを横断する概念が登場し、既存の分類軸では収まらなくなる | カテゴリの **統合 (merge)**、 **名前変更 (rename)**、全体構造の見直し |
+| 1 | 収集 | 最初の知識が入る | 新規カテゴリディレクトリの作成 + 知識ファイルの追加 |
+| 2 | 分類 (細分化) | 1つのカテゴリ内の知識ファイルが増え、異なる属性が混在 | カテゴリの **分割 (split)**: サブディレクトリへの分離 |
+| 3 | 階層化 | 特定のサブ領域の知識ファイルが爆発的に増加 | サブカテゴリの作成、知識ファイルの **移動 (move)** |
+| 4 | 再構築 (統合) | 複数のカテゴリを横断する概念が登場し、既存の分類軸では収まらない | カテゴリの **統合 (merge)**、 **名前変更 (rename)**、全体構造の見直し |
 
 **段階4の再構築が最も重要かつ困難**。例えば、最初「エラーハンドリング」と「ログ設計」が別カテゴリだったが、「可観測性 (Observability)」という上位概念が見えてきたとき、両者を統合して再構築する必要がある。これは知識が深まり全体像が見えてきた証拠であり、避けるべきではなく積極的に行うべき操作である。
 
 **再整理で必要な操作の定義**:
 
-以下の4つの操作を定義する。いずれもファイルシステム上のカテゴリファイル (.md) に対する操作である。
+以下の4つの操作を定義する。いずれも `prompts/memory/knowledge/` 配下のディレクトリ・ファイル構造に対する操作である。
 
 | 操作 | 内容 | 例 |
 |:---|:---|:---|
-| **split** | 1つのカテゴリファイルを2つ以上に分割する | `error-handling.md` -> `error-response.md` + `error-wrapping.md` |
-| **merge** | 2つ以上のカテゴリファイルを1つに統合する | `error-handling.md` + `logging.md` -> `observability.md` |
-| **rename** | カテゴリファイルの名前と内容を更新する | `programming.md` -> `frontend.md` (分類軸の変更) |
-| **move** | あるカテゴリ内の特定の知識項目を別のカテゴリに移動する | `backend.md` 内の「Docker環境構築」を `infrastructure.md` に移動 |
+| **split** | 1つのカテゴリディレクトリをサブカテゴリに分割する | `error-handling/` -> `error-handling/api-errors/` + `error-handling/validation/` |
+| **merge** | 2つ以上のカテゴリディレクトリを1つに統合する | `error-handling/` + `logging/` -> `observability/` |
+| **rename** | カテゴリディレクトリの名前とメタデータを更新する | `programming/` -> `frontend/` (分類軸の変更) |
+| **move** | 知識ファイルを別のカテゴリディレクトリに移動する | `backend/docker-setup.md` を `infrastructure/` に移動 |
 
 **ttコマンドとLLMの責務分離**:
 
 再整理の操作は「何をすべきか (判断)」と「どうやるか (実行)」に分離する:
 
-- **LLM (Coding Agent) の責務**: 現在のカテゴリ一覧を俯瞰し、どの操作 (split/merge/rename/move) が必要かを判断する。段階2-4のどの状態にあるかを見極め、操作対象と操作内容を決定する
-- **tt コマンドの責務**: 決定された操作を確実に実行する。frontmatter の `source_event_ids`、`last_updated`、`category_id` の整合性を保ちながらファイル操作を行う
+- **LLM (Coding Agent) の責務**: 現在のカテゴリツリーを俯瞰し、どの操作 (split/merge/rename/move) が必要かを判断する。段階2-4のどの状態にあるかを見極め、操作対象と操作内容を決定する
+- **tt コマンドの責務**: 決定された操作を確実に実行する。`_category.yaml` の整合性、知識ファイルの `source_event_ids`・`last_updated`・`category_path` の更新をアトミックに行う
 
 **tt コマンドの追加 (R8)**:
 
 以下の `tt agent knowledge` サブコマンドを新設する:
 
 ```bash
-# カテゴリ一覧と統計情報の表示
+# 新規カテゴリの作成 + 知識ファイルの追加
+tt agent knowledge add \
+  --category-path <category/subcategory> \
+  --title <knowledge-title> \
+  --description <category-description> \
+  --content-file <path> \
+  --source-events <event-id1>,<event-id2>,...
+# category-path のディレクトリが存在しなければ作成、_category.yaml も生成
+
+# 既存カテゴリへの知識ファイル追加
+tt agent knowledge append \
+  --category-path <category/subcategory> \
+  --title <knowledge-title> \
+  --content-file <path> \
+  --source-events <event-id>
+
+# カテゴリツリーの一覧と統計情報の表示
 tt agent knowledge list
-# 出力例: category_id, title, item_count, file_size, last_updated
+# 出力例: category_path, title, file_count, total_size, last_updated (ツリー形式)
 
-# カテゴリファイルの分割
-tt agent knowledge split <category-id> \
-  --into <new-category-1> <new-category-2> \
+# カテゴリのサブカテゴリへの分割
+tt agent knowledge split <category-path> \
+  --into <new-subcategory-1> <new-subcategory-2> \
   --plan <plan-file.json>
-# plan-file.json: LLMが作成した分割計画 (どの項目をどちらに振り分けるか)
+# plan-file.json: LLMが作成した分割計画 (どの知識ファイルをどちらに振り分けるか)
 
-# カテゴリファイルの統合
-tt agent knowledge merge <category-id-1> <category-id-2> \
-  --into <new-category-id> \
+# カテゴリの統合
+tt agent knowledge merge <category-path-1> <category-path-2> \
+  --into <new-category-path> \
   --plan <plan-file.json>
 # plan-file.json: LLMが作成した統合計画 (統合後の構造)
 
 # カテゴリの名前変更
-tt agent knowledge rename <old-category-id> <new-category-id> \
+tt agent knowledge rename <old-category-path> <new-category-path> \
   --title <new-title>
 
-# 知識項目の移動
+# 知識ファイルの移動
 tt agent knowledge move \
-  --from <source-category-id> \
-  --to <target-category-id> \
-  --items <item-identifiers>
+  --from <source-category-path>/<knowledge-file> \
+  --to <target-category-path>
 ```
 
 tt コマンドは以下を保証する:
-- frontmatter の `category_id` の一貫性
+- `_category.yaml` の整合性維持 (作成・更新・削除)
+- 知識ファイル frontmatter の `category_path` の一貫性
 - `source_event_ids` の保持 (分割時は元のイベントIDを両方に引き継ぐ)
 - `last_updated` の更新
 - 対応する capability ファイル (`prompts/memory/branches/<branch-package-id>/skills/` 配下) の連動更新
@@ -369,19 +411,27 @@ record-far-knowledge スキルに従って遠方知識を記録する。
 
 ```text
 prompts/memory/
-  knowledge/                              # 新規: カテゴリ別遠方知識 (Git管理)
-    error-handling.md
-    test-patterns.md
-    api-design.md
-    ...
+  knowledge/                              # 新規: 階層化された遠方知識 (Git管理)
+    error-handling/                        # カテゴリ = ディレクトリ
+      _category.yaml                      # カテゴリメタデータ
+      api-error-responses.md              # 知識ファイル (リーフ)
+      validation-errors.md
+    testing/
+      _category.yaml
+      naming-conventions.md
+    observability/                         # 階層化の例
+      _category.yaml
+      logging/                            # サブカテゴリ
+        _category.yaml
+        structured-logging.md
 
   branches/
     BR-fix-memory-compiling-4a67ef5a/
       manifest.yaml                       # 既存
-      knowledge/                          # 既存 (Knowledge Atom)
+      knowledge/                          # 既存 (Knowledge Atom -- 廃止予定)
       skills/                             # 新規: 遠方知識から生成されたスキル
         __far-knowledge-error-handling.md  # capability スキーマ準拠
-        __far-knowledge-test-patterns.md
+        __far-knowledge-testing.md
         ...
 
 prompts/manifest/code_content/capabilities/
@@ -590,50 +640,233 @@ scripts/code/
 
 ## 検証シナリオ (Verification Scenarios)
 
-### シナリオ 1: 遠方知識の notify (フラグ追加)
+## 検証シナリオ (Verification Scenarios)
+
+### 単体テスト (tt コマンドレベル)
+
+#### シナリオ U1: tt agent record のフラグ追加
 
 1. `--design-pattern` フラグを付けて `tt agent record` を実行する
 2. exit code が 0 であることを確認
 3. 保存された JSON の `flags` に `design_pattern: true` が含まれることを確認
 4. `--convention`, `--lesson-learned`, `--preference` でも同様に確認
 
-### シナリオ 2: 体系化の実行 (新規カテゴリ)
+#### シナリオ U2: tt agent intake processed
 
-1. pending に遠方知識の intake event を 2 件以上保存する (例: エラーハンドリング関連)
-2. `prompts/memory/knowledge/` が空であることを確認
-3. `systematize-far-knowledge` ワークフローを実行する
-4. `prompts/memory/knowledge/error-handling.md` (例) が作成されることを確認
-5. ファイル内に frontmatter (category_id, title, description, source_event_ids) が含まれることを確認
-6. pending events が processed に移動していることを確認
-7. 空の日付ディレクトリが削除されていることを確認
+1. pending に intake event を1件保存する
+2. `tt agent intake processed <event-id>` を実行する
+3. 当該 event が processed に移動していることを確認
+4. pending から消えていることを確認
 
-### シナリオ 3: 体系化の実行 (既存カテゴリへの追記)
+#### シナリオ U3: tt agent knowledge list
 
-1. シナリオ 2 の後、同じカテゴリに該当する新しい intake event を追加
-2. `systematize-far-knowledge` ワークフローを実行する
-3. 既存の `error-handling.md` に新しい知識が追記されることを確認
-4. frontmatter の `source_event_ids` に新しい event_id が追加されることを確認
+1. `prompts/memory/knowledge/` にカテゴリファイル 2件を配置する
+2. `tt agent knowledge list` を実行する
+3. 出力にカテゴリ一覧 (category_id, title, item_count) が含まれることを確認
 
-### シナリオ 4: スキル化とデプロイ
+#### シナリオ U4: tt agent knowledge split/merge/rename/move
 
-1. シナリオ 2 の後、体系化が完了した状態から開始
-2. `prompts/memory/branches/<branch-package-id>/skills/__far-knowledge-error-handling.md` が作成されることを確認
-3. capability スキーマ (apiVersion, kind, id, title, description, body) に準拠していることを確認
-4. `./scripts/code/prompt/update.sh` を実行する
-5. `.agents/skills/` に対応するスキルがデプロイされることを確認
-6. デプロイされたスキルの `name` と `description` が検索可能な形式であることを確認
+各操作について、入力ファイルと plan-file.json を与え、出力ファイルが正しく生成されることを確認する。
+frontmatter (category_id, source_event_ids, last_updated) の整合性を検証する。
 
-### シナリオ 5: record-far-knowledge capability の動作
+### E2E シナリオテスト (決め打ちシナリオ)
 
-1. Coding Agent が実装作業中に遠方知識を発見する
-2. `record-far-knowledge` capability に従って notify.sh を実行する
-3. 新しいフラグ (`--design-pattern` 等) が正しく使用されることを確認
+Coding Agent の挙動をシミュレートした決め打ちシナリオで、全フローを検証する。
+
+**テストワークスペース**: `./tmp/e2e-far-knowledge/`
+
+#### Phase 0: クリーン環境のセットアップ
+
+```bash
+# クリーンなワークスペースを作成
+rm -rf ./tmp/e2e-far-knowledge
+mkdir -p ./tmp/e2e-far-knowledge
+cd ./tmp/e2e-far-knowledge
+
+# scaffold でプロジェクトを初期化
+tt scaffold go-axsh-standard
+
+# git init + initial commit
+git init
+git add -A
+git commit -m 'initial scaffold'
+```
+
+**検証**:
+- `tt scaffold go-axsh-standard` が exit code 0 で成功すること
+- `prompts/manifest/` が存在すること
+- `scripts/code/agent/record.sh` が存在すること
+
+#### Phase 1: Coding Agent 向けワークフローのデプロイ
+
+```bash
+tt prompt update
+```
+
+**検証**:
+- 各 Coding Agent ディレクトリに設定がデプロイされること:
+  - `.agents/workflows/execute-implementation-plan.md` が存在すること
+  - `.agents/workflows/systematize-far-knowledge.md` が存在すること
+  - `.cursor/workflows/execute-implementation-plan.md` が存在すること (Cursor向け)
+- `record-far-knowledge` スキルがデプロイされること
+- `pre-push-knowledge-check` スキルがデプロイされること
+
+#### Phase 2: execute-implementation-plan で遠方知識を記録 (Coding Agent シミュレーション)
+
+Coding Agent が実装作業中に遠方知識を発見し、record.sh で記録するフローをシミュレートする。
+
+```bash
+# 記録1: エラーハンドリングに関する設計パターン
+./scripts/code/agent/record.sh \
+  --agent antigravity \
+  --summary 'error handling pattern in API handlers' \
+  --note 'APIハンドラーではpkg/apierrorの型を使う。内部エラーはログに出し、クライアントには汎用メッセージを返す。' \
+  --design-pattern
+
+# 記録2: テスト命名規約
+./scripts/code/agent/record.sh \
+  --agent antigravity \
+  --summary 'test naming convention' \
+  --note 'テスト名はTest{Func}_{Scenario}_{Expected}の形式にする。テーブル駆動テストを推奨。' \
+  --convention
+
+# 記録3: 別のエラーハンドリング知識 (同カテゴリへの追記を後でテスト)
+./scripts/code/agent/record.sh \
+  --agent antigravity \
+  --summary 'validation error response format' \
+  --note 'バリデーションエラーはフィールド単位で返す。errorsオブジェクトにfield_nameをキーにしてエラーメッセージを格納。' \
+  --design-pattern
+
+# 記録4: ログ設計 (後の再整理テスト用)
+./scripts/code/agent/record.sh \
+  --agent antigravity \
+  --summary 'structured logging convention' \
+  --note 'ログはslog.Withで構造化する。リクエストIDは必ず含める。エラーログにはスタックトレースを付与。' \
+  --convention
+```
+
+**検証**:
+- 4回の record が全て exit code 0 で成功すること
+- `prompts/memory/var/intake/pending/` に 4件の intake event が保存されていること
+- 各 event の JSON に適切な flags が含まれていること
+
+#### Phase 3: systematize-far-knowledge ワークフロー (新規カテゴリ作成)
+
+Coding Agent が `/systematize-far-knowledge` を実行したと仮定する。ここでは tt コマンドを直接使ってフローをシミュレートする。
+
+```bash
+# Step 1: pending events を確認
+./scripts/code/agent/intake.sh list --status pending
+# -> 4件のイベントが表示されること
+
+# Step 2: カテゴリが空であることを確認
+./scripts/code/agent/knowledge.sh list
+# -> 0件 (またはディレクトリが存在しない)
+
+# Step 3-5: 新規カテゴリの作成 (ttコマンドで実行)
+# Coding Agent が LLM で判断した結果を、tt コマンドで実行する
+./scripts/code/agent/knowledge.sh add \
+  --category-id error-handling \
+  --title 'エラーハンドリングパターン' \
+  --description 'Go APIハンドラーにおけるエラーレスポンスの設計パターン' \
+  --content-file /tmp/e2e-error-handling-content.md \
+  --source-events E-xxx1,E-xxx3
+
+./scripts/code/agent/knowledge.sh add \
+  --category-id test-conventions \
+  --title 'テスト命名規約' \
+  --description 'テスト設計、テスト観点、テスト命名規約' \
+  --content-file /tmp/e2e-test-conventions-content.md \
+  --source-events E-xxx2
+
+./scripts/code/agent/knowledge.sh add \
+  --category-id logging \
+  --title 'ログ設計規約' \
+  --description '構造化ログの設計パターンとログレベル使い分け' \
+  --content-file /tmp/e2e-logging-content.md \
+  --source-events E-xxx4
+
+# Step 7: processed に移行
+./scripts/code/agent/intake.sh processed E-xxx1
+./scripts/code/agent/intake.sh processed E-xxx2
+./scripts/code/agent/intake.sh processed E-xxx3
+./scripts/code/agent/intake.sh processed E-xxx4
+```
+
+**検証**:
+- `prompts/memory/knowledge/` に 3件のカテゴリファイルが作成されること
+- 各ファイルに正しい frontmatter が含まれること
+- pending events が 0件になること
+- processed に 4件移動していること
+- 空の日付ディレクトリが削除されていること
+
+#### Phase 4: 既存カテゴリへの追記
+
+```bash
+# 追加の record を行う (Phase 2と同様)
+./scripts/code/agent/record.sh \
+  --agent antigravity \
+  --summary 'nil check in error handler' \
+  --note 'authハンドラーでnilチェック漏れの指摘。error handlerでは必ずnilチェックを先に行う。' \
+  --lesson-learned
+
+# 既存カテゴリに追記
+./scripts/code/agent/knowledge.sh append \
+  --category-id error-handling \
+  --content-file /tmp/e2e-error-handling-append.md \
+  --source-events E-xxx5
+
+./scripts/code/agent/intake.sh processed E-xxx5
+```
+
+**検証**:
+- `error-handling.md` に追記されていること
+- frontmatter の `source_event_ids` に E-xxx5 が追加されていること
+- `last_updated` が更新されていること
+
+#### Phase 5: 再整理 (カテゴリ統合)
+
+エラーハンドリングとログ設計が「可観測性」という上位概念にまとまるケースをシミュレートする。
+
+```bash
+# merge: error-handling + logging -> observability
+./scripts/code/agent/knowledge.sh merge \
+  error-handling logging \
+  --into observability \
+  --title '可観測性パターン' \
+  --plan-file /tmp/e2e-merge-plan.json
+```
+
+**検証**:
+- `error-handling.md` と `logging.md` が削除されていること
+- `observability.md` が作成されていること
+- frontmatter の `source_event_ids` に両方の元イベントIDが含まれること
+- `knowledge.sh list` で 2件 (observability, test-conventions) が表示されること
+
+#### Phase 6: スキル化とデプロイ
+
+```bash
+# Step 8-9: スキル化 (tt コマンドで capability ファイルを生成)
+# Coding Agent が LLM で capability スキーマに変換した結果を配置
+# -> prompts/memory/branches/<branch-package-id>/skills/__far-knowledge-observability.md
+# -> prompts/memory/branches/<branch-package-id>/skills/__far-knowledge-test-conventions.md
+
+# Step 10: デプロイ
+./scripts/code/prompt/update.sh
+```
+
+**検証**:
+- `.agents/skills/` に `__far-knowledge-observability` スキルがデプロイされること
+- `.agents/skills/` に `__far-knowledge-test-conventions` スキルがデプロイされること
+- 各スキルファイル内に正しい `name`, `description` が含まれること (自動召喚用)
+- `user_visible: false` が設定されていること
+- `.cursor/skills/` にも同等のスキルがデプロイされること (Cursor向け)
 
 ---
 
 ## テスト項目 (Testing for the Requirements)
 
-### Goコード変更分 (フラグ追加)
+### Go コード変更分
 
 #### ビルド + 単体テスト
 
@@ -641,10 +874,30 @@ scripts/code/
 scripts/process/build.sh --skip-frontend --skip-etc
 ```
 
-#### 統合テスト (notify フラグ追加)
+#### 統合テスト (record コマンド)
 
 ```bash
-scripts/process/integration_test.sh --categories "common" --specify "AgentNotify"
+# 旧 AgentNotify テストケースを AgentRecord に改名
+scripts/process/integration_test.sh --categories "common" --specify "AgentRecord"
+```
+
+#### 統合テスト (knowledge コマンド)
+
+```bash
+scripts/process/integration_test.sh --categories "common" --specify "AgentKnowledge"
+```
+
+#### 統合テスト (intake processed コマンド)
+
+```bash
+scripts/process/integration_test.sh --categories "common" --specify "AgentIntakeProcessed"
+```
+
+### E2E テスト
+
+```bash
+# E2E シナリオテスト (Phase 0-6 を自動化したスクリプト)
+scripts/process/integration_test.sh --categories "common" --specify "FarKnowledgeE2E"
 ```
 
 ### プロンプト/ワークフロー変更分
@@ -662,9 +915,10 @@ scripts/process/integration_test.sh --categories "common" --specify "AgentNotify
 以下のパスにファイルが正しくデプロイされることを手動確認:
 - `.agents/skills/` 配下に `__far-knowledge-*` 系スキルが配置されること (branches/*/skills/ から集約・デプロイ)
 - `.agents/rules/` 配下のポリシーが更新されること
+- `.agents/workflows/systematize-far-knowledge.md` が存在すること
 
 > [!NOTE]
-> 体系化プロセス自体 (カテゴリ化、重複排除、スキル化) は Coding Agent の LLM 処理であるため、自動テストの対象外とする。ワークフローの記述が正しいこと、デプロイパイプラインが機能することを検証する。
+> 体系化プロセス自体 (カテゴリ化、重複排除、スキル化) は Coding Agent の LLM 処理であるため、自動テストの対象外とする。テストでは tt コマンドによるファイル操作 (add/append/split/merge/rename/move) と、デプロイパイプラインが機能することを検証する。
 
 ### ビルド・全体検証
 
