@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -120,19 +121,29 @@ func runAgentIntakeProcessed(cmd *cobra.Command, args []string) error {
 	varDir := filepath.Join("prompts", "memory", "var")
 	eventID := args[0]
 
-	if err := intake.MoveToProcessed(varDir, eventID); err != nil {
-		return fmt.Errorf("failed to move event to processed: %w", err)
+	moveErr := intake.MoveToProcessed(varDir, eventID)
+	if moveErr != nil {
+		if !errors.Is(moveErr, intake.ErrNotFoundInPending) {
+			return fmt.Errorf("failed to move event to processed: %w", moveErr)
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "[WARN] %v (attempting DB-only update)\n", moveErr)
 	}
 
 	// Update index.db status
 	dbPath := filepath.Join(varDir, "intake", "index.db")
 	idx, err := storage.NewIndex(dbPath)
 	if err != nil {
+		if moveErr != nil {
+			return fmt.Errorf("event %s: file not in pending and index unavailable: %w", eventID, err)
+		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "[WARN] Index update skipped: %v\n", err)
 	} else {
 		defer idx.Close()
-		if err := idx.UpdateStatus(eventID, "processed"); err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "[WARN] Index update failed: %v\n", err)
+		if updateErr := idx.UpdateStatus(eventID, "processed"); updateErr != nil {
+			if moveErr != nil {
+				return fmt.Errorf("event %s: file not in pending and index update failed: %w", eventID, updateErr)
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "[WARN] Index update failed: %v\n", updateErr)
 		}
 	}
 
