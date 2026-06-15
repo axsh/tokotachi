@@ -66,8 +66,10 @@ func (s *Store) Add(categoryPath, title, description, contentFile string, source
 	mdPath := filepath.Join(catDir, knowledgeID+".md")
 
 	meta := &KnowledgeFileMeta{
+		ID:             knowledgeID,
 		KnowledgeID:    knowledgeID,
 		Title:          title,
+		Status:         "current",
 		CategoryPath:   categoryPath,
 		CreatedAt:      now,
 		LastUpdated:    now,
@@ -99,8 +101,10 @@ func (s *Store) Append(categoryPath, title, contentFile string, sourceEvents []s
 	mdPath := filepath.Join(catDir, knowledgeID+".md")
 
 	meta := &KnowledgeFileMeta{
+		ID:             knowledgeID,
 		KnowledgeID:    knowledgeID,
 		Title:          title,
+		Status:         "current",
 		CategoryPath:   categoryPath,
 		CreatedAt:      now,
 		LastUpdated:    now,

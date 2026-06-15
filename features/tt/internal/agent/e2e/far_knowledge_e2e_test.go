@@ -39,6 +39,8 @@ func TestFarKnowledge_Phase0_KnowledgeAdd(t *testing.T) {
 	meta, body, err := knowledge.ReadFrontmatter(mdPath)
 	require.NoError(t, err)
 	assert.Equal(t, "api-error-responses", meta.KnowledgeID)
+	assert.Equal(t, "api-error-responses", meta.ID)
+	assert.Equal(t, "current", meta.Status)
 	assert.Contains(t, body, "apierror types")
 }
 

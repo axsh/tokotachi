@@ -38,6 +38,8 @@ func TestStore_Add(t *testing.T) {
 	meta, body, err := ReadFrontmatter(mdPath)
 	require.NoError(t, err)
 	assert.Equal(t, "api-error-responses", meta.KnowledgeID)
+	assert.Equal(t, "api-error-responses", meta.ID)
+	assert.Equal(t, "current", meta.Status)
 	assert.Equal(t, "error-handling", meta.CategoryPath)
 	assert.Contains(t, body, "apierror types")
 	assert.Equal(t, []string{"E-001"}, meta.SourceEventIDs)

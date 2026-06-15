@@ -13,8 +13,10 @@ type CategoryMeta struct {
 
 // KnowledgeFileMeta represents frontmatter of a knowledge .md file.
 type KnowledgeFileMeta struct {
+	ID             string    `yaml:"id"`
 	KnowledgeID    string    `yaml:"knowledge_id"`
 	Title          string    `yaml:"title"`
+	Status         string    `yaml:"status"`
 	CategoryPath   string    `yaml:"category_path"`
 	CreatedAt      time.Time `yaml:"created_at"`
 	LastUpdated    time.Time `yaml:"last_updated"`

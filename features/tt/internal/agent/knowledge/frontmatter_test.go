@@ -16,8 +16,10 @@ func TestReadWriteFrontmatter(t *testing.T) {
 
 	now := time.Now().UTC().Truncate(time.Second)
 	meta := &KnowledgeFileMeta{
+		ID:             "api-error-responses",
 		KnowledgeID:    "api-error-responses",
 		Title:          "API Error Responses",
+		Status:         "current",
 		CategoryPath:   "error-handling",
 		CreatedAt:      now,
 		LastUpdated:    now,
@@ -31,11 +33,39 @@ func TestReadWriteFrontmatter(t *testing.T) {
 	readMeta, readBody, err := ReadFrontmatter(path)
 	require.NoError(t, err)
 
+	assert.Equal(t, meta.ID, readMeta.ID)
 	assert.Equal(t, meta.KnowledgeID, readMeta.KnowledgeID)
 	assert.Equal(t, meta.Title, readMeta.Title)
+	assert.Equal(t, meta.Status, readMeta.Status)
 	assert.Equal(t, meta.CategoryPath, readMeta.CategoryPath)
 	assert.Equal(t, meta.SourceEventIDs, readMeta.SourceEventIDs)
 	assert.Contains(t, readBody, "apierror types")
+}
+
+func TestReadWriteFrontmatter_IDAndStatus(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.md")
+
+	now := time.Now().UTC().Truncate(time.Second)
+	meta := &KnowledgeFileMeta{
+		ID:             "test-knowledge",
+		KnowledgeID:    "test-knowledge",
+		Title:          "Test Knowledge",
+		Status:         "current",
+		CategoryPath:   "testing",
+		CreatedAt:      now,
+		LastUpdated:    now,
+		SourceEventIDs: []string{"E-001"},
+	}
+
+	require.NoError(t, WriteFrontmatter(path, meta, "# Test"))
+
+	// Verify raw file content contains id and status fields
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	content := string(data)
+	assert.Contains(t, content, "id: test-knowledge")
+	assert.Contains(t, content, "status: current")
 }
 
 func TestReadFrontmatter_NoDelimiter(t *testing.T) {
