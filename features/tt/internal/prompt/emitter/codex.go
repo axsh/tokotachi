@@ -207,7 +207,23 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		skillIDs = append(skillIDs, proc.ID)
 	}
 
-	// 4. Update index file marker section (if configured)
+	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
+	branchSkills, err := ScanBranchSkills(c.RootDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan branch skills: %w", err)
+	}
+	branchEmitted, err := EmitBranchSkills(branchSkills, skillsDir, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit branch skills: %w", err)
+	}
+	for k, v := range branchEmitted {
+		emittedFiles[k] = v
+	}
+	for _, bs := range branchSkills {
+		skillIDs = append(skillIDs, bs.ID)
+	}
+
+	// 5. Update index file marker section (if configured)
 	indexFile := c.resolveIndexFile(resolved)
 	if indexFile != "" {
 		markerContent := c.generateMarkerContent(emittedPolicies, skillIDs)
@@ -229,7 +245,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		}
 	}
 
-	// 5. Return EmitResult for coordinated orphan cleanup in deploy pipeline
+	// 6. Return EmitResult for coordinated orphan cleanup in deploy pipeline
 	return &EmitResult{
 		EmittedFiles: emittedFiles,
 		TargetDirs:   []string{rulesDir, skillsDir},

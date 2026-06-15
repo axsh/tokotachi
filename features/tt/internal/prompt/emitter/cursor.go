@@ -230,7 +230,20 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
 
-	// 4. Return EmitResult for coordinated orphan cleanup in deploy pipeline
+	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
+	branchSkills, err := ScanBranchSkills(c.RootDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan branch skills: %w", err)
+	}
+	branchEmitted, err := EmitBranchSkills(branchSkills, skillsDir, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit branch skills: %w", err)
+	}
+	for k, v := range branchEmitted {
+		emittedFiles[k] = v
+	}
+
+	// 5. Return EmitResult for coordinated orphan cleanup in deploy pipeline
 	return &EmitResult{
 		EmittedFiles: emittedFiles,
 		TargetDirs:   []string{rulesDir, skillsDir},
