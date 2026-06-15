@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "agent-notify-result.schema.json",
-  "title": "Agent Notify Result",
-  "description": "Result schema for tt agent notify command",
+  "$id": "agent-record-result.schema.json",
+  "title": "Agent Record Result",
+  "description": "Result schema for tt agent record command",
   "type": "object",
   "required": ["status", "code"],
   "properties": {

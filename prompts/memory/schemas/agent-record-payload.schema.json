@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "agent-notify-payload.schema.json",
-  "title": "Agent Notify Payload",
-  "description": "Input payload schema for tt agent notify command",
+  "$id": "agent-record-payload.schema.json",
+  "title": "Agent Record Payload",
+  "description": "Input payload schema for tt agent record command",
   "type": "object",
   "required": ["version", "source_type", "agent", "task_summary", "raw_notes"],
   "properties": {
@@ -46,7 +46,11 @@
         "memory_related": { "type": "boolean" },
         "prompt_related": { "type": "boolean" },
         "agent_behavior_related": { "type": "boolean" },
-        "requires_immediate_action": { "type": "boolean" }
+        "requires_immediate_action": { "type": "boolean" },
+        "design_pattern": { "type": "boolean" },
+        "convention": { "type": "boolean" },
+        "lesson_learned": { "type": "boolean" },
+        "preference": { "type": "boolean" }
       },
       "additionalProperties": false
     },
