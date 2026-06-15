@@ -26,6 +26,7 @@ status: draft
 1. Antigravity IDE で procedure が skills と workflows の両方に表示され、候補が重複する
 2. 3ツール間で出力構造が統一されていない
 3. `capabilities` フラグ (`workflows: true/false`) がコードで参照されていない
+4. `capabilities` フラグが出力ディレクトリベース (rules/skills/workflows) になっており、ソースエンティティの種別 (policy/capability/procedure) と不整合
 
 ## 要件 (Requirements)
 
@@ -61,9 +62,48 @@ status: draft
    - limits.go の `Workflows` フィールドは残してよい (後方互換)
    - ただし Antigravity emitter では procedure に skills の limit を適用する
 
-9. **target YAML (`antigravity.yaml`) の更新**
-   - `capabilities.workflows: true` -> `false` に変更
-   - `paths.workflows` を削除
+9. **target YAML の `capabilities` を `includes` に改名し、エンティティ種別ベースに変更する**
+   - `capabilities` キーを `includes` に改名
+   - フラグをソースエンティティ種別に変更: `policy`, `capability`, `procedure`
+   - `subagents` は `subagent` に改名 (エンティティ名に統一)
+   - compiler または emitter がこのフラグを読み取り、`false` のエンティティをスキップする
+   - 全 target YAML を更新:
+     ```yaml
+     # antigravity.yaml (変更後)
+     includes:
+       policy: true
+       capability: true
+       procedure: true
+       subagent: false
+
+     # codex.yaml (変更後)
+     includes:
+       policy: true
+       capability: true
+       procedure: true
+       subagent: false
+
+     # claude-code.yaml (変更後)
+     includes:
+       policy: true
+       capability: true
+       procedure: true
+       subagent: false
+
+     # cursor.yaml (変更後)
+     includes:
+       policy: true
+       capability: true
+       procedure: true
+       subagent: false
+     ```
+   - `paths.workflows` を全 target から削除 (該当があれば)
+
+10. **emitter が `includes` フラグを参照してエンティティをフィルタリングする**
+    - `includes.policy: false` なら policy エンティティをスキップ
+    - `includes.capability: false` なら capability エンティティをスキップ
+    - `includes.procedure: false` なら procedure エンティティをスキップ
+    - フラグが未定義の場合はデフォルト `true` (後方互換)
 
 ### 任意要件
 
@@ -98,17 +138,32 @@ status: draft
 #### 設定ファイル
 
 5. **`prompts/manifest/targets/antigravity.yaml`**
-   - `capabilities.workflows: false` に変更
+   - `capabilities` -> `includes` に改名、エンティティ種別ベースに変更
    - `paths.workflows` 行を削除
+
+6. **`prompts/manifest/targets/codex.yaml`**
+   - `capabilities` -> `includes` に改名、エンティティ種別ベースに変更
+
+7. **`prompts/manifest/targets/claude-code.yaml`**
+   - `capabilities` -> `includes` に改名、エンティティ種別ベースに変更
+
+8. **`prompts/manifest/targets/cursor.yaml`**
+   - `capabilities` -> `includes` に改名、エンティティ種別ベースに変更
+
+#### emitter フィルタリング
+
+9. **`features/tt/internal/prompt/emitter/antigravity.go`** (追加変更)
+   - `Emit()` 冒頭で `includes` フラグを読み取り、各エンティティループの前にスキップ判定を追加
+
+10. **`features/tt/internal/prompt/emitter/codex.go`** (追加変更)
+    - 同様に `includes` フラグによるフィルタリングを追加
 
 ### 変更しないもの
 
-- Codex emitter (`codex.go`) -- 既に skills のみ出力、変更不要
-- Claude Code emitter -- 変更不要
-- Cursor emitter -- 変更不要
+- Claude Code emitter -- Codex emitter を共有しているため、codex.go の変更で対応
+- Cursor emitter -- Claude Code と同じ構造のため同様
 - capability / procedure のソースマニフェスト構造 -- 維持
 - `limits.go` の `Workflows` フィールド -- 後方互換のため残す
-- Codex emitter のテスト (`codex_test.go`) -- 変更不要
 
 ## 検証シナリオ (Verification Scenarios)
 
@@ -118,6 +173,7 @@ status: draft
 4. SKILL.md の frontmatter に `name`, `description`, `disable-model-invocation` が含まれることを確認する
 5. `{{procedure:create-specification}}` テンプレート変数が `.agents/skills/create-specification/SKILL.md` に解決されることを確認する
 6. Antigravity IDE でワークフロー候補の重複が解消されることを確認する
+7. target YAML で `includes.procedure: false` を設定した場合、procedure が出力されないことを確認する
 
 ## テスト項目 (Testing for the Requirements)
 
