@@ -14,7 +14,6 @@ paths:
   - ".agents/**"
   - "prompts/manifest/**"
 references:
-  - "prompts/memory/index.md"
   - "prompts/manifest/code_content/capabilities/record-far-knowledge.md"
 scripts:
   - "scripts/code/agent/record.sh"
