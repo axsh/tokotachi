@@ -6,7 +6,7 @@
 
 [000-Agentic-Memory-Intake](./000-Agentic-Memory-Intake.md) および [003-Agentic-Memory-Assist-MVP](./003-Agentic-Memory-Assist-MVP.md) により、以下の仕組みが稼働している:
 
-1. `tt agent notify` で raw event を `prompts/memory/var/intake/pending/` に deferred 保存する (Phase 1: Intake)
+1. `tt agent notify` (本仕様で `tt agent record` に改名) で raw event を `prompts/memory/var/intake/pending/` に deferred 保存する (Phase 1: Intake)
 2. `tt agent assist` / `tt agent task` が Agent Task を生成し、Coding Agent が Knowledge Atom に蒸留する (Phase 2: Distill)
 
 しかし、以下の問題がある:
@@ -426,12 +426,35 @@ prompts/manifest/code_content/capabilities/
 
 ## 実現方針 (Implementation Approach)
 
+### tt サブコマンドの改名・整理
+
+`tt agent` 配下のサブコマンド名称を、実際の役割に合わせて整理する:
+
+| 現行コマンド | 新コマンド | 変更種別 | 理由 |
+|:---|:---|:---|:---|
+| `tt agent notify` | `tt agent record` | **改名** | 「通知」ではなく「記録」が正確な役割 |
+| `tt agent assist` | -- | **廃止** | Agent Task パイプラインの廃止 |
+| `tt agent task show` | -- | **廃止** | Agent Task パイプラインの廃止 |
+| `tt agent task submit` | -- | **廃止** | `tt agent intake processed` で代替 |
+| `tt agent intake list` | `tt agent intake list` | 維持 | 変更なし |
+| `tt agent intake show` | `tt agent intake show` | 維持 | 変更なし |
+| -- | `tt agent intake processed` | **新設** | pending -> processed 移行 |
+| `tt agent status` | `tt agent status` | 維持 | 変更なし |
+| -- | `tt agent knowledge list` | **新設** | カテゴリ一覧表示 (R8) |
+| -- | `tt agent knowledge split` | **新設** | カテゴリ分割 (R8) |
+| -- | `tt agent knowledge merge` | **新設** | カテゴリ統合 (R8) |
+| -- | `tt agent knowledge rename` | **新設** | カテゴリ名変更 (R8) |
+| -- | `tt agent knowledge move` | **新設** | 知識項目の移動 (R8) |
+
+> [!IMPORTANT]
+> `tt agent notify` -> `tt agent record` の改名は破壊的変更。既存のワークフロー・capability 内のコマンド参照を全て更新する必要がある。Wrapper スクリプト (`record.sh`) がこの差分を吸収するため、ワークフロー側は `scripts/code/agent/record.sh` を呼び出す形に統一する。
+
 ### Go コードの変更
 
 以下の4つの領域で Go コードの変更が必要:
 
-1. **`tt agent notify` のフラグ追加**: `--design-pattern`, `--convention`, `--lesson-learned`, `--preference` フラグを追加。`flags` オブジェクト内の新しいフィールドとして追加する
-2. **`tt agent intake processed` サブコマンドの新設**: 指定した event-id の intake event を pending -> processed に移行する。`tt agent task submit` の代替
+1. **`tt agent notify` -> `tt agent record` の改名 + フラグ追加**: コマンド名を `record` に改名し、`--design-pattern`, `--convention`, `--lesson-learned`, `--preference` フラグを追加する
+2. **`tt agent intake processed` サブコマンドの新設**: 指定した event-id の intake event を pending -> processed に移行する
 3. **`tt agent knowledge` サブコマンドの新設**: カテゴリファイルの操作 (list/split/merge/rename/move) を提供するサブコマンド群を新規実装する (R8)
 4. **`tt prompt update` の拡張**: `prompts/memory/branches/*/skills/` を追加の compile 入力ソースとして扱うように拡張する (R9)
 
@@ -441,11 +464,15 @@ prompts/manifest/code_content/capabilities/
 
 | ファイル | 変更内容 |
 |:---|:---|
-| `features/tt/cmd/agent_notify.go` | 新規フラグ (`--design-pattern` 等) の CLI 定義追加 |
-| `features/tt/internal/agent/notify/handler.go` | フラグを `flags` オブジェクトに反映するロジック追加 |
-| `prompts/memory/schemas/agent-notify-payload.schema.json` | `flags` に新規フィールド追加 |
+| `features/tt/cmd/agent_notify.go` | `agent_record.go` に改名。コマンド名を `record` に変更、新規フラグ追加 |
+| `features/tt/internal/agent/notify/` | `features/tt/internal/agent/record/` に改名。内部パッケージ名も変更 |
+| `prompts/memory/schemas/agent-notify-payload.schema.json` | `agent-record-payload.schema.json` に改名。`flags` に新規フィールド追加 |
 | `features/tt/cmd/agent_intake.go` | `processed` サブコマンドの追加 |
 | `features/tt/internal/agent/intake/` | pending -> processed 移行ロジック (既存 storage を流用) |
+| `features/tt/cmd/agent_assist.go` | **[DELETE]** `tt agent assist` の廃止 |
+| `features/tt/internal/agent/assist/` | **[DELETE]** assist ハンドラーの廃止 |
+| `features/tt/cmd/agent_task.go` | **[DELETE]** `tt agent task` の廃止 |
+| `features/tt/internal/agent/task/` | **[DELETE]** task ハンドラーの廃止 |
 | `features/tt/cmd/agent_knowledge.go` | **[NEW]** `tt agent knowledge` サブコマンドグループ (R8) |
 | `features/tt/internal/agent/knowledge/` | **[NEW]** カテゴリ操作ロジック (list/split/merge/rename/move) (R8) |
 | `features/tt/internal/prompt/emitter/` | `prompts/memory/branches/*/skills/` からの集約 compile ロジック追加 (R9) |
@@ -535,7 +562,7 @@ scripts/code/
 
 ### シナリオ 1: 遠方知識の notify (フラグ追加)
 
-1. `--design-pattern` フラグを付けて `tt agent notify` を実行する
+1. `--design-pattern` フラグを付けて `tt agent record` を実行する
 2. exit code が 0 であることを確認
 3. 保存された JSON の `flags` に `design_pattern: true` が含まれることを確認
 4. `--convention`, `--lesson-learned`, `--preference` でも同様に確認
