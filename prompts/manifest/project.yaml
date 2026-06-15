@@ -4,7 +4,7 @@ project_id: vv5
 sources:
   policies: prompts/manifest/code_content/policies/**/*.md
   procedures: prompts/manifest/code_content/procedures/**/*.md
-  capabilities: prompts/manifest/code_content/capabilities/**/skill.md
+  capabilities: prompts/manifest/code_content/capabilities/**/*.md
   refs: prompts/manifest/code_content/refs/**/*.md
   guards: prompts/manifest/safety/guards/**/*.yaml
   workers: prompts/manifest/safety/workers/**/*.yaml
