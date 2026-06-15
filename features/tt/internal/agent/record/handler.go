@@ -1,4 +1,4 @@
-package notify
+package record
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package notify
+package record
 
 import (
 	"bytes"
@@ -17,9 +17,9 @@ type Validator struct {
 
 // NewValidator creates a new Validator.
 // schemasDir is the absolute or relative path to the directory containing
-// agent-notify-payload.schema.json.
+// agent-record-payload.schema.json.
 func NewValidator(schemasDir string) (*Validator, error) {
-	schemaPath := filepath.Join(schemasDir, "agent-notify-payload.schema.json")
+	schemaPath := filepath.Join(schemasDir, "agent-record-payload.schema.json")
 
 	data, err := os.ReadFile(schemaPath)
 	if err != nil {
@@ -31,11 +31,11 @@ func NewValidator(schemasDir string) (*Validator, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal schema: %w", err)
 	}
-	if err := c.AddResource("agent-notify-payload.schema.json", doc); err != nil {
+	if err := c.AddResource("agent-record-payload.schema.json", doc); err != nil {
 		return nil, fmt.Errorf("failed to add schema resource: %w", err)
 	}
 
-	schema, err := c.Compile("agent-notify-payload.schema.json")
+	schema, err := c.Compile("agent-record-payload.schema.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile schema: %w", err)
 	}
