@@ -258,7 +258,7 @@ tt コマンドは以下を保証する:
 - frontmatter の `category_id` の一貫性
 - `source_event_ids` の保持 (分割時は元のイベントIDを両方に引き継ぐ)
 - `last_updated` の更新
-- 対応する capability ファイル (`far-knowledge/` 配下) の連動更新
+- 対応する capability ファイル (`prompts/memory/branches/<branch-package-id>/skills/` 配下) の連動更新
 - 操作ログの記録 (`var/logs/knowledge-ops.ndjson`)
 
 **再整理の判断基準 (LLM向けガイドライン)**:
@@ -286,7 +286,7 @@ Coding Agent は以下の基準でどの操作が必要かを判断する:
 ---
 apiVersion: agent.meta/v1
 kind: capability
-id: far-knowledge-error-handling
+id: __far-knowledge-error-handling
 title: "エラーハンドリングパターン"
 description: >-
   Go APIハンドラーにおけるエラーレスポンスの設計パターン。
@@ -299,14 +299,30 @@ body: |
   1. エラーは必ず pkg/apierror の型を使って返す
   ...
 manual_only: false
-user_visible: true
+user_visible: false
 ---
 ```
 
-**配置先**: `prompts/manifest/code_content/capabilities/far-knowledge/`
+**スキル命名規約**:
 
-このディレクトリ配下に、カテゴリ別の capability ファイル (`skill.md` 形式) を配置する。
-`prompts/manifest/project.yaml` の `sources.capabilities` で既に `capabilities/**/skill.md` をglobしているため、サブディレクトリ `far-knowledge/` 配下に `skill.md` として配置すれば自動的にcompile対象になる。
+- id には `__` (アンダーバー2個) をプレフィックスとして付与する (例: `__far-knowledge-error-handling`)
+- これによりユーザーが手動でスキルを召喚しにくくなり、Coding Agent による自動召喚を前提とする
+- `user_visible: false` を設定し、ユーザー向けのスキル一覧には表示されないようにする
+
+**配置先**: `prompts/memory/branches/<branch-package-id>/skills/`
+
+ユーザーが手動管理するスキル (`prompts/manifest/code_content/capabilities/`) とは**完全に分離**する。遠方知識から生成されたスキルは `prompts/memory/branches/` 配下にブランチごとに配置する:
+
+```text
+prompts/memory/branches/
+  BR-fix-memory-compiling-4a67ef5a/
+    manifest.yaml                         # 既存
+    knowledge/                            # 既存 (Knowledge Atom)
+    skills/                               # 新規: 遠方知識スキル
+      __far-knowledge-error-handling.md
+      __far-knowledge-test-patterns.md
+      ...
+```
 
 **スキル分割の判断基準**:
 
@@ -322,7 +338,10 @@ user_visible: true
 ./scripts/code/prompt/update.sh
 ```
 
-これにより `tt prompt update` が実行され、capability がcompileされて各ターゲット (`.agents/skills/`, `.cursor/skills/` 等) にデプロイされる。
+`tt prompt update` を実行する。tt は `prompts/memory/branches/*/skills/` 配下のスキルファイルを集約し、通常の capability と同様に各ターゲット (`.agents/skills/`, `.cursor/skills/` 等) にデプロイする。
+
+> [!IMPORTANT]
+> この動作には `tt prompt update` の拡張 (R9) が必要。現行は `prompts/manifest/code_content/capabilities/` のみを compile 対象としているが、`prompts/memory/branches/*/skills/` も追加の入力ソースとして扱うようにする。
 
 #### R4: execute-implementation-plan ワークフローの Section 3.3 の改訂
 
@@ -356,13 +375,16 @@ prompts/memory/
     api-design.md
     ...
 
+  branches/
+    BR-fix-memory-compiling-4a67ef5a/
+      manifest.yaml                       # 既存
+      knowledge/                          # 既存 (Knowledge Atom)
+      skills/                             # 新規: 遠方知識から生成されたスキル
+        __far-knowledge-error-handling.md  # capability スキーマ準拠
+        __far-knowledge-test-patterns.md
+        ...
+
 prompts/manifest/code_content/capabilities/
-  far-knowledge/                          # 新規: 遠方知識から生成されたスキル
-    error-handling/
-      skill.md                            # capability スキーマ準拠
-    test-patterns/
-      skill.md
-    ...
   record-far-knowledge.md                 # 改名: record-architecture-knowledge -> record-far-knowledge
   pre-push-knowledge-check.md             # 改名: pre-push-architecture-check -> pre-push-knowledge-check
 ```
@@ -370,7 +392,7 @@ prompts/manifest/code_content/capabilities/
 | パス | Git管理 | 用途 |
 |:---|:---|:---|
 | `prompts/memory/knowledge/` | する | カテゴリ化された遠方知識 (スキルの元ネタ) |
-| `prompts/manifest/code_content/capabilities/far-knowledge/` | する | スキル化された遠方知識 |
+| `prompts/memory/branches/*/skills/` | する | 遠方知識から生成されたスキル (__プレフィックス付き) |
 | `prompts/memory/var/intake/pending/` | しない | 未処理の知識の種 (既存) |
 | `prompts/memory/var/intake/processed/` | しない | 処理済みの知識の種 (既存) |
 
@@ -406,10 +428,11 @@ prompts/manifest/code_content/capabilities/
 
 ### Go コードの変更
 
-以下の2つの領域で Go コードの変更が必要:
+以下の3つの領域で Go コードの変更が必要:
 
 1. **`tt agent notify` のフラグ追加**: `--design-pattern`, `--convention`, `--lesson-learned`, `--preference` フラグを追加。`flags` オブジェクト内の新しいフィールドとして追加する
 2. **`tt agent knowledge` サブコマンドの新設**: カテゴリファイルの操作 (list/split/merge/rename/move) を提供するサブコマンド群を新規実装する (R8)
+3. **`tt prompt update` の拡張**: `prompts/memory/branches/*/skills/` を追加の compile 入力ソースとして扱うように拡張する (R9)
 
 ### 変更対象のファイル一覧
 
@@ -420,8 +443,9 @@ prompts/manifest/code_content/capabilities/
 | `features/tt/cmd/agent_notify.go` | 新規フラグ (`--design-pattern` 等) の CLI 定義追加 |
 | `features/tt/internal/agent/notify/handler.go` | フラグを `flags` オブジェクトに反映するロジック追加 |
 | `prompts/memory/schemas/agent-notify-payload.schema.json` | `flags` に新規フィールド追加 |
-| `features/tt/cmd/agent_knowledge.go` | **[NEW]** `tt agent knowledge` サブコマンドグループ |
-| `features/tt/internal/agent/knowledge/` | **[NEW]** カテゴリ操作ロジック (list/split/merge/rename/move) |
+| `features/tt/cmd/agent_knowledge.go` | **[NEW]** `tt agent knowledge` サブコマンドグループ (R8) |
+| `features/tt/internal/agent/knowledge/` | **[NEW]** カテゴリ操作ロジック (list/split/merge/rename/move) (R8) |
+| `features/tt/internal/prompt/emitter/` | `prompts/memory/branches/*/skills/` からの集約 compile ロジック追加 (R9) |
 
 #### プロンプト/ワークフロー変更
 
@@ -437,7 +461,6 @@ prompts/manifest/code_content/capabilities/
 | ファイル | 用途 |
 |:---|:---|
 | `prompts/memory/knowledge/.gitkeep` | カテゴリ別遠方知識ディレクトリ (初期は空) |
-| `prompts/manifest/code_content/capabilities/far-knowledge/.gitkeep` | スキル配置先 (初期は空) |
 | `prompts/manifest/code_content/procedures/systematize-far-knowledge.md` | 体系化ワークフロー (新規) |
 
 ### 体系化プロセスの実行方式
@@ -452,7 +475,7 @@ prompts/manifest/code_content/capabilities/
 1. Coding Agent が `assist.sh` を実行して pending events を確認
 2. pending events があれば、Coding Agent が `prompts/memory/knowledge/` を読み込む
 3. Coding Agent が LLM の力でカテゴリ判定・体系化・スキル化を行う
-4. 結果を `prompts/memory/knowledge/` と `prompts/manifest/code_content/capabilities/far-knowledge/` に書き出す
+4. 結果を `prompts/memory/knowledge/` と `prompts/memory/branches/<branch-package-id>/skills/` に書き出す
 5. `tt agent task submit` で pending -> processed 移行
 6. `update.sh` でデプロイ
 
@@ -495,7 +518,7 @@ prompts/manifest/code_content/capabilities/
 ### シナリオ 4: スキル化とデプロイ
 
 1. シナリオ 2 の後、体系化が完了した状態から開始
-2. `prompts/manifest/code_content/capabilities/far-knowledge/error-handling/skill.md` が作成されることを確認
+2. `prompts/memory/branches/<branch-package-id>/skills/__far-knowledge-error-handling.md` が作成されることを確認
 3. capability スキーマ (apiVersion, kind, id, title, description, body) に準拠していることを確認
 4. `./scripts/code/prompt/update.sh` を実行する
 5. `.agents/skills/` に対応するスキルがデプロイされることを確認
@@ -538,7 +561,7 @@ scripts/process/integration_test.sh --categories "common" --specify "AgentNotify
 #### スキル配置の確認
 
 以下のパスにファイルが正しくデプロイされることを手動確認:
-- `.agents/skills/` 配下に far-knowledge 系スキルが配置されること
+- `.agents/skills/` 配下に `__far-knowledge-*` 系スキルが配置されること (branches/*/skills/ から集約・デプロイ)
 - `.agents/rules/` 配下のポリシーが更新されること
 
 > [!NOTE]
