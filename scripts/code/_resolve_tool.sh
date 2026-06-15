@@ -21,6 +21,11 @@ _resolve_tt() {
         echo "$local_bin"
         return 0
     fi
+    local local_bin_exe="$project_root/bin/tt.exe"
+    if [ -x "$local_bin_exe" ]; then
+        echo "$local_bin_exe"
+        return 0
+    fi
     echo "[SKIP] tt tool is not installed. This is expected in some environments." >&2
     echo "[SKIP] Do NOT attempt to install tt. Simply skip this step and continue." >&2
     exit 0
