@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../_resolve_tool.sh"
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: intake.sh <list|show> [OPTIONS]" >&2
+  echo "Usage: intake.sh <list|show|processed> [OPTIONS]" >&2
   exit 1
 fi
 
@@ -41,8 +41,16 @@ case "$SUBCMD" in
     EVENT_ID="$1"
     exec "$TOOL" agent intake show "$EVENT_ID"
     ;;
+  processed)
+    if [[ $# -lt 1 ]]; then
+      echo "Usage: intake.sh processed <event-id>" >&2
+      exit 1
+    fi
+    EVENT_ID="$1"
+    exec "$TOOL" agent intake processed "$EVENT_ID"
+    ;;
   *)
-    echo "[ERROR] Unknown subcommand: $SUBCMD. Use 'list' or 'show'." >&2
+    echo "[ERROR] Unknown subcommand: $SUBCMD. Use 'list', 'show', or 'processed'." >&2
     exit 1
     ;;
 esac
