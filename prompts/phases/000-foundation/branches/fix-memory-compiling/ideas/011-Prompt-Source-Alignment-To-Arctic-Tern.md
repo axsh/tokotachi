@@ -45,25 +45,21 @@
 - **基本方針**: arctic-tern 側をベースにそのまま使う
 - **保持するもの**:
   - tokotachi の frontmatter
-  - ワークフロー参照を `{{policy:xxx}}` 形式に変換 (例: `prompts/rules/coding-rules.md` → `{{policy:coding-rules}}`)
+  - ルール参照は `{{policy:xxx}}` テンプレート記法に統一 (例: `prompts/rules/coding-rules.md` → `{{policy:coding-rules}}`)
   - Git コミットメッセージのクォーティング注意 (L177-180) を追加
-  - テスト順序は arctic-tern 側の記述 (統合テスト → 単体テスト) をそのまま採用
+  - テスト順序は「単体テスト → 統合テスト」に修正 (arctic-tern 側の記述は誤記)
   - コミット実行例のシングルクォート使用
 
 ```diff
  --- tokotachi project-instructions.md ---
 
  ## 変更点サマリー:
- - arctic-tern 側のテキストをそのままベースにする
+ - arctic-tern 側のテキストをベースにする
  - frontmatter は tokotachi のものを保持
 +- Git操作ルールにクォーティング注意を追加 (tokotachi独自)
- - ワークフロー参照パスは .agent/workflows/ のまま保持 (arctic-tern準拠)
-   ただしルール参照は tokotachi の {{policy:xxx}} 形式は使用しない
-   (project-instructions.md は policy であり自身が他 policy を参照しない)
+ - ルール参照は {{policy:xxx}} テンプレート記法を使用
++- テスト順序を「単体テスト → 統合テスト → その他のテスト」に修正
 ```
-
-> [!IMPORTANT]
-> テスト順序について: arctic-tern 側は「統合テスト → 単体テスト」としているが、これは意図的な変更か、誤記かを確認する必要がある。tokotachi 側の「単体テスト → 統合テスト」の方が一般的なフローに合致する。
 
 ---
 
@@ -79,9 +75,9 @@
 **arctic-tern 側の改善点:**
 
 1. **冒頭の簡潔化**: 説明文を短く整理
-2. **`testing-rules.md` への委譲**: Linux/Remote-SSH の詳細ルールを `testing-rules.md Section 1` への参照に置き換え (tokotachi は本文中にインライン展開)
+2. **`{{policy:testing-rules}}` への委譲**: Linux/Remote-SSH の詳細ルールを `{{policy:testing-rules}}` Section 1 への参照に置き換え (tokotachi は本文中にインライン展開)
 3. **「準備: ステータスの確認」セクションの削除**: arctic-tern にはない
-4. **「Fix Loop」の簡潔化**: `testing-rules.md Section 3` を参照する形に
+4. **「Fix Loop」の簡潔化**: `{{policy:testing-rules}}` Section 3 を参照する形に
 5. **セクション番号の変更**: 5ステップ構成 (tokotachi は6ステップ)
 
 **tokotachi 独自の記述 (メモリ関連):**
@@ -98,7 +94,7 @@
 -# 6ステップ構成 (準備/Build/Setup/Test/FixLoop/Final)
 +# 5ステップ構成 (Build/Setup/Test/FixLoop/Final) - arctic-tern準拠
 -# Linux/Remote-SSH の詳細説明をインライン展開
-+# testing-rules.md への参照に委譲
++# {{policy:testing-rules}} への参照に委譲
 -# 「準備: ステータスの確認」セクション
 +# (削除)
 ```
@@ -116,22 +112,21 @@
 
 **arctic-tern 側の改善点:**
 
-1. **ルール参照の形式**: `{{policy:testing-rules}}` → `prompts/rules/testing-rules.md` (直接パス参照)
-2. **E2E テストセクションのテンプレート**: arctic-tern は Go E2E テスト (`tests/` 配下) に特化した記述。tokotachi は GUI E2E テスト (VSCode Extension Playwright) に特化した記述
+1. **ルール参照の形式**: arctic-tern は `prompts/rules/testing-rules.md` (直接パス参照) だが、tokotachi では `{{policy:testing-rules}}` テンプレート記法を使用する
+2. **E2E テストセクションのテンプレート**: arctic-tern は Go E2E テスト (`tests/` 配下) に特化した記述を採用
 3. **セルフレビューの簡潔化**: arctic-tern 側は GUI E2E 関連チェック (Scenario Consolidation) を持たず、代わりに Go E2E テストコード化チェックがある
 4. **`git commit` セクションの追加**: arctic-tern 側の Section 4.1 にドキュメント Git コミットの記述がある (tokotachi にもある)
 
 **tokotachi 独自の記述:**
-- `{{policy:xxx}}` テンプレート変数参照形式
-- GUI E2E テスト (Scenario Consolidation) に関するセルフレビュー項目 (tokotachi のプロジェクトは VSCode 拡張を持つため)
+- `{{policy:xxx}}` テンプレート変数参照形式 (保持する)
 
 ### 書き換え方針
 
 - **基本方針**: arctic-tern 側をベースにする
 - **保持するもの**:
   - tokotachi の frontmatter
-  - `{{policy:xxx}}` テンプレート参照形式は **arctic-tern の直接パス参照に変更** (arctic-tern 準拠)
-  - GUI E2E テスト関連のセルフレビュー項目は削除 (arctic-tern に合わせる。tokotachi も arctic-tern と同じ Go テスト主体のプロジェクト)
+  - ルール参照は `{{policy:xxx}}` テンプレート記法を保持 (arctic-tern の直接パス参照をテンプレート記法に変換)
+  - GUI E2E テスト関連のセルフレビュー項目は削除 (arctic-tern に合わせる)
   - E2E テストテンプレートは arctic-tern の Go E2E テスト版を採用
 
 ```diff
@@ -146,8 +141,8 @@
 +# E2Eテストコード化チェック (arctic-tern準拠)
 
  # ルール参照
--# {{policy:testing-rules}}
-+# prompts/rules/testing-rules.md
+-# prompts/rules/testing-rules.md (arctic-tern の直接パス参照)
++# {{policy:testing-rules}} (tokotachi テンプレート記法に変換)
 ```
 
 ---
@@ -164,8 +159,8 @@
 **arctic-tern 側の改善点:**
 
 1. **全体的な簡潔化**: 冗長な注釈や警告文を削減
-2. **`testing-rules.md` への委譲**: テスト実施の詳細を `testing-rules.md` 参照に
-3. **ルール読み込み**: `logging-rules.md` も読み込み対象に追加 (arctic-tern)
+2. **`{{policy:testing-rules}}` への委譲**: テスト実施の詳細を `{{policy:testing-rules}}` 参照に
+3. **ルール読み込み**: `{{policy:logging-rules}}` も読み込み対象に追加 (arctic-tern から移植済み)
 4. **E2E テスト**: arctic-tern は `tests/` 配下の Go E2E テストに特化、tokotachi は GUI E2E テスト (Playwright) に特化
 5. **Section 2.5**: arctic-tern に「E2Eテストの実装」セクションが追加されている (テスト実行前にテストコードを実装する指示)
 
@@ -180,7 +175,7 @@
   - tokotachi の frontmatter
   - **Section 3.3「遠方知識の記録」** を Section 3 と Section 4 (Git Push) の間に挿入
   - E2E テストは arctic-tern の Go E2E テスト版を採用
-  - `logging-rules.md` の読み込みを追加
+  - `{{policy:logging-rules}}` の読み込みを追加 (arctic-tern から `prompts/manifest/code_content/policies/logging-rules.md` として移植済み)
 
 ```diff
  --- execute-implementation-plan.md 変更方針 ---
@@ -345,10 +340,10 @@
 
 | ファイル | 変更の大きさ | メモリ関連の保持 | 主な変更内容 |
 |---------|-------------|-----------------|-------------|
-| project-instructions.md | 小 | なし | クォーティング注意を追加 |
-| build-pipeline.md | 中 | なし | testing-rules.md への委譲、準備セクション削除 |
-| create-implementation-plan.md | 中 | なし | Go E2E テスト版テンプレート採用 |
-| execute-implementation-plan.md | 中 | **Section 3.3 遠方知識記録を保持** | 全体簡潔化、logging-rules.md 追加 |
+| project-instructions.md | 小 | なし | クォーティング注意を追加、テスト順序修正 |
+| build-pipeline.md | 中 | なし | `{{policy:testing-rules}}` への委譲、準備セクション削除 |
+| create-implementation-plan.md | 中 | なし | Go E2E テスト版テンプレート採用、`{{policy:xxx}}` 記法保持 |
+| execute-implementation-plan.md | 中 | **Section 3.3 遠方知識記録を保持** | 全体簡潔化、`{{policy:logging-rules}}` 追加(移植済み) |
 | investigate.md | 極小 | なし | description のみ更新検討 |
 | review-point.md | 小 | なし | Git コミットセクションを保持 |
 | run-all-tests.md | 大 | なし | 224行 → 115行程度に大幅簡潔化 |
@@ -356,10 +351,12 @@
 
 ## 検証シナリオ (Verification Scenarios)
 
-1. 書き換え後の各ファイルについて、arctic-tern 側の対応ファイルとの `diff` を取り、差分が frontmatter とメモリ関連記述のみであることを確認する
+1. 書き換え後の各ファイルについて、arctic-tern 側の対応ファイルとの `diff` を取り、差分が frontmatter・メモリ関連記述・テンプレート記法変換のみであることを確認する
 2. tokotachi 側の `execute-implementation-plan.md` に遠方知識の記録セクション (Section 3.3 相当) が含まれていることを確認する
 3. `review-point.md` に Git コミットセクションが含まれていることを確認する
 4. 全ファイルの frontmatter が tokotachi 形式 (`apiVersion`, `id`, `kind`, `title`, `trigger`) を保持していることを確認する
+5. 全ファイルにおいてルール参照が `{{policy:xxx}}` テンプレート記法で統一されていることを確認する
+6. `prompts/manifest/code_content/policies/logging-rules.md` が正しく作成されていることを確認する
 
 ## テスト項目 (Testing for the Requirements)
 
