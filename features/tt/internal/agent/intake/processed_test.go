@@ -2,6 +2,7 @@ package intake
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,11 +13,12 @@ import (
 
 func TestMoveToProcessed(t *testing.T) {
 	tests := []struct {
-		name      string
-		setup     func(t *testing.T, varDir string) string // returns event ID
-		eventID   string
-		wantErr   bool
-		errSubstr string
+		name         string
+		setup        func(t *testing.T, varDir string) string // returns event ID
+		eventID      string
+		wantErr      bool
+		errSubstr    string
+		wantSentinel bool // if true, assert errors.Is(err, ErrNotFoundInPending)
 	}{
 		{
 			name: "move pending event to processed",
@@ -53,16 +55,17 @@ func TestMoveToProcessed(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "event not found in pending",
+			name: "event not found returns ErrNotFoundInPending",
 			setup: func(t *testing.T, varDir string) string {
 				t.Helper()
 				pendingDir := filepath.Join(varDir, "intake", "pending")
 				require.NoError(t, os.MkdirAll(pendingDir, 0o755))
 				return ""
 			},
-			eventID:   "E-NONEXISTENT",
-			wantErr:   true,
-			errSubstr: "not found",
+			eventID:      "E-NONEXISTENT",
+			wantErr:      true,
+			errSubstr:    "not found",
+			wantSentinel: true,
 		},
 	}
 
@@ -76,6 +79,9 @@ func TestMoveToProcessed(t *testing.T) {
 			if tc.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errSubstr)
+				if tc.wantSentinel {
+					assert.True(t, errors.Is(err, ErrNotFoundInPending), "error should wrap ErrNotFoundInPending")
+				}
 				return
 			}
 

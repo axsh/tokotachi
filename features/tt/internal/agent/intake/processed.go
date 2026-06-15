@@ -1,11 +1,15 @@
 package intake
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 )
+
+// ErrNotFoundInPending indicates the event file was not found in pending/.
+var ErrNotFoundInPending = errors.New("event not found in pending")
 
 // MoveToProcessed moves an intake event from pending/ to processed/.
 // It searches for the event file by event ID, moves it to the processed
@@ -35,7 +39,7 @@ func MoveToProcessed(varDir, eventID string) error {
 		return fmt.Errorf("failed to walk pending directory: %w", err)
 	}
 	if foundPath == "" {
-		return fmt.Errorf("event %s not found in pending", eventID)
+		return fmt.Errorf("%w: %s", ErrNotFoundInPending, eventID)
 	}
 
 	// Create processed date directory
