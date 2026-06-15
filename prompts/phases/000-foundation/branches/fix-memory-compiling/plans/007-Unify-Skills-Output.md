@@ -33,7 +33,7 @@ None.
 | Check() から workflows 除去 | Proposed Changes > antigravity.go Check() |
 | CategoryLimit.Workflows 後方互換で残す | 変更なし (limits.go) |
 | capabilities -> includes 改名 | Proposed Changes > target YAML x4 + includes.go |
-| includes フィルタリング実装 | Proposed Changes > includes.go + 4 emitter |
+| target schema 更新 | Proposed Changes > target.schema.json |
 | immune モードでデプロイ | Step-by-Step > 最終ステップ |
 
 ## Proposed Changes
@@ -232,6 +232,30 @@ None.
 
 ---
 
+### Schema
+
+#### [MODIFY] [target.schema.json](file:///prompts/manifest/schemas/target.schema.json)
+
+*   **Description**: `capabilities` -> `includes` への改名をスキーマに反映
+*   **Technical Design**:
+    - `required` から `"capabilities"` を削除、`"includes"` は任意 (後方互換のため required にしない)
+    - `capabilities` プロパティ定義を削除
+    - `includes` プロパティ定義を追加:
+      ```json
+      "includes": {
+        "type": "object",
+        "properties": {
+          "policy": { "type": "boolean" },
+          "capability": { "type": "boolean" },
+          "procedure": { "type": "boolean" },
+          "subagent": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+      ```
+    - `paths.workflows` プロパティを削除
+    - `limits.workflows` はそのまま残す (後方互換)
+
 ### テスト
 
 #### [MODIFY] [template_test.go](file:///features/tt/internal/prompt/emitter/template_test.go)
@@ -268,21 +292,25 @@ None.
 5.  **target YAML の更新**:
     - 4ファイルの `capabilities` -> `includes` 改名
 
-6.  **テストの修正**:
+6.  **target.schema.json の更新**:
+    - `capabilities` -> `includes` に改名
+    - `paths.workflows` を削除
+
+7.  **テストの修正**:
     - `template_test.go`: Workflows 削除、procedure テスト更新
     - `emitter_test.go`: workflows 削除、procedure 出力先更新
 
-7.  **ビルド + テスト実行**:
+8.  **ビルド + テスト実行**:
     ```bash
     scripts/process/build.sh --backend-only
     ```
 
-8.  **immune モードでデプロイ**:
+9.  **immune モードでデプロイ**:
     ```bash
     ./bin/tt.exe prompt deploy --force --mode immune
     ```
 
-9.  **デプロイ結果の検証**:
+10. **デプロイ結果の検証**:
     - `.agents/workflows/` が存在しないことを確認
     - `.agents/skills/` に全 procedure が SKILL.md として存在することを確認
     - `{{procedure:*}}` テンプレート変数が skills パスに解決されることを確認
