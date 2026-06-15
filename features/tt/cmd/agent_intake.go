@@ -9,6 +9,7 @@ import (
 
 	"github.com/axsh/tokotachi/features/tt/internal/agent/intake"
 	"github.com/axsh/tokotachi/features/tt/internal/agent/status"
+	"github.com/axsh/tokotachi/features/tt/internal/agent/storage"
 )
 
 var agentIntakeCmd = &cobra.Command{
@@ -121,6 +122,18 @@ func runAgentIntakeProcessed(cmd *cobra.Command, args []string) error {
 
 	if err := intake.MoveToProcessed(varDir, eventID); err != nil {
 		return fmt.Errorf("failed to move event to processed: %w", err)
+	}
+
+	// Update index.db status
+	dbPath := filepath.Join(varDir, "intake", "index.db")
+	idx, err := storage.NewIndex(dbPath)
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "[WARN] Index update skipped: %v\n", err)
+	} else {
+		defer idx.Close()
+		if err := idx.UpdateStatus(eventID, "processed"); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "[WARN] Index update failed: %v\n", err)
+		}
 	}
 
 	fmt.Printf("Event %s moved to processed\n", eventID)

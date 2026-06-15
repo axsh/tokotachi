@@ -107,3 +107,27 @@ func TestList_EmptyResult(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, items)
 }
+
+func TestList_FilterByStatus_AfterUpdate(t *testing.T) {
+	tmpDir := t.TempDir()
+	idx := setupTestIndex(t, tmpDir)
+
+	storeTestEvent(t, idx, "E-010", "antigravity", "main", "Task to process")
+	storeTestEvent(t, idx, "E-011", "antigravity", "main", "Task stays pending")
+
+	// Update E-010 to processed
+	require.NoError(t, idx.UpdateStatus("E-010", "processed"))
+	idx.Close()
+
+	// List pending: should only see E-011
+	pendingItems, err := List(tmpDir, ListOptions{Status: "pending"})
+	require.NoError(t, err)
+	assert.Len(t, pendingItems, 1)
+	assert.Equal(t, "E-011", pendingItems[0].EventID)
+
+	// List processed: should only see E-010
+	processedItems, err := List(tmpDir, ListOptions{Status: "processed"})
+	require.NoError(t, err)
+	assert.Len(t, processedItems, 1)
+	assert.Equal(t, "E-010", processedItems[0].EventID)
+}
