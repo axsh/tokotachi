@@ -193,11 +193,83 @@ source_event_ids:
 
 **ステップ 6: 重複排除・再整理**
 
-Coding Agent は既存カテゴリファイルに追記する際に、以下を検討する:
-- 既存の知識と重複していないか (重複排除)
-- カテゴリが大きくなりすぎていないか (分割の検討)
-- 複数カテゴリに跨がる知識がないか (統合の検討)
-- 全体の一貫性は保たれているか (再整理)
+カテゴリは知識の蓄積に伴い進化する。以下の4段階のプロセスが自然発生する:
+
+| 段階 | 名称 | トリガー | 操作 |
+|:---|:---|:---|:---|
+| 1 | 収集 | 最初の知識が入る | 新規カテゴリの作成 |
+| 2 | 分類 (細分化) | 1つのカテゴリが肥大化し、異なる属性の知識が混在 | カテゴリの **分割 (split)** |
+| 3 | 階層化 | 特定のサブ領域のメモが爆発的に増加 | 新規サブカテゴリの作成、知識の **移動 (move)** |
+| 4 | 再構築 (統合) | 複数のカテゴリを横断する概念が登場し、既存の分類軸では収まらなくなる | カテゴリの **統合 (merge)**、 **名前変更 (rename)**、全体構造の見直し |
+
+**段階4の再構築が最も重要かつ困難**。例えば、最初「エラーハンドリング」と「ログ設計」が別カテゴリだったが、「可観測性 (Observability)」という上位概念が見えてきたとき、両者を統合して再構築する必要がある。これは知識が深まり全体像が見えてきた証拠であり、避けるべきではなく積極的に行うべき操作である。
+
+**再整理で必要な操作の定義**:
+
+以下の4つの操作を定義する。いずれもファイルシステム上のカテゴリファイル (.md) に対する操作である。
+
+| 操作 | 内容 | 例 |
+|:---|:---|:---|
+| **split** | 1つのカテゴリファイルを2つ以上に分割する | `error-handling.md` -> `error-response.md` + `error-wrapping.md` |
+| **merge** | 2つ以上のカテゴリファイルを1つに統合する | `error-handling.md` + `logging.md` -> `observability.md` |
+| **rename** | カテゴリファイルの名前と内容を更新する | `programming.md` -> `frontend.md` (分類軸の変更) |
+| **move** | あるカテゴリ内の特定の知識項目を別のカテゴリに移動する | `backend.md` 内の「Docker環境構築」を `infrastructure.md` に移動 |
+
+**ttコマンドとLLMの責務分離**:
+
+再整理の操作は「何をすべきか (判断)」と「どうやるか (実行)」に分離する:
+
+- **LLM (Coding Agent) の責務**: 現在のカテゴリ一覧を俯瞰し、どの操作 (split/merge/rename/move) が必要かを判断する。段階2-4のどの状態にあるかを見極め、操作対象と操作内容を決定する
+- **tt コマンドの責務**: 決定された操作を確実に実行する。frontmatter の `source_event_ids`、`last_updated`、`category_id` の整合性を保ちながらファイル操作を行う
+
+**tt コマンドの追加 (R8)**:
+
+以下の `tt agent knowledge` サブコマンドを新設する:
+
+```bash
+# カテゴリ一覧と統計情報の表示
+tt agent knowledge list
+# 出力例: category_id, title, item_count, file_size, last_updated
+
+# カテゴリファイルの分割
+tt agent knowledge split <category-id> \
+  --into <new-category-1> <new-category-2> \
+  --plan <plan-file.json>
+# plan-file.json: LLMが作成した分割計画 (どの項目をどちらに振り分けるか)
+
+# カテゴリファイルの統合
+tt agent knowledge merge <category-id-1> <category-id-2> \
+  --into <new-category-id> \
+  --plan <plan-file.json>
+# plan-file.json: LLMが作成した統合計画 (統合後の構造)
+
+# カテゴリの名前変更
+tt agent knowledge rename <old-category-id> <new-category-id> \
+  --title <new-title>
+
+# 知識項目の移動
+tt agent knowledge move \
+  --from <source-category-id> \
+  --to <target-category-id> \
+  --items <item-identifiers>
+```
+
+tt コマンドは以下を保証する:
+- frontmatter の `category_id` の一貫性
+- `source_event_ids` の保持 (分割時は元のイベントIDを両方に引き継ぐ)
+- `last_updated` の更新
+- 対応する capability ファイル (`far-knowledge/` 配下) の連動更新
+- 操作ログの記録 (`var/logs/knowledge-ops.ndjson`)
+
+**再整理の判断基準 (LLM向けガイドライン)**:
+
+Coding Agent は以下の基準でどの操作が必要かを判断する:
+
+1. **split が必要なとき**: 1つのカテゴリファイルが 3000 文字を超え、かつ2つ以上の明確に異なるサブトピックを含む場合
+2. **merge が必要なとき**: 2つのカテゴリの知識が頻繁に相互参照され、単独では不完全な場合。または上位概念が見えてきた場合
+3. **rename が必要なとき**: カテゴリ名がその内容を正確に表現しなくなった場合 (例: 知識が増えて当初の名前より広い範囲をカバーするようになった)
+4. **move が必要なとき**: 特定の知識項目が現在のカテゴリよりも別のカテゴリに強く関連する場合
+5. **何もしない**: 上記のいずれにも該当しない場合は、既存構造を維持する
 
 **ステップ 7: クリーンアップ**
 
@@ -324,7 +396,6 @@ prompts/manifest/code_content/capabilities/
 
 ### 非要件 (NOT)
 
-- 現行 `tt agent assist` / `tt agent task` の Go 実装の変更は不要。ワークフロー上で Coding Agent が実行する体系化プロセスは、既存のttコマンドの組み合わせと Coding Agent のLLM能力で実現する
 - A-MEM 的な relation generation は本仕様のスコープ外
 - Knowledge Atom スキーマの変更は不要。カテゴリファイル (.md) を中間形式として新規導入する
 - `tt prompt compile` の Go コード変更は不要。capability として配置すれば既存のパイプラインで処理される
@@ -335,19 +406,22 @@ prompts/manifest/code_content/capabilities/
 
 ### Go コードの変更
 
-**不要**。本仕様の変更は全てプロンプト/ワークフロー/capability 層の変更で実現する。`tt` バイナリの変更は行わない。
+以下の2つの領域で Go コードの変更が必要:
 
-ただし、`tt agent notify` の `--design-pattern`, `--convention`, `--lesson-learned`, `--preference` フラグの追加は Go コードの変更が必要。これらのフラグは `flags` オブジェクト内の新しいフィールドとして追加する。
+1. **`tt agent notify` のフラグ追加**: `--design-pattern`, `--convention`, `--lesson-learned`, `--preference` フラグを追加。`flags` オブジェクト内の新しいフィールドとして追加する
+2. **`tt agent knowledge` サブコマンドの新設**: カテゴリファイルの操作 (list/split/merge/rename/move) を提供するサブコマンド群を新規実装する (R8)
 
 ### 変更対象のファイル一覧
 
-#### Goコード変更 (フラグ追加のみ)
+#### Goコード変更
 
 | ファイル | 変更内容 |
 |:---|:---|
 | `features/tt/cmd/agent_notify.go` | 新規フラグ (`--design-pattern` 等) の CLI 定義追加 |
 | `features/tt/internal/agent/notify/handler.go` | フラグを `flags` オブジェクトに反映するロジック追加 |
 | `prompts/memory/schemas/agent-notify-payload.schema.json` | `flags` に新規フィールド追加 |
+| `features/tt/cmd/agent_knowledge.go` | **[NEW]** `tt agent knowledge` サブコマンドグループ |
+| `features/tt/internal/agent/knowledge/` | **[NEW]** カテゴリ操作ロジック (list/split/merge/rename/move) |
 
 #### プロンプト/ワークフロー変更
 
