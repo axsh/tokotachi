@@ -81,7 +81,6 @@ type ProjectConfig struct {
 // OutputConfig holds output path configuration
 type OutputConfig struct {
 	ResolvedManifest  string `yaml:"resolved_manifest"`
-	MemoryIndex string `yaml:"memory_index"`
 }
 
 // DefaultConfig holds default configuration values

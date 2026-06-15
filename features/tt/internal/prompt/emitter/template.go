@@ -55,8 +55,6 @@ func resolveRef(kind, id string, ctx *TemplateContext) string {
 		return ensureTrailingSlash(ctx.Paths.Workflows) + id + ".md"
 	case "capability":
 		return ensureTrailingSlash(ctx.Paths.Skills) + id + "/SKILL.md"
-	case "memory":
-		return ctx.MemBase + "/" + id + ".md"
 	case "target":
 		return resolveTargetVar(id, ctx)
 	default:

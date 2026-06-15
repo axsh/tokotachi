@@ -41,16 +41,6 @@ func TestResolveTemplateVars(t *testing.T) {
 			want:  "Use .agents/skills/architecture-maintainer/SKILL.md skill.",
 		},
 		{
-			name:  "memory index reference resolves to memory path",
-			input: "Check {{memory:index}} first.",
-			want:  "Check prompts/memory/index.md first.",
-		},
-		{
-			name:  "memory inbox reference",
-			input: "Write to {{memory:inbox}} if unsure.",
-			want:  "Write to prompts/memory/inbox.md if unsure.",
-		},
-		{
 			name:  "target name resolves to target name",
 			input: "Run update --target \"{{target:name}}\".",
 			want:  "Run update --target \"antigravity\".",
@@ -77,8 +67,8 @@ func TestResolveTemplateVars(t *testing.T) {
 		},
 		{
 			name:  "multiple variables in same text",
-			input: "Read {{policy:coding-rules}} and {{policy:testing-rules}} then {{memory:invariants}}.",
-			want:  "Read .agents/rules/coding-rules.md and .agents/rules/testing-rules.md then prompts/memory/invariants.md.",
+			input: "Read {{policy:coding-rules}} and {{policy:testing-rules}}.",
+			want:  "Read .agents/rules/coding-rules.md and .agents/rules/testing-rules.md.",
 		},
 		{
 			name:  "empty input returns empty",
@@ -127,11 +117,6 @@ func TestResolveTemplateVars_CustomPaths(t *testing.T) {
 			name:  "capability with custom skills path",
 			input: "{{capability:test-skill}}",
 			want:  "custom/skills/test-skill/SKILL.md",
-		},
-		{
-			name:  "memory with custom base path",
-			input: "{{memory:decisions}}",
-			want:  "custom/memory/decisions.md",
 		},
 	}
 

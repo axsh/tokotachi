@@ -15,7 +15,7 @@ func TestLoadConfig(t *testing.T) {
 	}{
 		{
 			name:   "valid project.yaml",
-			yaml:   "version: 1\nproject_id: vv5\nsources:\n  policies: \"policies/**/*.yaml\"\noutputs:\n  resolved_manifest: tmp/dist/manifest.resolved.yaml\n  memory_index: prompts/memory/index.md\ndefaults:\n  language: ja\n  generated_banner: true\n  build_dir: tmp/dist/\n",
+			yaml:   "version: 1\nproject_id: vv5\nsources:\n  policies: \"policies/**/*.yaml\"\noutputs:\n  resolved_manifest: tmp/dist/manifest.resolved.yaml\ndefaults:\n  language: ja\n  generated_banner: true\n  build_dir: tmp/dist/\n",
 			wantID: "vv5",
 		},
 		{
