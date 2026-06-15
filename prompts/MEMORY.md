@@ -1,10 +1,3 @@
----
-id: memory-readme
-kind: skip
-title: Memory System README
-status: current
----
-
 # メモリシステム (Far-Knowledge Memory System)
 
 このディレクトリは、Coding Agent が作業中に獲得した**遠方知識 (Far-Knowledge)** を
