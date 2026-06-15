@@ -412,7 +412,7 @@ func slugify(title string) string {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
 			return r
 		}
-		if r == ' ' || r == '_' || r == '/' {
+		if r == ' ' || r == '_' || r == '/' || r == '-' {
 			return '-'
 		}
 		return -1
