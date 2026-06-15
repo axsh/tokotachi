@@ -66,6 +66,10 @@ func TestNotifyPayloadJSONRoundTrip(t *testing.T) {
 		Flags: &Flags{
 			ArchitectureImpact: true,
 			MemoryRelated:      false,
+			DesignPattern:      true,
+			Convention:         false,
+			LessonLearned:      true,
+			Preference:         false,
 		},
 		ClientRequestID: "req-001",
 		Context: &PayloadContext{
@@ -87,6 +91,8 @@ func TestNotifyPayloadJSONRoundTrip(t *testing.T) {
 	assert.Equal(t, original.RawNotes, decoded.RawNotes)
 	assert.Equal(t, original.ChangedPaths, decoded.ChangedPaths)
 	assert.Equal(t, original.Flags.ArchitectureImpact, decoded.Flags.ArchitectureImpact)
+	assert.Equal(t, original.Flags.DesignPattern, decoded.Flags.DesignPattern)
+	assert.Equal(t, original.Flags.LessonLearned, decoded.Flags.LessonLearned)
 	assert.Equal(t, original.ClientRequestID, decoded.ClientRequestID)
 	assert.Equal(t, original.Context.SessionID, decoded.Context.SessionID)
 }
