@@ -1,15 +1,12 @@
 ---
 activation:
-    mode: always
+    mode: trigger
 apiVersion: agent.meta/v1
 id: project-instructions
 kind: policy
 scope: project
 title: Project Instructions
 applies_when: Applies when starting work, understanding project workflows, or running scripts
----
----
-trigger: always_on
 ---
 
 # プロジェクト共通指示書 (`.agent/instructions.md`)

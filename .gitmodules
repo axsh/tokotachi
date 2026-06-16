@@ -4,3 +4,6 @@
 [submodule "prompts/phases/000-foundation/refs/repos/vv5"]
 	path = prompts/phases/000-foundation/refs/repos/vv5
 	url = https://github.com/axsh/vv5.git
+[submodule "prompts/phases/000-foundation/refs/repos/arctic-tern"]
+	path = prompts/phases/000-foundation/refs/repos/arctic-tern
+	url = https://github.com/axsh/arctic-tern.git

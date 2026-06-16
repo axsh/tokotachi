@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/axsh/tokotachi/features/tt/internal/prompt/memory"
 	"github.com/axsh/tokotachi/features/tt/internal/prompt/emitter"
 	"github.com/axsh/tokotachi/features/tt/internal/prompt/manifest"
+	"github.com/axsh/tokotachi/features/tt/internal/prompt/memory"
 )
 
 // CompileOptions holds options for the compile pipeline
@@ -22,7 +22,6 @@ type CompileOptions struct {
 
 // CompileResult holds the output of the compile pipeline
 type CompileResult struct {
-	IndexContent string // generated index.md content
 	ResolvedYAML string // generated resolved manifest content
 	Resolved     *manifest.ResolvedManifest
 	Errors       []manifest.ValidationError
@@ -89,28 +88,15 @@ func Compile(opts CompileOptions) (*CompileResult, error) {
 	}
 	result.Resolved = resolved
 
-	// 10. Generate index.md
-	indexContent, err := memory.GenerateIndex(memDocs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate index: %w", err)
-	}
-	result.IndexContent = indexContent
-
-	// 11. Marshal resolved manifest
+	// 10. Marshal resolved manifest
 	resolvedYAML, err := manifest.MarshalResolvedManifest(resolved)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal resolved manifest: %w", err)
 	}
 	result.ResolvedYAML = resolvedYAML
 
-	// 12. Write files (unless DryRun)
+	// 11. Write files (unless DryRun)
 	if !opts.DryRun {
-		// Write index.md
-		indexPath := filepath.Join(rootDir, cfg.Outputs.MemoryIndex)
-		if err := writeFile(indexPath, indexContent); err != nil {
-			return nil, fmt.Errorf("failed to write index.md: %w", err)
-		}
-
 		// Write resolved manifest
 		resolvedPath := filepath.Join(rootDir, cfg.Outputs.ResolvedManifest)
 		if err := writeFile(resolvedPath, resolvedYAML); err != nil {

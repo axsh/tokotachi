@@ -31,9 +31,8 @@ func TestEmit_Antigravity(t *testing.T) {
 					Title:      "Antigravity Target",
 					Raw: map[string]any{
 						"paths": map[string]any{
-							"rules":     "rules_dir",
-							"skills":    "skills_dir",
-							"workflows": "workflows_dir",
+							"rules":  "rules_dir",
+							"skills": "skills_dir",
 						},
 					},
 				},
@@ -141,19 +140,19 @@ func TestEmit_Antigravity(t *testing.T) {
 		},
 		{
 			path:    filepath.Join(buildDir, "antigravity", "rules_dir", "coding-rules.md"),
-			contain: []string{"Coding is fun.", "workflows_dir/test-proc-body.md"},
+			contain: []string{"Coding is fun.", "skills_dir/test-proc-body/SKILL.md"},
 		},
 		{
 			path:    filepath.Join(buildDir, "antigravity", "skills_dir", "test-skill", "SKILL.md"),
 			contain: []string{"name: test-skill", "description: A skill for testing", "disable-model-invocation: true", "This is body content."},
 		},
 		{
-			path:    filepath.Join(buildDir, "antigravity", "workflows_dir", "test-proc-body.md"),
-			contain: []string{"description: Procedure with body", "This is body content."},
+			path:    filepath.Join(buildDir, "antigravity", "skills_dir", "test-proc-body", "SKILL.md"),
+			contain: []string{"name: test-proc-body", "description: Procedure with body", "This is body content."},
 		},
 		{
-			path:    filepath.Join(buildDir, "antigravity", "workflows_dir", "test-proc-steps.md"),
-			contain: []string{"description: Procedure with steps", "1. step-one", "2. step-two"},
+			path:    filepath.Join(buildDir, "antigravity", "skills_dir", "test-proc-steps", "SKILL.md"),
+			contain: []string{"name: test-proc-steps", "description: Procedure with steps", "1. step-one", "2. step-two"},
 		},
 	}
 
@@ -180,8 +179,8 @@ func TestEmit_Antigravity(t *testing.T) {
 		filepath.Join(tempDir, "rules_dir", "instructions.md"),
 		filepath.Join(tempDir, "rules_dir", "coding-rules.md"),
 		filepath.Join(tempDir, "skills_dir", "test-skill", "SKILL.md"),
-		filepath.Join(tempDir, "workflows_dir", "test-proc-body.md"),
-		filepath.Join(tempDir, "workflows_dir", "test-proc-steps.md"),
+		filepath.Join(tempDir, "skills_dir", "test-proc-body", "SKILL.md"),
+		filepath.Join(tempDir, "skills_dir", "test-proc-steps", "SKILL.md"),
 	}
 
 	for _, p := range expectedApplyFiles {
@@ -254,9 +253,8 @@ func TestEmit_Antigravity_WithLimits(t *testing.T) {
 						ID:         "antigravity",
 						Raw: map[string]any{
 							"paths": map[string]any{
-								"rules":     "rules_dir",
-								"skills":    "skills_dir",
-								"workflows": "workflows_dir",
+								"rules":  "rules_dir",
+								"skills": "skills_dir",
 							},
 							"limits": map[string]any{
 								"rules": map[string]any{
@@ -307,9 +305,8 @@ func TestEmit_Antigravity_WithLimits(t *testing.T) {
 						ID:         "antigravity",
 						Raw: map[string]any{
 							"paths": map[string]any{
-								"rules":     "rules_dir",
-								"skills":    "skills_dir",
-								"workflows": "workflows_dir",
+								"rules":  "rules_dir",
+								"skills": "skills_dir",
 							},
 							"limits": map[string]any{
 								"rules": map[string]any{
@@ -360,9 +357,8 @@ func TestEmit_Antigravity_WithLimits(t *testing.T) {
 						ID:         "antigravity",
 						Raw: map[string]any{
 							"paths": map[string]any{
-								"rules":     "rules_dir",
-								"skills":    "skills_dir",
-								"workflows": "workflows_dir",
+								"rules":  "rules_dir",
+								"skills": "skills_dir",
 							},
 							"limits": map[string]any{
 								"rules": map[string]any{

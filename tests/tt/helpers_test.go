@@ -197,9 +197,14 @@ func cleanupContainers() {
 	}
 }
 
-// TestMain runs all tests and performs cleanup afterward.
+// TestMain runs all tests with pre/post container cleanup.
 func TestMain(m *testing.M) {
+	// Pre-cleanup: remove stale containers from previous test runs
+	cleanupContainers()
+
 	code := m.Run()
+
+	// Post-cleanup: remove containers created during this test run
 	cleanupContainers()
 	os.Exit(code)
 }

@@ -40,7 +40,7 @@ func buildCodexTestManifest(tempDir string) *manifest.ResolvedManifest {
 						"activation": map[string]any{
 							"mode": "always",
 						},
-						"body":         "Read prompts/memory/index.md before changes.",
+						"body":         "Record far-knowledge before push.",
 						"applies_when": "Applies when changing architecture-sensitive code",
 					},
 				},
@@ -117,7 +117,7 @@ func TestEmit_Codex(t *testing.T) {
 	if strings.Contains(content, "---") {
 		t.Errorf("Codex policy file should NOT contain frontmatter (---), got:\n%s", content)
 	}
-	if !strings.Contains(content, "Read prompts/memory/index.md before changes.") {
+	if !strings.Contains(content, "Record far-knowledge before push.") {
 		t.Errorf("expected body content to be present, got:\n%s", content)
 	}
 

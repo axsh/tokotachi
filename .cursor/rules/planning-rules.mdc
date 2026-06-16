@@ -1,6 +1,6 @@
 ---
 description: Planning Rules
-alwaysApply: true
+alwaysApply: false
 ---
 
 # 計画立案規範 (Planning Rules)
@@ -41,6 +41,12 @@ alwaysApply: true
 *   **テスト計画 (Unit & Integration)**:
     *   **Unit Tests**: テーブル駆動テスト (`tests := []struct{...}`) のケース設計。モックが必要な依存関係（DB, 外部API）。
     *   **Integration Tests**: `tests/` 配下のどのファイルに追加するか。実際のDBやDockerコンテナとの連携確認手順。
+    *   **統合テスト必要性の判断基準**: 以下のいずれかに該当する場合、統合テストは**必須**です。
+        *   ファイルシステムへの書き込み/読み取りを行う
+        *   SQLite/DB 操作を行う
+        *   外部コマンド (git 等) を呼び出す
+        *   CLI サブコマンドとして利用者に提供される
+        *   上記のいずれにも該当しない純粋なロジックのみの場合は、単体テストのみで可。ただし Verification Plan にその理由を明記すること。
     *   記述順序: `Proposed Changes` では必ず `_test.go` を先に記述してください。
 
 ### 2.2 Frontend Development (VSCode/React)
@@ -111,3 +117,8 @@ GUIの変更であっても、手動検証ではなく自動化された E2E テ
         *   ❌ `integration_test.sh` (STRICTLY PROHIBITED without preceding `build.sh`)
     *   **Required Commands**:
         *   ✅ `./scripts/process/build.sh && ./scripts/process/integration_test.sh`
+
+    > [!WARNING]
+    > **Partial Build Flags in Final Verification**:
+    > `--backend-only`, `--skip-frontend`, `--skip-etc` は開発中の高速フィードバック用です。
+    > Verification Plan の最終検証コマンドには `./scripts/process/build.sh` (フラグなし) を使用してください。

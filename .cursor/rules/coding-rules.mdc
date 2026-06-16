@@ -1,6 +1,6 @@
 ---
 description: Coding Rules
-alwaysApply: true
+alwaysApply: false
 ---
 
 # コーディング規範 (Coding Rules)

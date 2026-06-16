@@ -61,10 +61,13 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 	// Track emitted files for immune mode orphan cleanup
 	emittedFiles := make(map[string]bool)
 
-	// Extract size limits from the claude-code target entity
-	limits := ExtractLimits(FindTarget(resolved, "claude-code"))
+	// Extract size limits and includes from the claude-code target entity
+	claudeTarget := FindTarget(resolved, "claude-code")
+	limits := ExtractLimits(claudeTarget)
+	inc := ExtractIncludes(claudeTarget)
 
 	// 1. Emit Policies as .md files
+	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
 		filename := policy.ID + ".md"
 
@@ -119,10 +122,12 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
+	} // end if inc.Policy
 
 	// NOTE: resolved.Entities["skip"] is intentionally NOT emitted.
 
 	// 2. Emit Capabilities as SKILL.md
+	if inc.Capability {
 	for _, skill := range resolved.Entities["capability"] {
 		var body string
 		if b, ok := skill.Raw["body"].(string); ok {
@@ -166,8 +171,10 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
+	} // end if inc.Capability
 
 	// 3. Emit Procedures as Skills
+	if inc.Procedure {
 	for _, proc := range resolved.Entities["procedure"] {
 		var body string
 		if b, ok := proc.Raw["body"].(string); ok {
@@ -224,8 +231,22 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 	}
+	} // end if inc.Procedure
 
-	// 4. Return EmitResult for coordinated orphan cleanup in deploy pipeline
+	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
+	branchSkills, err := ScanBranchSkills(c.RootDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan branch skills: %w", err)
+	}
+	branchEmitted, err := EmitBranchSkills(branchSkills, skillsDir, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit branch skills: %w", err)
+	}
+	for k, v := range branchEmitted {
+		emittedFiles[k] = v
+	}
+
+	// 5. Return EmitResult for coordinated orphan cleanup in deploy pipeline
 	return &EmitResult{
 		EmittedFiles: emittedFiles,
 		TargetDirs:   []string{rulesDir, skillsDir},

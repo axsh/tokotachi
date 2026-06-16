@@ -94,7 +94,7 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 
 	// 10. Save digest (only when not dry-run and no errors)
 	// Recompute digest after compile because compile may generate files
-	// (e.g. index.md) into source directories, changing the effective digest.
+	// into source directories, changing the effective digest.
 	if !opts.DryRun {
 		postDigest, err := ComputeSourceDigest(cfg, rootDir)
 		if err != nil {

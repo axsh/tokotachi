@@ -1,6 +1,6 @@
 ---
 description: Testing Rules
-alwaysApply: true
+alwaysApply: false
 ---
 
 # テストのルール (Testing Rules)

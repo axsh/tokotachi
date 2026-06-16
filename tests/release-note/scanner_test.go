@@ -47,40 +47,59 @@ func TestScanner_RealPhaseStructure(t *testing.T) {
 		t.Fatal("expected '000-foundation' phase directory not found")
 	}
 
-	// Verify "000-foundation/ideas/" subdirectory exists
-	ideasDir := filepath.Join(phasesDir, "000-foundation", "ideas")
-	if _, err := os.Stat(ideasDir); os.IsNotExist(err) {
-		t.Fatalf("000-foundation/ideas/ directory not found at %s", ideasDir)
+	// Verify "000-foundation/branches/" subdirectory exists
+	branchesDir := filepath.Join(phasesDir, "000-foundation", "branches")
+	if _, err := os.Stat(branchesDir); os.IsNotExist(err) {
+		t.Fatalf("000-foundation/branches/ directory not found at %s", branchesDir)
 	}
 }
 
 func TestScanner_FindBranchFolder(t *testing.T) {
-	branchDir := filepath.Join(
+	branchesDir := filepath.Join(
 		projectRoot(), "prompts", "phases",
-		"000-foundation", "ideas", "fix-module-versioning",
+		"000-foundation", "branches",
 	)
 
-	// Verify branch folder exists
+	// Find the first branch directory under branches/
+	entries, err := os.ReadDir(branchesDir)
+	if err != nil {
+		t.Fatalf("failed to read branches directory: %v", err)
+	}
+
+	var branchName string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			branchName = entry.Name()
+			break
+		}
+	}
+	if branchName == "" {
+		t.Fatal("no branch directory found under branches/")
+	}
+
+	branchDir := filepath.Join(branchesDir, branchName, "ideas")
+
+	// Verify branch ideas folder exists
 	if _, err := os.Stat(branchDir); os.IsNotExist(err) {
-		t.Fatalf("branch folder not found at %s", branchDir)
+		t.Fatalf("branch ideas folder not found at %s", branchDir)
 	}
 
 	// Verify at least one .md file exists
-	entries, err := os.ReadDir(branchDir)
+	ideaEntries, err := os.ReadDir(branchDir)
 	if err != nil {
-		t.Fatalf("failed to read branch directory: %v", err)
+		t.Fatalf("failed to read branch ideas directory: %v", err)
 	}
 
 	mdCount := 0
-	for _, entry := range entries {
+	for _, entry := range ideaEntries {
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".md" {
 			mdCount++
 		}
 	}
 
 	if mdCount == 0 {
-		t.Fatal("no .md files found in branch folder")
+		t.Fatal("no .md files found in branch ideas folder")
 	}
 
-	t.Logf("Found %d .md file(s) in fix-module-versioning branch folder", mdCount)
+	t.Logf("Found %d .md file(s) in %s branch ideas folder", mdCount, branchName)
 }

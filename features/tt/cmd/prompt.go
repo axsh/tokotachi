@@ -143,8 +143,6 @@ func runPromptCompile(cmd *cobra.Command, args []string) error {
 				len(result.Errors))
 		}
 		if compileDryRun {
-			fmt.Printf("=== %s: index.md ===\n", t)
-			fmt.Println(result.IndexContent)
 			fmt.Printf("=== %s: resolved manifest ===\n", t)
 			fmt.Println(result.ResolvedYAML)
 		} else {

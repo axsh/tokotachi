@@ -1,0 +1,5 @@
+category_id: branch-package
+title: BranchPackageInfo and Slugify
+description: BranchPackageInfo structured type and Slugify path-safe slug conversion function in the agent record package
+created_at: 2026-06-15T13:53:46.3437296Z
+last_updated: 2026-06-15T14:18:45.8764887Z

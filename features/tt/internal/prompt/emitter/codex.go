@@ -57,14 +57,17 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	// Track emitted files for immune mode orphan cleanup
 	emittedFiles := make(map[string]bool)
 
-	// Extract size limits from the codex target entity
-	limits := ExtractLimits(FindTarget(resolved, "codex"))
+	// Extract size limits and includes from the codex target entity
+	codexTarget := FindTarget(resolved, "codex")
+	limits := ExtractLimits(codexTarget)
+	inc := ExtractIncludes(codexTarget)
 
 	// Track emitted entity data for AGENTS.md marker content
 	var emittedPolicies []*manifest.Entity
 	var skillIDs []string
 
 	// 1. Emit Policies as pure Markdown (no frontmatter)
+	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
 		filename := policy.ID + ".md"
 
@@ -99,10 +102,12 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		emittedFiles[filepath.Clean(outputPath)] = true
 		emittedPolicies = append(emittedPolicies, policy)
 	}
+	} // end if inc.Policy
 
 	// NOTE: resolved.Entities["skip"] is intentionally NOT emitted.
 
 	// 2. Emit Capabilities as SKILL.md
+	if inc.Capability {
 	for _, skill := range resolved.Entities["capability"] {
 		var body string
 		if b, ok := skill.Raw["body"].(string); ok {
@@ -147,8 +152,10 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		emittedFiles[filepath.Clean(outputPath)] = true
 		skillIDs = append(skillIDs, skill.ID)
 	}
+	} // end if inc.Capability
 
 	// 3. Emit Procedures as Skills
+	if inc.Procedure {
 	for _, proc := range resolved.Entities["procedure"] {
 		var body string
 		if b, ok := proc.Raw["body"].(string); ok {
@@ -206,8 +213,25 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		emittedFiles[filepath.Clean(outputPath)] = true
 		skillIDs = append(skillIDs, proc.ID)
 	}
+	} // end if inc.Procedure
 
-	// 4. Update index file marker section (if configured)
+	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
+	branchSkills, err := ScanBranchSkills(c.RootDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan branch skills: %w", err)
+	}
+	branchEmitted, err := EmitBranchSkills(branchSkills, skillsDir, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to emit branch skills: %w", err)
+	}
+	for k, v := range branchEmitted {
+		emittedFiles[k] = v
+	}
+	for _, bs := range branchSkills {
+		skillIDs = append(skillIDs, bs.ID)
+	}
+
+	// 5. Update index file marker section (if configured)
 	indexFile := c.resolveIndexFile(resolved)
 	if indexFile != "" {
 		markerContent := c.generateMarkerContent(emittedPolicies, skillIDs)
@@ -229,7 +253,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		}
 	}
 
-	// 5. Return EmitResult for coordinated orphan cleanup in deploy pipeline
+	// 6. Return EmitResult for coordinated orphan cleanup in deploy pipeline
 	return &EmitResult{
 		EmittedFiles: emittedFiles,
 		TargetDirs:   []string{rulesDir, skillsDir},

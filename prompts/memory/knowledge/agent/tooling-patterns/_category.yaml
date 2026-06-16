@@ -1,0 +1,5 @@
+category_id: tooling-patterns
+title: Agent Tooling Cross-Platform and Index Sync Patterns
+description: Cross-platform file walking, index-DB synchronization, and shell tool resolution patterns
+created_at: 2026-06-15T15:35:16.3426567Z
+last_updated: 2026-06-15T15:35:16.3426567Z

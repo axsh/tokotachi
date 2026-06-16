@@ -130,6 +130,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ============================================================
+# Environment Cleanup
+# ============================================================
+
+# Clear GITHUB_TOKEN if it contains a dummy/invalid value.
+# Antigravity IDE injects a dummy token (github_pat_antigravitydummytoken)
+# into the process environment, which causes HTTP 401 errors when
+# accessing GitHub API in scaffold tests.
+if [[ "${GITHUB_TOKEN:-}" == *"antigravitydummytoken"* ]]; then
+    warn "Detected Antigravity dummy GITHUB_TOKEN — clearing it."
+    unset GITHUB_TOKEN
+fi
+
+# ============================================================
 # Functions
 # ============================================================
 
