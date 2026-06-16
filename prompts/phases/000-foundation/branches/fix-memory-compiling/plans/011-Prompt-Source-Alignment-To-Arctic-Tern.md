@@ -219,7 +219,7 @@
 > [!NOTE]
 > 各ステップでは「arctic-tern 版の本文をコピー → frontmatter 差し替え → テンプレート記法変換 → tokotachi 独自記述の追加」の手順で進める。
 
-1.  **[ ] Step 1: project-instructions.md の書き換え**
+1.  **[x] Step 1: project-instructions.md の書き換え**
     *   `prompts/phases/000-foundation/refs/repos/arctic-tern/.agent/rules/instructions.md` の本文を取得
     *   tokotachi の frontmatter を先頭に配置 (2つ目の frontmatter は削除)
     *   ルール参照を `{{policy:xxx}}` に変換
@@ -228,41 +228,41 @@
     *   コミット実行例をシングルクォートに修正
     *   `git add && git commit`
 
-2.  **[ ] Step 2: build-pipeline.md の書き換え**
+2.  **[x] Step 2: build-pipeline.md の書き換え**
     *   arctic-tern 版をコピーし、frontmatter 差し替え、テンプレート記法変換
     *   `git add && git commit`
 
-3.  **[ ] Step 3: create-implementation-plan.md の書き換え**
+3.  **[x] Step 3: create-implementation-plan.md の書き換え**
     *   arctic-tern 版をコピーし、frontmatter 差し替え、テンプレート記法変換
     *   `git add && git commit`
 
-4.  **[ ] Step 4: execute-implementation-plan.md の書き換え**
+4.  **[x] Step 4: execute-implementation-plan.md の書き換え**
     *   arctic-tern 版をコピーし、frontmatter 差し替え、テンプレート記法変換
     *   遠方知識の記録セクションを追加 (Section 3 と Section 4 の間)
     *   `git add && git commit`
 
-5.  **[ ] Step 5: investigate.md の確認**
+5.  **[x] Step 5: investigate.md の確認** (本文同一のため変更なし)
     *   本文が同一であることを確認。変更不要であればスキップ。
     *   変更があれば `git add && git commit`
 
-6.  **[ ] Step 6: review-point.md の書き換え**
+6.  **[x] Step 6: review-point.md の書き換え**
     *   arctic-tern 版をコピーし、frontmatter 差し替え
     *   Git コミットセクション (Section 4) を追加
     *   `git add && git commit`
 
-7.  **[ ] Step 7: run-all-tests.md の書き換え**
+7.  **[x] Step 7: run-all-tests.md の書き換え**
     *   arctic-tern 版をコピーし、frontmatter 差し替え
     *   `git add && git commit`
 
-8.  **[ ] Step 8: test-generator.md の書き換え**
+8.  **[x] Step 8: test-generator.md の書き換え**
     *   arctic-tern 版をコピーし、frontmatter 差し替え、テンプレート記法変換
     *   `git add && git commit`
 
-9.  **[ ] Step 9: 最終差分確認**
+9.  **[x] Step 9: 最終差分確認**
     *   各ファイルについて arctic-tern 版との `diff` を取り、差分が意図通りであることを確認
     *   全ファイルの frontmatter、テンプレート記法、独自セクションが正しいことを確認
 
-10. **[ ] Step 10: Verification Plan の実行**
+10. **[x] Step 10: Verification Plan の実行**
 
 ## Verification Plan
 
