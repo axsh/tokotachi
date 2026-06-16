@@ -154,7 +154,7 @@ If you are unsure whether the change qualifies, run a dry-run first:
 
 ## Report Format
 
-After running record.sh, report:
+After running record.sh, include the following in your log output:
 
 ```text
 Far-knowledge intake: recorded.
@@ -165,12 +165,41 @@ Notes:
 Flags: <flags used>
 ```
 
-If no recording was made, report:
+If no recording was made:
 
 ```text
 Far-knowledge intake: no update.
 Reason: <brief reason>
 ```
+
+## User Report
+
+After this skill completes, you **MUST** report the outcome to the user
+with an explanation. Do not simply state the result -- explain the
+reasoning so the user understands what happened and why.
+
+### When knowledge was recorded
+
+Explain to the user:
+- **What knowledge was captured**: Describe the key insight, decision,
+  or pattern that was recorded, in plain language the user can understand
+  without reading the raw notes.
+- **Why it qualifies as far-knowledge**: Briefly explain why this
+  knowledge cannot be discovered from nearby code and how it would
+  benefit future work in other parts of the codebase.
+
+### When no knowledge was recorded
+
+Explain to the user:
+- **Why you decided not to record**: Describe which of the distance
+  judgment criteria (see "Distance Judgment Guidelines" above) you
+  evaluated and why none were met. Be concrete -- for example: "The
+  change is localized to a single package and can be discovered from its
+  direct imports, so it does not meet the far-knowledge threshold."
+- **What would make it recordable**: If applicable, briefly mention what
+  kind of additional context or scope would elevate the work to
+  far-knowledge (e.g., "If this pattern were adopted across multiple
+  modules, it would qualify as a cross-cutting design pattern.").
 
 ## Constraints
 
