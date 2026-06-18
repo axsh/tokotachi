@@ -129,6 +129,9 @@ func TestUpdate_Drift(t *testing.T) {
 	err = cmdCommit.Run()
 	require.NoError(t, err)
 
+	// Sleep to ensure commit timestamp is strictly in the past relative to first Update's metadata
+	time.Sleep(2 * time.Second)
+
 	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
 
 	// 1. First update (should run deploy)
