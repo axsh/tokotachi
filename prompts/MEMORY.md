@@ -141,13 +141,119 @@ source_event_ids:
 
 ### Stage 3: Emit (配信)
 
-`tt prompt update` 実行時に、各 Coding Agent 向けのエミッターが
-`branches/*/skills/` 以下の far-knowledge スキルを自動収集し、
-各エージェントのスキルディレクトリに配信する。
+`tt prompt update` (または `tt prompt deploy`) を実行すると、`prompts/manifest` および `prompts/memory` に格納されたすべてのプロンプト群がエミッターを通じて各 Coding Agent のターゲットパスへと配置されます。
 
-- `.agents/skills/__far-knowledge-*/SKILL.md` (Antigravity / Codex)
-- `.claude/skills/__far-knowledge-*/SKILL.md` (Claude Code)
-- `.cursor/skills/__far-knowledge-*/SKILL.md` (Cursor)
+#### 配信データフロー
+
+```mermaid
+graph TD
+    subgraph 入力ファイル (Source Files)
+        Policies["policies/*.md<br>(kind: policy)"]
+        Procedures["procedures/*.md<br>(kind: procedure)"]
+        Capabilities["capabilities/*.md<br>(kind: capability)"]
+        MemoryDocs["memory/**/*.md<br>(Memory Documents)"]
+    end
+
+    subgraph コンパイル (Compile / Resolve)
+        Parser["Parser (ParseAllEntities / ParseAllMemoryDocs)"]
+        Resolved["ResolvedManifest<br>(manifest.resolved.yaml)"]
+    end
+
+    subgraph 各エージェントへの配信 (Emitter & Deploy)
+        AntigravityEmitter["Antigravity Emitter"]
+        CursorEmitter["Cursor Emitter"]
+        ClaudeCodeEmitter["Claude Code Emitter"]
+        CodexEmitter["Codex Emitter"]
+    end
+
+    subgraph 出力ファイル (Output Files)
+        %% Antigravity
+        AG_Rules[".agents/rules/<br>- instructions.md<br>- {id}.md"]
+        AG_Skills[".agents/skills/{id}/SKILL.md"]
+
+        %% Cursor
+        CS_Rules[".cursor/rules/{id}.mdc"]
+        CS_Skills[".cursor/skills/{id}/SKILL.md"]
+
+        %% Claude Code
+        CC_Rules[".claude/rules/{id}.md"]
+        CC_Skills[".claude/skills/{id}/SKILL.md"]
+
+        %% Codex
+        CX_Rules[".agents/rules/{id}.md"]
+        CX_Skills[".agents/skills/{id}/SKILL.md"]
+        CX_Index["AGENTS.md (インデックス自動更新)"]
+    end
+
+    Policies --> Parser
+    Procedures --> Parser
+    Capabilities --> Parser
+    MemoryDocs --> Parser
+
+    Parser --> Resolved
+
+    Resolved --> AntigravityEmitter
+    Resolved --> CursorEmitter
+    Resolved --> ClaudeCodeEmitter
+    Resolved --> CodexEmitter
+
+    AntigravityEmitter --> AG_Rules
+    AntigravityEmitter --> AG_Skills
+
+    CursorEmitter --> CS_Rules
+    CursorEmitter --> CS_Skills
+
+    ClaudeCodeEmitter --> CC_Rules
+    ClaudeCodeEmitter --> CC_Skills
+
+    CodexEmitter --> CX_Rules
+    CodexEmitter --> CX_Skills
+    CodexEmitter --> CX_Index
+```
+
+#### 各ファイルの出力判定ルール
+
+`manifest`配下の各 Markdown ファイルは、Frontmatter に指定された `kind` と各エージェントの特性に応じて以下のようにマッピング・配置されます。
+
+##### 1. Policies (kind: policy) -> Rules に変換
+
+| Agent ターゲット | 出力パス | Frontmatter 変換・出力判定 |
+|---|---|---|
+| **Antigravity** | `.agents/rules/{id}.md` | `activation.mode == "always"` の場合のみ `trigger: always_on` を持つ Frontmatter を付与。それ以外は Frontmatter なし。<br>※ `id == "project-instructions"` の場合は `instructions.md` として出力。 |
+| **Cursor** | `.cursor/rules/{id}.mdc` | `description: {title}`, `globs: {paths}`, `alwaysApply: {activation.mode == "always"}` を持つ Frontmatter を生成。拡張子は `.mdc`。 |
+| **Claude Code** | `.claude/rules/{id}.md` | `paths` が指定されている場合、`paths: [...]` を持つ Frontmatter を生成。指定がない場合は Frontmatter なし。 |
+| **Codex** | `.agents/rules/{id}.md` | Frontmatter なし（純粋な Markdown）。 |
+
+##### 2. Capabilities (kind: capability) -> Skills に変換
+
+共通して各ターゲットの skills ディレクトリ配下に `{id}/SKILL.md` という構成で出力されます。
+Frontmatter は以下の形式に変換されます。
+```yaml
+name: {id}
+description: {description}
+paths: {paths} (Antigravity のみ出力)
+disable-model-invocation: {manual_only}
+```
+
+##### 3. Procedures (kind: procedure) -> Skills に変換
+
+作業手順もスキルにマッピングされ、各ターゲットの `{id}/SKILL.md` として出力されます。
+Frontmatter は以下の形式に変換されます。
+```yaml
+name: {id}
+description: {title}
+disable-model-invocation: {trigger.manual_only}
+```
+※ Frontmatter 内に `steps`（リスト形式）が定義されている場合、本文の末尾に `## Steps` というセクションが自動生成されます。
+
+##### 4. Branch Skills
+
+各エミッターは `branches/*/skills/` 配下にあるブランチ固有のスキルファイルをスキャンし、各ターゲットの skills ディレクトリ（例: `.agents/skills/__far-knowledge-*`）へ自動的にマージ・出力します。
+
+##### 5. Memory Docs (Memory Documents)
+
+`prompts/memory/**/*.md` は出力先に直接ファイルとして配置されることはありません。
+他の Markdown テンプレート中で使用される `{{kind:id}}` などの変数を展開する際の参照用データソースとして機能します。
 
 ## CLI コマンド体系
 
