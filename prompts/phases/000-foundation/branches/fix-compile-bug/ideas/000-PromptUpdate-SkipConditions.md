@@ -1,182 +1,73 @@
-# tt prompt update がコンパイル・デプロイをスキップする条件の分析
+# tt prompt updateの変更検出廃止とビルドクリーンアップ設計仕様書
 
 ## 背景 (Background)
 
-`tt prompt update` コマンドは、プロンプトソースファイルに変更があった場合にのみコンパイルとデプロイを実行する差分検出機能を持つ。しかし、ソースファイルを変更したにもかかわらず「変更無し」と判定されてスキップされるケースが報告されている。
+`tt prompt update` および `tt prompt deploy` コマンドは、プロンプトソースファイルに変更があった場合のみコンパイル・デプロイを実行する差分検出機能を持っていました。しかし、未コミットの変更が検出されない問題や、ダイジェスト対象外のファイルが存在する問題により、想定通りにコンパイルが実行されない現象が発生していました。
 
-本仕様書は、`tt prompt update` の変更検出ロジックを詳細に分析し、どのような条件でコンパイルがスキップされるかを明らかにする。
+また、ビルド時の中間生成物出力先である `tmp/dist/` がクリーンアップされないため、古い中間ファイルが残る問題も指摘されていました。
+
+これらの問題を解決するため、変更検出ロジック（Gitログおよびダイジェスト比較）を完全に廃止して常にコンパイルとデプロイを実行するようにし、ビルド処理の開始前に `tmp/dist/` をクリーンアップする設計へと移行します。
 
 ## 要件 (Requirements)
 
-### 分析対象
+1. **変更検出ロジックの完全廃止**
+   - `tt prompt update` および `tt prompt deploy` を実行した際、変更の有無にかかわらず常にコンパイルおよびデプロイを実行する。
+   - `last_update.yaml` メタデータの読み書き、および Git 履歴に基づく変更検出 (`CheckForChanges`)、ドリフト検出 (`CheckDrift`) によるスキップ処理を廃止する。
+   - ソースファイルの SHA-256 ダイジェスト比較によるスキップ判定を廃止する。
+   - `--force` フラグは後方互換性のために残す（何もしない no-op フラグとする）。
+   - コマンドの結果において、スキップされたことを示す `Skipped` フィールドは常に `false` になるようにする。
 
-`tt prompt update` のスキップ判定は、2つのレイヤーで行われる:
+2. **中間生成物ディレクトリ（tmp/dist/）のクリーンアップ**
+   - コンパイル (`Compile`) 処理の中で、バリデーションエラーがないことが確認された後、実際の生成処理を行う直前に、中間生成物ディレクトリ（`tmp/dist/`）を完全に削除して再作成する。
+   - ドライラン (`DryRun = true`) の場合は、ファイルの書き出しを行わないため、クリーンアップも実行しない。
 
-1. **Update レイヤー** ([update.go](file:///c:/Users/yamya/myprog/tokotachi/work/fix-compile-bug/features/tt/internal/prompt/compiler/update.go))
-2. **Deploy レイヤー** ([deploy.go](file:///c:/Users/yamya/myprog/tokotachi/work/fix-compile-bug/features/tt/internal/prompt/compiler/deploy.go))
+3. **デプロイ時の EmitMode の維持**
+   - `tmp/dist/` から出力先（`.agents/` など）への展開ステージでは、差分に応じた上書き・スキップ・不要ファイル削除などのオプション（`EmitMode` の `overwrite`, `skip`, `immune`）をそのまま維持し、動作するようにする。
 
-## 実現方針 (Implementation Approach) - 現状ロジックの分析
+## 実現方針 (Implementation Approach)
 
-### Update レイヤーの判定フロー (update.go)
+### 1. compiler.Update の修正 (update.go)
+- `Update()` 関数において、`shouldUpdate` や `CheckForChanges`、`CheckDrift` を呼び出して `needsUpdate` を判定する処理を削除し、常に `Deploy()` を実行するように変更する。
+- 戻り値の `TargetUpdateResult` の `Skipped` は常に `false` にし、`Reason` は空にする。
+- メタデータファイル (`last_update.yaml`) の読み書き処理 (`ReadMetadata`, `WriteMetadata`) は呼び出さず、可能であれば関数ごと削除する。
 
-`Update()` 関数は各ターゲットに対して以下の3段階の変更検出を行い、いずれも「変更あり」と判定しなかった場合にスキップする:
+### 2. compiler.Deploy の修正 (deploy.go)
+- `Deploy()` 内のダイジェスト比較と `CheckDrift` によるスキップ判定（ステップ7）を削除する。
+- `result.Skipped` は常に `false` になる。
+- ダイジェストの計算・保存処理 (`ComputeSourceDigest`, `SaveDigest`) 自体は、ログや他の互換性のために残す必要がなければ削除する（今回は不要なため削除する）。
 
-```
-shouldUpdate() -> CheckForChanges() (git log) -> CheckDrift() -> スキップ判定
-```
+### 3. compiler.Compile の修正 (compiler.go)
+- `Compile()` 関数のバリデーションチェック（ステップ8）が通過した後、実際のファイル書き出し（ステップ11）と Emitter による展開（ステップ13）の前に、`buildDir` (デフォルト `tmp/dist/`) のクリーンアップ処理を追加する。
+- `!opts.DryRun` の場合のみ、`buildDir` を `os.RemoveAll` して `os.MkdirAll` で再作成する。
 
-#### ステップ 1: `shouldUpdate()` (L132-140)
+### 4. 既存テストの修正
+- `update_test.go` および `deploy_test.go` において、`Skipped = true` をアサートしている箇所をすべて削除、または `Skipped = false` に修正する。
+- メタデータ書き込みや Git 検出のテストなど、廃止された内部ロジックに対するテストケースを削除する。
 
-```go
-func shouldUpdate(meta *UpdateMetadata, force bool) bool {
-    if force { return true }
-    if meta == nil { return true }
-    return false
-}
-```
+## 変更ファイル
 
-- `--force` フラグが指定されていれば常に更新
-- メタデータ (`last_update.yaml`) が存在しなければ更新
-- **メタデータが存在する場合は `false` を返す** (ここでは更新不要と判定)
+### compiler/update.go
+- `Update()` 関数の変更検出・メタデータ処理を削除。
+- `shouldUpdate()`, `CheckForChanges()`, `ReadMetadata()`, `WriteMetadata()` 関数を削除。
 
-#### ステップ 2: `CheckForChanges()` (L77-85)
+### compiler/deploy.go
+- `Deploy()` 内のダイジェスト比較によるスキップロジックを削除。
+- 不要となったダイジェスト処理の呼び出しをクリーンアップ。
 
-`shouldUpdate()` が `false` を返した場合にのみ実行される。
+### compiler/compiler.go
+- `Compile()` 内のバリデーションチェック通過後に、`buildDir` の削除および再作成を行う処理を追加。
 
-```go
-if meta != nil {
-    updatedAt, err := time.Parse(time.RFC3339, meta.UpdatedAt)
-    if err == nil {
-        gitChanged, _ := CheckForChanges(rootDir, updatedAt)
-        needsUpdate = gitChanged
-    }
-}
-```
+## 検証計画 (Verification Plan)
 
-`CheckForChanges()` (L144-157) は `git log --since=<UpdatedAt>` を実行して `prompts/manifest/` と `prompts/memory/` ディレクトリへのコミットがあるかを確認する。
+### 自動テスト
+- `update_test.go` と `deploy_test.go` を修正し、常にコンパイル/デプロイが実行されることを検証する。
+- 以下のコマンドを実行してテストがすべて通過することを確認する:
+  ```bash
+  & "C:\Program Files\Git\bin\bash.exe" -c "go test ./features/tt/internal/prompt/compiler/..."
+  ```
 
-**スキップされるケース:**
-- git log の `--since` 時刻以降にコミットがない場合
-- **ファイルを変更したがコミットしていない場合 (git add / git commit していない)**
+### 手動検証
+1. `tt prompt update` を連続で2回実行し、2回目もスキップされずにコンパイルとデプロイが成功することを確認する。
+2. `tmp/dist/` に適当な古いファイル（例: `tmp/dist/old-junk.txt`）を手動で作成した後、`tt prompt compile` を実行し、実行後に `tmp/dist/` の中身が完全にクリアされ、新しい生成ファイルのみが存在することを確認する。
+3. `tt prompt deploy --mode immune` を実行し、デプロイ先（例: `.agents/`）の不要なファイルが正しく削除されることを確認する（`EmitMode` の機能維持確認）。
 
-> [!WARNING]
-> **重大な問題**: `CheckForChanges()` は **コミットされた変更のみ** を検出する。`git log` を使用しているため、ワーキングツリーやステージングエリアの変更は検出されない。つまり、ファイルを編集しただけでは「変更あり」と判定されない。
-
-#### ステップ 3: `CheckDrift()` (L88-92)
-
-`CheckForChanges()` でも変更が検出されなかった場合に実行される。
-
-`CheckDrift()` (deploy.go L124-162) は、コンパイル済みの出力ファイル(`.agents/rules/`, `.agents/skills/` など)が期待される内容と一致しているかを確認する。
-
-- 出力ファイルが欠けている場合 → drift 検出 → 更新実行
-- 出力ファイルの内容が期待と異なる場合 → drift 検出 → 更新実行
-- 出力ファイルが全て最新の場合 → drift なし → **スキップ**
-
-### Deploy レイヤーの判定フロー (deploy.go)
-
-Update レイヤーで「更新が必要」と判定された場合、`Deploy()` が呼ばれるが、Deploy にも独自のダイジェストチェックがある:
-
-#### ステップ 4: ソースダイジェスト比較 (deploy.go L72-78)
-
-```go
-if !opts.Force && prevInfo.Digest == currentDigest && currentDigest != "" {
-    if !CheckDrift(rootDir, opts.ProjectPath, target) {
-        result.Skipped = true
-        return result, nil
-    }
-}
-```
-
-- `ComputeSourceDigest()` (digest.go) がソースファイルの SHA-256 ハッシュを計算
-- 前回保存したダイジェスト (`tmp/dist/.compile-digest`) と比較
-- **ダイジェストが一致し、かつ drift がなければスキップ**
-
-> [!IMPORTANT]
-> **二重ゲートの問題**: Update レイヤーと Deploy レイヤーの両方にスキップ判定がある。Update レイヤーで「更新が必要」と判定されても、Deploy レイヤーのダイジェスト比較で再びスキップされる可能性がある。ただし、通常は Update で更新必要と判定されれば Deploy でも同様になるはず。
-
-### ソースダイジェストの計算対象 (digest.go)
-
-`ComputeSourceDigest()` は `project.yaml` の `sources` セクションで定義されたグロブパターンにマッチするファイルを対象とする:
-
-```yaml
-sources:
-  policies: prompts/manifest/code_content/policies/**/*.md
-  procedures: prompts/manifest/code_content/procedures/**/*.md
-  capabilities: prompts/manifest/code_content/capabilities/**/*.md
-  refs: prompts/manifest/code_content/refs/**/*.md
-  guards: prompts/manifest/safety/guards/**/*.yaml
-  workers: prompts/manifest/safety/workers/**/*.yaml
-  bundles: prompts/manifest/safety/bundles/**/*.yaml
-  targets: prompts/manifest/targets/**/*.yaml
-  memory_docs: prompts/memory/**/*.md
-```
-
-> [!CAUTION]
-> **ダイジェスト対象外のファイル**: 以下のファイルはダイジェスト計算に含まれない。これらを変更しても「変更なし」と判定される:
-> - `project.yaml` 自体
-> - `prompts/manifest/schemas/` 配下のスキーマファイル
-> - グロブパターンにマッチしないファイル（拡張子違い、配置場所違いなど）
-> - `.agents/` 配下のデプロイ済みファイル（出力先の手動編集）
-
-## スキップされる全ケースのまとめ
-
-| No | 条件 | 根拠 | 影響度 |
-|----|------|------|--------|
-| 1 | ソースファイルを編集したがコミットしていない | `CheckForChanges()` が `git log` ベースのため未コミット変更を検出不可 | 高 |
-| 2 | `project.yaml` を変更した | ダイジェスト計算対象に含まれない | 中 |
-| 3 | スキーマファイルを変更した | ダイジェスト計算対象に含まれない | 低 |
-| 4 | グロブパターンにマッチしない場所にファイルを追加した | `ExpandGlob` がマッチしない | 中 |
-| 5 | `last_update.yaml` の `UpdatedAt` がソースコミットより新しい | `git log --since` で変更が見つからない | 中 |
-| 6 | Deploy レイヤーのダイジェストが一致し、出力ファイルにドリフトがない | ダイジェスト比較で一致 | 低(正常動作) |
-| 7 | `memory_config` に変更を加えた場合（ダイジェスト対象に `memory_config` パターンがない場合） | ダイジェスト計算対象外 | 低 |
-
-## 検証シナリオ (Verification Scenarios)
-
-### シナリオ A: 未コミット変更のスキップ確認
-
-1. `tt prompt deploy --force` で初回デプロイを実行する
-2. `prompts/manifest/code_content/policies/` 配下の `.md` ファイルを編集する（コミットしない）
-3. `tt prompt update` を実行する
-4. 期待結果: 「No changes detected」と表示されスキップされる（現在の動作）
-5. `git add . && git commit -m 'test'` でコミットする
-6. `tt prompt update` を再度実行する
-7. 期待結果: コンパイル・デプロイが実行される
-
-### シナリオ B: ダイジェスト対象外ファイルの変更
-
-1. `tt prompt deploy --force` で初回デプロイを実行する
-2. `prompts/manifest/project.yaml` の `defaults.language` を変更してコミットする
-3. `tt prompt update` を実行する
-4. 期待結果: `project.yaml` はダイジェスト対象外のためスキップされる
-
-### シナリオ C: ドリフト検出による再デプロイ
-
-1. `tt prompt deploy --force` で初回デプロイを実行する
-2. `.agents/rules/` 配下のデプロイ済みファイルを手動で削除する
-3. `tt prompt update` を実行する
-4. 期待結果: ドリフト検出によりコンパイル・デプロイが実行される
-
-## テスト項目 (Testing for the Requirements)
-
-### ビルド・全体検証
-
-1. ビルド+単体テスト:
-   ```
-   scripts/process/build.sh
-   ```
-
-2. コンパイラ関連の統合テスト（変更検出ロジックのリグレッション確認）:
-   ```
-   scripts/process/integration_test.sh --categories "common" --specify "Compile|Deploy|Update"
-   ```
-
-### 個別テスト
-
-修正を行う場合、以下の既存テストが影響を受ける:
-
-- `TestUpdate_Drift` (update_test.go): ドリフト検出の正常動作
-- `TestDeploy_NoChanges` (deploy_test.go): 変更なし時のスキップ
-- `TestDeploy_WithChanges` (deploy_test.go): 変更あり時のデプロイ
-- `TestCheckForChanges_NoGitChanges` (update_test.go): git変更なし時の判定
-
-修正時には、未コミット変更を検出する新しいテストケースを追加する必要がある。
