@@ -57,6 +57,11 @@ func (c *CursorEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildD
 }
 
 func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error) {
+	// Clean the emitter's buildDir subdirectory to ensure compiled output matches current templates
+	if err := CleanTargetDirs(filepath.Join(buildDir, "cursor")); err != nil {
+		return nil, fmt.Errorf("failed to clean build dir for cursor: %w", err)
+	}
+
 	rulesDir, skillsDir := c.resolvePaths(resolved, buildDir, apply)
 
 	// Track emitted files for immune mode orphan cleanup

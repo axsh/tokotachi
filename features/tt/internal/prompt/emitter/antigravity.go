@@ -56,6 +56,11 @@ func (a *AntigravityEmitter) resolvePaths(resolved *manifest.ResolvedManifest, b
 }
 
 func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error) {
+	// Clean the emitter's buildDir subdirectory to ensure compiled output matches current templates
+	if err := CleanTargetDirs(filepath.Join(buildDir, "antigravity")); err != nil {
+		return nil, fmt.Errorf("failed to clean build dir for antigravity: %w", err)
+	}
+
 	rulesDir, skillsDir := a.resolvePaths(resolved, buildDir, apply)
 
 	// Track emitted files for immune mode orphan cleanup

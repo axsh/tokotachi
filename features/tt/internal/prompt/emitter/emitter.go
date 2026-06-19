@@ -1,8 +1,25 @@
 package emitter
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/axsh/tokotachi/features/tt/internal/prompt/manifest"
 )
+
+// CleanTargetDirs removes the contents of each directory (but preserves the directory itself).
+// This is called before each emitter writes files to ensure a clean state.
+func CleanTargetDirs(dirs ...string) error {
+	for _, dir := range dirs {
+		if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to clean target dir %s: %w", dir, err)
+		}
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to recreate target dir %s: %w", dir, err)
+		}
+	}
+	return nil
+}
 
 // EmitMode controls how files are written during emit.
 type EmitMode string

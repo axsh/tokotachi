@@ -56,6 +56,11 @@ func (c *ClaudeCodeEmitter) resolvePaths(resolved *manifest.ResolvedManifest, bu
 }
 
 func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error) {
+	// Clean the emitter's buildDir subdirectory to ensure compiled output matches current templates
+	if err := CleanTargetDirs(filepath.Join(buildDir, "claude-code")); err != nil {
+		return nil, fmt.Errorf("failed to clean build dir for claude-code: %w", err)
+	}
+
 	rulesDir, skillsDir := c.resolvePaths(resolved, buildDir, apply)
 
 	// Track emitted files for immune mode orphan cleanup
