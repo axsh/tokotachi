@@ -1,0 +1,5 @@
+category_id: deploy-drift-detection
+title: Deploy Drift Detection and Entity YAML Serialization
+description: Knowledge about deploy/update drift detection mechanism and Entity custom YAML serialization for resolved manifest roundtrips
+created_at: 2026-06-19T02:45:53.0798321Z
+last_updated: 2026-06-19T02:45:53.0798321Z

@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -98,4 +99,88 @@ func TestCheckForChanges_WithForce(t *testing.T) {
 func TestCheckForChanges_NoMetadataForced(t *testing.T) {
 	changed := shouldUpdate(nil, true)
 	assert.True(t, changed, "should update when no metadata and force")
+}
+
+func TestUpdate_Drift(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "valid"), tmpDir)
+
+	// Initialize git repo to make CheckForChanges happy
+	cmdInit := exec.Command("git", "init")
+	cmdInit.Dir = tmpDir
+	err := cmdInit.Run()
+	require.NoError(t, err)
+
+	cmdConfigName := exec.Command("git", "config", "user.name", "test")
+	cmdConfigName.Dir = tmpDir
+	_ = cmdConfigName.Run()
+
+	cmdConfigEmail := exec.Command("git", "config", "user.email", "test@test.com")
+	cmdConfigEmail.Dir = tmpDir
+	_ = cmdConfigEmail.Run()
+
+	cmdAdd := exec.Command("git", "add", ".")
+	cmdAdd.Dir = tmpDir
+	err = cmdAdd.Run()
+	require.NoError(t, err)
+
+	cmdCommit := exec.Command("git", "commit", "-m", "initial")
+	cmdCommit.Dir = tmpDir
+	err = cmdCommit.Run()
+	require.NoError(t, err)
+
+	// Sleep to ensure commit timestamp is strictly in the past relative to first Update's metadata
+	time.Sleep(2 * time.Second)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+
+	// 1. First update (should run deploy)
+	res1, err := Update(UpdateOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, res1)
+	require.Contains(t, res1.TargetResults, "antigravity")
+	assert.False(t, res1.TargetResults["antigravity"].Skipped)
+
+	// Verify target file was created
+	targetFile := filepath.Join(tmpDir, ".agents", "rules", "test-compile-policy.md")
+	_, err = os.Stat(targetFile)
+	require.NoError(t, err)
+
+	// Wait 1 second to ensure updatedAt in metadata is strictly in the past
+	time.Sleep(1 * time.Second)
+
+	// 2. Second update (should skip since no changes and no drift)
+	res2, err := Update(UpdateOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, res2)
+	assert.True(t, res2.TargetResults["antigravity"].Skipped)
+
+	// 3. Delete target file to introduce drift
+	err = os.Remove(targetFile)
+	require.NoError(t, err)
+
+	// 4. Third update (should deploy because drift was detected)
+	res3, err := Update(UpdateOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, res3)
+	assert.False(t, res3.TargetResults["antigravity"].Skipped)
+
+	// Verify target file was recreated
+	_, err = os.Stat(targetFile)
+	require.NoError(t, err)
 }

@@ -1,6 +1,10 @@
 package manifest
 
-import "fmt"
+import (
+	"fmt"
+
+	"gopkg.in/yaml.v3"
+)
 
 // ValidKinds contains the list of valid entity kinds
 var ValidKinds = map[string]bool{
@@ -22,6 +26,39 @@ type Entity struct {
 	Title      string         `yaml:"title"`
 	FilePath   string         `yaml:"-"`
 	Raw        map[string]any `yaml:"-"`
+}
+
+func (e *Entity) UnmarshalYAML(value *yaml.Node) error {
+	type Alias Entity
+	var aux Alias
+	if err := value.Decode(&aux); err != nil {
+		return err
+	}
+	e.APIVersion = aux.APIVersion
+	e.Kind = aux.Kind
+	e.ID = aux.ID
+	e.Title = aux.Title
+
+	var raw map[string]any
+	if err := value.Decode(&raw); err != nil {
+		return err
+	}
+	e.Raw = raw
+	return nil
+}
+
+func (e *Entity) MarshalYAML() (any, error) {
+	raw := make(map[string]any)
+	for k, v := range e.Raw {
+		raw[k] = v
+	}
+	raw["apiVersion"] = e.APIVersion
+	raw["kind"] = e.Kind
+	raw["id"] = e.ID
+	if e.Title != "" {
+		raw["title"] = e.Title
+	}
+	return raw, nil
 }
 
 // ValidateKind validates whether the kind field has a valid value

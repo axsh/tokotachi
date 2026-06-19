@@ -85,6 +85,13 @@ func Update(opts UpdateOptions) (*UpdateResult, error) {
 		}
 
 		if !needsUpdate {
+			// Additional check: drift detection
+			if CheckDrift(rootDir, opts.ProjectPath, t) {
+				needsUpdate = true
+			}
+		}
+
+		if !needsUpdate {
 			tr.Skipped = true
 			tr.Reason = "no changes detected"
 			result.TargetResults[t] = tr

@@ -202,3 +202,51 @@ func TestDeploy_ValidationErrors(t *testing.T) {
 		t.Error("digest file should not be created on validation error")
 	}
 }
+
+func TestDeploy_Drift(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "valid"), tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+
+	// First deploy
+	_, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("first Deploy() error = %v", err)
+	}
+
+	// Verify target file was created
+	targetFile := filepath.Join(tmpDir, ".agents", "rules", "test-compile-policy.md")
+	if _, err := os.Stat(targetFile); os.IsNotExist(err) {
+		t.Fatalf("expected target file to be created: %s", targetFile)
+	}
+
+	// Delete target file to introduce drift
+	if err := os.Remove(targetFile); err != nil {
+		t.Fatalf("failed to delete target file: %v", err)
+	}
+
+	// Second deploy (should redeploy due to drift, Skipped=false)
+	result, err := Deploy(DeployOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       false,
+		DryRun:      false,
+	})
+	if err != nil {
+		t.Fatalf("second Deploy() error = %v", err)
+	}
+	if result.Skipped {
+		t.Error("expected Skipped=false due to drift")
+	}
+
+	// Verify target file was recreated
+	if _, err := os.Stat(targetFile); os.IsNotExist(err) {
+		t.Error("expected target file to be recreated after redeploy")
+	}
+}

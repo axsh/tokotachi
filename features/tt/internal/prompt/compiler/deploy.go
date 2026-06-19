@@ -2,9 +2,12 @@ package compiler
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/axsh/tokotachi/features/tt/internal/prompt/emitter"
+	"github.com/axsh/tokotachi/features/tt/internal/prompt/manifest"
+	"gopkg.in/yaml.v3"
 )
 
 // DeployOptions holds options for the deploy pipeline
@@ -68,8 +71,10 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 
 	// 7. Check if changes detected
 	if !opts.Force && prevInfo.Digest == currentDigest && currentDigest != "" {
-		result.Skipped = true
-		return result, nil
+		if !CheckDrift(rootDir, opts.ProjectPath, target) {
+			result.Skipped = true
+			return result, nil
+		}
 	}
 
 	// 8. Compile
@@ -112,4 +117,46 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 	}
 
 	return result, nil
+}
+
+// CheckDrift verifies if target files have drifted from the resolved manifest.
+// Returns true if there is drift (or if check fails), false if target is fully consistent.
+func CheckDrift(rootDir, projectPath, target string) bool {
+	cfg, err := LoadConfig(projectPath)
+	if err != nil {
+		return true // assume drift if config can't be loaded
+	}
+
+	resolvedPath := filepath.Join(rootDir, cfg.Outputs.ResolvedManifest)
+	data, err := os.ReadFile(resolvedPath)
+	if err != nil {
+		return true // assume drift if resolved manifest is missing
+	}
+
+	var resolved manifest.ResolvedManifest
+	if err := yaml.Unmarshal(data, &resolved); err != nil {
+		return true // assume drift if resolved manifest is invalid
+	}
+
+	var emitObj emitter.Emitter
+	switch target {
+	case "antigravity":
+		emitObj = emitter.NewAntigravityEmitter(rootDir)
+	case "cursor":
+		emitObj = emitter.NewCursorEmitter(rootDir)
+	case "claude-code":
+		emitObj = emitter.NewClaudeCodeEmitter(rootDir)
+	case "codex":
+		emitObj = emitter.NewCodexEmitter(rootDir)
+	default:
+		return true
+	}
+
+	buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
+	ok, err := emitObj.Check(&resolved, buildDir)
+	if err != nil || !ok {
+		return true // drift detected or check failed
+	}
+
+	return false // no drift
 }
