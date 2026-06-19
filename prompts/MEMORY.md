@@ -93,8 +93,13 @@ Coding Agent       Coding Agent           tt prompt update
 
 ### Stage 2: Systematize (体系化)
 
-Coding Agent が `systematize-far-knowledge` ワークフローを実行し、
-pending events を分析・カテゴリ化して知識ストアに登録する。
+体系化ワークフロー（`systematize-far-knowledge`）は、主に以下のタイミングで実行されます：
+
+1. **プルリクエスト（PR）の作成前**: 変更をマージしてPRを作成する前に、保留中の未処理イベントを確実に処理して知識ストアを更新するため。
+2. **他ブランチとの同期（プル/同期）前 (`pre-sync-knowledge-compile`)**: ブランチ間で知識の不整合やコンパイルエラーが起きるのを防ぐため。
+3. **定期的な整理**: 知識ストアを最新状態に保つため、エージェントや開発者が任意のタイミングで実行。
+
+Coding Agent が `systematize-far-knowledge` ワークフローを実行し、pending events を分析・カテゴリ化して知識ストアに登録します。
 
 **操作の流れ:**
 1. `intake.sh list --status pending` で未処理イベントを一覧
