@@ -69,8 +69,12 @@ Coding Agent       Coding Agent           tt prompt update
 
 ### Stage 1: Record (記録)
 
-Coding Agent が実装作業中に遠方知識を検出した場合、
-`./scripts/code/agent/record.sh` を通じて intake event を記録する。
+遠方知識の検出は、主に以下のタイミングで行われます：
+
+1. **実装中の自発的検出**: 実装やデバッグ中に、他でも再利用可能な設計パターンや教訓をエージェントが発見した時。
+2. **Gitプッシュ時の自動検証 (`pre-push-knowledge-check`)**: プッシュ前に変更差分を検証し、蓄積すべき遠方知識が含まれていると判定された時。
+
+上記により遠方知識が検出された場合、`./scripts/code/agent/record.sh` を通じて intake event を記録します。
 
 ```bash
 ./scripts/code/agent/record.sh \
