@@ -147,39 +147,35 @@ source_event_ids:
 
 ```mermaid
 graph TD
-    subgraph 入力ファイル (Source Files)
+    subgraph "入力ファイル (Source Files)"
         Policies["policies/*.md<br>(kind: policy)"]
         Procedures["procedures/*.md<br>(kind: procedure)"]
         Capabilities["capabilities/*.md<br>(kind: capability)"]
         MemoryDocs["memory/**/*.md<br>(Memory Documents)"]
     end
 
-    subgraph コンパイル (Compile / Resolve)
+    subgraph "コンパイル (Compile / Resolve)"
         Parser["Parser (ParseAllEntities / ParseAllMemoryDocs)"]
         Resolved["ResolvedManifest<br>(manifest.resolved.yaml)"]
     end
 
-    subgraph 各エージェントへの配信 (Emitter & Deploy)
+    subgraph "各エージェントへの配信 (Emitter & Deploy)"
         AntigravityEmitter["Antigravity Emitter"]
         CursorEmitter["Cursor Emitter"]
         ClaudeCodeEmitter["Claude Code Emitter"]
         CodexEmitter["Codex Emitter"]
     end
 
-    subgraph 出力ファイル (Output Files)
-        %% Antigravity
+    subgraph "出力ファイル (Output Files)"
         AG_Rules[".agents/rules/<br>- instructions.md<br>- {id}.md"]
         AG_Skills[".agents/skills/{id}/SKILL.md"]
 
-        %% Cursor
         CS_Rules[".cursor/rules/{id}.mdc"]
         CS_Skills[".cursor/skills/{id}/SKILL.md"]
 
-        %% Claude Code
         CC_Rules[".claude/rules/{id}.md"]
         CC_Skills[".claude/skills/{id}/SKILL.md"]
 
-        %% Codex
         CX_Rules[".agents/rules/{id}.md"]
         CX_Skills[".agents/skills/{id}/SKILL.md"]
         CX_Index["AGENTS.md (インデックス自動更新)"]
