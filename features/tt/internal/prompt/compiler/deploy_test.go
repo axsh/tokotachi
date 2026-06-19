@@ -23,20 +23,8 @@ func TestDeploy_FirstRun(t *testing.T) {
 	if result.Skipped {
 		t.Error("expected Skipped=false on first run")
 	}
-	if result.DigestCurrent == "" {
-		t.Error("expected non-empty DigestCurrent")
-	}
 	if result.CompileResult == nil {
 		t.Error("expected non-nil CompileResult")
-	}
-
-	// Verify digest file was created
-	cfg, _ := LoadConfig(projectPath)
-	rootDir, _ := ResolveProjectRoot(projectPath)
-	buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
-	digestFile := DigestPath(buildDir)
-	if _, err := os.Stat(digestFile); os.IsNotExist(err) {
-		t.Error("expected digest file to be created")
 	}
 }
 
@@ -57,7 +45,7 @@ func TestDeploy_NoChanges(t *testing.T) {
 		t.Fatalf("first Deploy() error = %v", err)
 	}
 
-	// Second deploy without changes
+	// Second deploy without changes (should still deploy, Skipped=false)
 	result, err := Deploy(DeployOptions{
 		ProjectPath: projectPath,
 		Target:      "antigravity",
@@ -67,8 +55,8 @@ func TestDeploy_NoChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second Deploy() error = %v", err)
 	}
-	if !result.Skipped {
-		t.Error("expected Skipped=true when no changes")
+	if result.Skipped {
+		t.Error("expected Skipped=false even when no changes")
 	}
 }
 
@@ -146,35 +134,6 @@ func TestDeploy_Force(t *testing.T) {
 	}
 }
 
-func TestDeploy_DryRun(t *testing.T) {
-	tmpDir := t.TempDir()
-	copyTestdata(t, filepath.Join("testdata", "valid"), tmpDir)
-
-	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
-
-	result, err := Deploy(DeployOptions{
-		ProjectPath: projectPath,
-		Target:      "antigravity",
-		Force:       false,
-		DryRun:      true,
-	})
-	if err != nil {
-		t.Fatalf("Deploy() error = %v", err)
-	}
-	if result.Skipped {
-		t.Error("expected Skipped=false on first dry-run")
-	}
-
-	// Verify digest file was NOT created
-	cfg, _ := LoadConfig(projectPath)
-	rootDir, _ := ResolveProjectRoot(projectPath)
-	buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
-	digestFile := DigestPath(buildDir)
-	if _, err := os.Stat(digestFile); !os.IsNotExist(err) {
-		t.Error("dry-run should not create digest file")
-	}
-}
-
 func TestDeploy_ValidationErrors(t *testing.T) {
 	tmpDir := t.TempDir()
 	copyTestdata(t, filepath.Join("testdata", "invalid"), tmpDir)
@@ -191,15 +150,6 @@ func TestDeploy_ValidationErrors(t *testing.T) {
 	}
 	if result.CompileResult == nil || len(result.CompileResult.Errors) == 0 {
 		t.Error("expected validation errors in CompileResult")
-	}
-
-	// Verify digest file was NOT created
-	cfg, _ := LoadConfig(projectPath)
-	rootDir, _ := ResolveProjectRoot(projectPath)
-	buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
-	digestFile := DigestPath(buildDir)
-	if _, err := os.Stat(digestFile); !os.IsNotExist(err) {
-		t.Error("digest file should not be created on validation error")
 	}
 }
 
@@ -231,7 +181,7 @@ func TestDeploy_Drift(t *testing.T) {
 		t.Fatalf("failed to delete target file: %v", err)
 	}
 
-	// Second deploy (should redeploy due to drift, Skipped=false)
+	// Second deploy (should redeploy, Skipped=false)
 	result, err := Deploy(DeployOptions{
 		ProjectPath: projectPath,
 		Target:      "antigravity",

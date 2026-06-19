@@ -81,6 +81,17 @@ func Compile(opts CompileOptions) (*CompileResult, error) {
 		return result, nil
 	}
 
+	// Clean build directory (unless dry-run)
+	if !opts.DryRun {
+		buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
+		if err := os.RemoveAll(buildDir); err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to clean build dir %s: %w", buildDir, err)
+		}
+		if err := os.MkdirAll(buildDir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create build dir %s: %w", buildDir, err)
+		}
+	}
+
 	// 9. Resolve
 	resolved, err := manifest.Resolve(cfg, entities, memDocs)
 	if err != nil {
