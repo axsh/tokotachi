@@ -26,11 +26,18 @@ type SkillFrontmatter struct {
 	DisableModelInvocation bool     `yaml:"disable-model-invocation"`
 }
 
+// WorkflowFrontmatter defines the YAML frontmatter for workflow files.
+type WorkflowFrontmatter struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+}
 
-// resolvePaths returns the target rules and skills directory paths.
-func (a *AntigravityEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildDir string, apply bool) (string, string) {
-	rulesPath := ".agents/rules/"
-	skillsPath := ".agents/skills/"
+
+// resolvePaths returns the target rules, skills, and workflows directory paths.
+func (a *AntigravityEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildDir string, apply bool) (string, string, string) {
+	rulesPath := ".agent/rules/"
+	skillsPath := ".agent/skills/"
+	workflowsPath := ".agent/workflows/"
 
 	// Extract overrides from target antigravity entity
 	for _, target := range resolved.Entities["target"] {
@@ -42,17 +49,22 @@ func (a *AntigravityEmitter) resolvePaths(resolved *manifest.ResolvedManifest, b
 				if s, ok := paths["skills"].(string); ok {
 					skillsPath = s
 				}
+				if w, ok := paths["workflows"].(string); ok {
+					workflowsPath = w
+				}
 			}
 		}
 	}
 
 	if apply {
 		return filepath.Join(a.RootDir, rulesPath),
-			filepath.Join(a.RootDir, skillsPath)
+			filepath.Join(a.RootDir, skillsPath),
+			filepath.Join(a.RootDir, workflowsPath)
 	}
 
 	return filepath.Join(buildDir, "antigravity", rulesPath),
-		filepath.Join(buildDir, "antigravity", skillsPath)
+		filepath.Join(buildDir, "antigravity", skillsPath),
+		filepath.Join(buildDir, "antigravity", workflowsPath)
 }
 
 func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string, apply bool, opts EmitOptions) (*EmitResult, error) {
@@ -61,7 +73,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 		return nil, fmt.Errorf("failed to clean build dir for antigravity: %w", err)
 	}
 
-	rulesDir, skillsDir := a.resolvePaths(resolved, buildDir, apply)
+	rulesDir, skillsDir, workflowsDir := a.resolvePaths(resolved, buildDir, apply)
 
 	// Track emitted files for immune mode orphan cleanup
 	emittedFiles := make(map[string]bool)
@@ -192,7 +204,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 	}
 	} // end if inc.Capability
 
-	// 3. Emit Procedures (as Skills)
+	// 3. Emit Procedures (as Workflows - flat .md files)
 	if inc.Procedure {
 	for _, proc := range resolved.Entities["procedure"] {
 		var body string
@@ -217,20 +229,21 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 			manualOnly, _ = trigger["manual_only"].(bool)
 		}
 
-		fm := SkillFrontmatter{
-			Name:                   proc.ID,
-			Description:            proc.Title,
-			DisableModelInvocation: manualOnly,
+		_ = manualOnly // workflows do not use disable-model-invocation
+
+		fm := WorkflowFrontmatter{
+			Name:        proc.ID,
+			Description: proc.Title,
 		}
 
 		fmBytes, err := yaml.Marshal(fm)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal procedure-as-skill frontmatter for %s: %w", proc.ID, err)
+			return nil, fmt.Errorf("failed to marshal workflow frontmatter for %s: %w", proc.ID, err)
 		}
 
 		content := fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
 
-		// Apply size limit check for skills
+		// Apply size limit check for skills (workflows share skills limits)
 		if limits != nil && limits.Skills != nil {
 			var shouldWrite bool
 			var limitErr error
@@ -243,7 +256,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 			}
 		}
 
-		outputPath := filepath.Join(skillsDir, proc.ID, "SKILL.md")
+		outputPath := filepath.Join(workflowsDir, proc.ID+".md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
 			return nil, err
 		}
@@ -267,15 +280,16 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 	// 5. Return EmitResult for coordinated orphan cleanup in deploy pipeline
 	return &EmitResult{
 		EmittedFiles: emittedFiles,
-		TargetDirs:   []string{rulesDir, skillsDir},
+		TargetDirs:   []string{rulesDir, skillsDir, workflowsDir},
 	}, nil
 }
 
 // resolveTargetPaths extracts the target paths from the antigravity target entity.
 func (a *AntigravityEmitter) resolveTargetPaths(resolved *manifest.ResolvedManifest) TargetPaths {
 	tp := TargetPaths{
-		Rules:  ".agents/rules/",
-		Skills: ".agents/skills/",
+		Rules:     ".agent/rules/",
+		Skills:    ".agent/skills/",
+		Workflows: ".agent/workflows/",
 	}
 	for _, target := range resolved.Entities["target"] {
 		if target.ID == "antigravity" {
@@ -285,6 +299,9 @@ func (a *AntigravityEmitter) resolveTargetPaths(resolved *manifest.ResolvedManif
 				}
 				if s, ok := paths["skills"].(string); ok {
 					tp.Skills = ensureTrailingSlash(s)
+				}
+				if w, ok := paths["workflows"].(string); ok {
+					tp.Workflows = ensureTrailingSlash(w)
 				}
 			}
 		}
@@ -336,10 +353,11 @@ func (a *AntigravityEmitter) Check(resolved *manifest.ResolvedManifest, buildDir
 	}
 
 	// 3. Get paths in the live project directory
-	rulesDirLive, skillsDirLive := a.resolvePaths(resolved, buildDir, true)
+	rulesDir, skillsDir, workflowsDir := a.resolvePaths(resolved, buildDir, true)
 	liveDirs := map[string]string{
-		"rules":  rulesDirLive,
-		"skills": skillsDirLive,
+		"rules":     rulesDir,
+		"skills":    skillsDir,
+		"workflows": workflowsDir,
 	}
 
 	// Track all markdown files present in the live target directories
@@ -358,7 +376,7 @@ func (a *AntigravityEmitter) Check(resolved *manifest.ResolvedManifest, buildDir
 
 		for cat, liveDir := range liveDirs {
 			// Find override folder name from target definition
-			folderName := ".agents/" + cat + "/"
+			folderName := ".agent/" + cat + "/"
 			for _, target := range resolved.Entities["target"] {
 				if target.ID == "antigravity" {
 					if paths, ok := target.Raw["paths"].(map[string]any); ok {

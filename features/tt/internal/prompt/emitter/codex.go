@@ -25,8 +25,8 @@ func NewCodexEmitter(rootDir string) *CodexEmitter {
 
 // resolvePaths returns the target rules and skills directory paths.
 func (c *CodexEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildDir string, apply bool) (string, string) {
-	rulesPath := ".agents/rules/"
-	skillsPath := ".agents/skills/"
+	rulesPath := ".codex/rules/"
+	skillsPath := ".codex/skills/"
 
 	// Extract overrides from target codex entity
 	for _, target := range resolved.Entities["target"] {
@@ -271,12 +271,12 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 // in the index file, listing emitted rules and skills with optional applies_when guidance.
 func (c *CodexEmitter) generateMarkerContent(policies []*manifest.Entity, skillIDs []string) string {
 	// Resolve paths for the rules and skills directories
-	rulesPath := ".agents/rules/"
-	skillsPath := ".agents/skills/"
+	rulesPath := ".codex/rules/"
+	skillsPath := ".codex/skills/"
 
 	var sb strings.Builder
 	sb.WriteString("\n## Project Guidelines\n\n")
-	sb.WriteString("This project follows structured rules and workflows managed under `.agents/`.\n\n")
+	sb.WriteString("This project follows structured rules and workflows managed under `.codex/`.\n\n")
 
 	// Rules section
 	sb.WriteString("### Rules\n")
@@ -372,7 +372,7 @@ func (c *CodexEmitter) Check(resolved *manifest.ResolvedManifest, buildDir strin
 		matched := false
 
 		for cat, liveDir := range liveDirs {
-			folderName := ".agents/" + cat + "/"
+			folderName := ".codex/" + cat + "/"
 			for _, target := range resolved.Entities["target"] {
 				if target.ID == "codex" {
 					if paths, ok := target.Raw["paths"].(map[string]any); ok {

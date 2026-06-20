@@ -124,10 +124,10 @@ func TestMetaDir(t *testing.T) {
 		target string
 		want   string
 	}{
-		{"antigravity", ".agents/.meta/antigravity/"},
+		{"antigravity", ".agent/.meta/antigravity/"},
 		{"cursor", ".cursor/.meta/"},
 		{"claude-code", ".claude/.meta/"},
-		{"codex", ".agents/.meta/codex/"},
+		{"codex", ".codex/.meta/codex/"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.target, func(t *testing.T) {

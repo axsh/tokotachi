@@ -22,8 +22,8 @@ func buildCodexTestManifest(tempDir string) *manifest.ResolvedManifest {
 					Title:      "Codex Target",
 					Raw: map[string]any{
 						"paths": map[string]any{
-							"rules":  ".agents/rules/",
-							"skills": ".agents/skills/",
+							"rules":  ".codex/rules/",
+							"skills": ".codex/skills/",
 						},
 						"index_file": "AGENTS.md",
 					},
@@ -106,7 +106,7 @@ func TestEmit_Codex(t *testing.T) {
 	}
 
 	// Verify policy files have NO frontmatter
-	policyPath := filepath.Join(buildDir, "codex", ".agents", "rules", "architecture-memory.md")
+	policyPath := filepath.Join(buildDir, "codex", ".codex", "rules", "architecture-memory.md")
 	data, err := os.ReadFile(policyPath)
 	if err != nil {
 		t.Fatalf("expected file %s to be written, but got error: %v", policyPath, err)
@@ -122,7 +122,7 @@ func TestEmit_Codex(t *testing.T) {
 	}
 
 	// Verify capability as SKILL.md
-	skillPath := filepath.Join(buildDir, "codex", ".agents", "skills", "test-skill", "SKILL.md")
+	skillPath := filepath.Join(buildDir, "codex", ".codex", "skills", "test-skill", "SKILL.md")
 	data, err = os.ReadFile(skillPath)
 	if err != nil {
 		t.Fatalf("expected skill file %s, got error: %v", skillPath, err)
@@ -135,7 +135,7 @@ func TestEmit_Codex(t *testing.T) {
 	}
 
 	// Verify procedure as skill
-	procPath := filepath.Join(buildDir, "codex", ".agents", "skills", "test-proc", "SKILL.md")
+	procPath := filepath.Join(buildDir, "codex", ".codex", "skills", "test-proc", "SKILL.md")
 	data, err = os.ReadFile(procPath)
 	if err != nil {
 		t.Fatalf("expected proc skill file %s, got error: %v", procPath, err)
@@ -172,10 +172,10 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		if !strings.Contains(content, MarkerEnd) {
 			t.Errorf("expected AGENTS.md to contain MarkerEnd")
 		}
-		if !strings.Contains(content, ".agents/rules/architecture-memory.md") {
+		if !strings.Contains(content, ".codex/rules/architecture-memory.md") {
 			t.Errorf("expected AGENTS.md to reference architecture-memory rule")
 		}
-		if !strings.Contains(content, ".agents/rules/coding-rules.md") {
+		if !strings.Contains(content, ".codex/rules/coding-rules.md") {
 			t.Errorf("expected AGENTS.md to reference coding-rules rule")
 		}
 	})
@@ -253,7 +253,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 			t.Errorf("expected old marker content to be replaced")
 		}
 		// New content present
-		if !strings.Contains(content, ".agents/rules/architecture-memory.md") {
+		if !strings.Contains(content, ".codex/rules/architecture-memory.md") {
 			t.Errorf("expected new marker content to reference rules")
 		}
 	})
@@ -275,14 +275,14 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		content := string(data)
 
 		// All policies should be referenced
-		if !strings.Contains(content, ".agents/rules/architecture-memory.md") {
+		if !strings.Contains(content, ".codex/rules/architecture-memory.md") {
 			t.Errorf("expected architecture-memory rule reference")
 		}
-		if !strings.Contains(content, ".agents/rules/coding-rules.md") {
+		if !strings.Contains(content, ".codex/rules/coding-rules.md") {
 			t.Errorf("expected coding-rules rule reference")
 		}
 		// Skills section should exist
-		if !strings.Contains(content, ".agents/skills/") {
+		if !strings.Contains(content, ".codex/skills/") {
 			t.Errorf("expected skills reference")
 		}
 	})
@@ -345,7 +345,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		}
 
 		// Rules files should still be emitted
-		rulesPath := filepath.Join(tempDir, ".agents", "rules", "architecture-memory.md")
+		rulesPath := filepath.Join(tempDir, ".codex", "rules", "architecture-memory.md")
 		if _, err := os.Stat(rulesPath); os.IsNotExist(err) {
 			t.Errorf("expected rules files to still be emitted even without index_file")
 		}
@@ -383,7 +383,7 @@ func TestCheck_Codex(t *testing.T) {
 		}
 
 		// Modify a rule file
-		rulePath := filepath.Join(tempDir, ".agents", "rules", "architecture-memory.md")
+		rulePath := filepath.Join(tempDir, ".codex", "rules", "architecture-memory.md")
 		if err := os.WriteFile(rulePath, []byte("Modified"), 0644); err != nil {
 			t.Fatalf("failed to modify rule: %v", err)
 		}
