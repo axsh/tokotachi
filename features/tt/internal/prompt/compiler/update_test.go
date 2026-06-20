@@ -53,7 +53,7 @@ func TestUpdate_AlwaysRuns(t *testing.T) {
 	assert.False(t, res1.TargetResults["antigravity"].Skipped)
 
 	// Verify target file was created
-	targetFile := filepath.Join(tmpDir, ".agents", "rules", "test-compile-policy.md")
+	targetFile := filepath.Join(tmpDir, ".agent", "rules", "test-compile-policy.md")
 	_, err = os.Stat(targetFile)
 	require.NoError(t, err)
 

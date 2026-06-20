@@ -171,7 +171,7 @@ func TestDeploy_Drift(t *testing.T) {
 	}
 
 	// Verify target file was created
-	targetFile := filepath.Join(tmpDir, ".agents", "rules", "test-compile-policy.md")
+	targetFile := filepath.Join(tmpDir, ".agent", "rules", "test-compile-policy.md")
 	if _, err := os.Stat(targetFile); os.IsNotExist(err) {
 		t.Fatalf("expected target file to be created: %s", targetFile)
 	}
