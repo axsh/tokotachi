@@ -7,8 +7,9 @@ import (
 func TestResolveTemplateVars(t *testing.T) {
 	ctx := &TemplateContext{
 		Paths: TargetPaths{
-			Rules:  ".agents/rules/",
-			Skills: ".agents/skills/",
+			Rules:     ".agent/rules/",
+			Skills:    ".agent/skills/",
+			Workflows: ".agent/workflows/",
 		},
 		MemBase:    "prompts/memory",
 		TargetName: "antigravity",
@@ -22,22 +23,22 @@ func TestResolveTemplateVars(t *testing.T) {
 		{
 			name:  "policy reference resolves to rules path",
 			input: "Read {{policy:coding-rules}} for details.",
-			want:  "Read .agents/rules/coding-rules.md for details.",
+			want:  "Read .agent/rules/coding-rules.md for details.",
 		},
 		{
 			name:  "policy project-instructions renames to instructions.md",
 			input: "See {{policy:project-instructions}} for setup.",
-			want:  "See .agents/rules/instructions.md for setup.",
+			want:  "See .agent/rules/instructions.md for setup.",
 		},
 		{
-			name:  "procedure reference resolves to skills path",
+			name:  "procedure reference resolves to workflows path",
 			input: "Run {{procedure:arch-correct}} when needed.",
-			want:  "Run .agents/skills/arch-correct/SKILL.md when needed.",
+			want:  "Run .agent/workflows/arch-correct.md when needed.",
 		},
 		{
 			name:  "capability reference resolves to skills path",
 			input: "Use {{capability:architecture-maintainer}} skill.",
-			want:  "Use .agents/skills/architecture-maintainer/SKILL.md skill.",
+			want:  "Use .agent/skills/architecture-maintainer/SKILL.md skill.",
 		},
 		{
 			name:  "target name resolves to target name",
@@ -47,7 +48,7 @@ func TestResolveTemplateVars(t *testing.T) {
 		{
 			name:  "target meta_dir resolves to meta directory",
 			input: "Check {{target:meta_dir}} for metadata.",
-			want:  "Check .agents/.meta/antigravity/ for metadata.",
+			want:  "Check .agent/.meta/antigravity/ for metadata.",
 		},
 		{
 			name:  "unknown target variable is left as-is",
@@ -67,7 +68,7 @@ func TestResolveTemplateVars(t *testing.T) {
 		{
 			name:  "multiple variables in same text",
 			input: "Read {{policy:coding-rules}} and {{policy:testing-rules}}.",
-			want:  "Read .agents/rules/coding-rules.md and .agents/rules/testing-rules.md.",
+			want:  "Read .agent/rules/coding-rules.md and .agent/rules/testing-rules.md.",
 		},
 		{
 			name:  "empty input returns empty",
@@ -90,8 +91,9 @@ func TestResolveTemplateVars_CustomPaths(t *testing.T) {
 	// Verify that custom target paths are respected
 	ctx := &TemplateContext{
 		Paths: TargetPaths{
-			Rules:  "custom/rules/",
-			Skills: "custom/skills/",
+			Rules:     "custom/rules/",
+			Skills:    "custom/skills/",
+			Workflows: "custom/workflows/",
 		},
 		MemBase: "custom/memory",
 	}
@@ -107,9 +109,9 @@ func TestResolveTemplateVars_CustomPaths(t *testing.T) {
 			want:  "custom/rules/coding-rules.md",
 		},
 		{
-			name:  "procedure with custom skills path",
+			name:  "procedure with custom workflows path",
 			input: "{{procedure:build-pipeline}}",
-			want:  "custom/skills/build-pipeline/SKILL.md",
+			want:  "custom/workflows/build-pipeline.md",
 		},
 		{
 			name:  "capability with custom skills path",

@@ -23,10 +23,10 @@ const AllTarget = "all"
 
 // targetMetaDirs maps canonical target names to their metadata directories.
 var targetMetaDirs = map[string]string{
-	"antigravity": ".agents/.meta/antigravity/",
+	"antigravity": ".agent/.meta/antigravity/",
 	"cursor":      ".cursor/.meta/",
 	"claude-code": ".claude/.meta/",
-	"codex":       ".agents/.meta/codex/",
+	"codex":       ".codex/.meta/codex/",
 }
 
 // ResolveTarget resolves a target name using prefix matching.
