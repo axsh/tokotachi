@@ -55,20 +55,23 @@ while read -r os arch; do
 
   # Copy binary to temp dir with clean name for archive
   tmp_dir="$(mktemp -d)"
-  cp "$binary" "${tmp_dir}/${BINARY_NAME}${ext}"
+  pkg_dir_name="${TOOL_ID}-${VERSION}"
+  pkg_dir="${tmp_dir}/${pkg_dir_name}"
+  mkdir -p "$pkg_dir"
+  cp "$binary" "${pkg_dir}/${BINARY_NAME}${ext}"
 
   if [[ "$os" == "windows" ]]; then
     # Copy installer files and README for Windows
-    cp "$(dirname "${BASH_SOURCE[0]}")/win/"* "${tmp_dir}/"
+    cp "$(dirname "${BASH_SOURCE[0]}")/win/"* "${pkg_dir}/"
 
     # Windows: zip archive (with fallback to PowerShell)
     if command -v zip &>/dev/null; then
-      (cd "$tmp_dir" && zip -q "${RELEASE_DIR}/${archive_name}.zip" "${BINARY_NAME}${ext}" "install.ps1" "uninstall.ps1" "README.md")
+      (cd "$tmp_dir" && zip -rq "${RELEASE_DIR}/${archive_name}.zip" "${pkg_dir_name}")
     else
       # Fallback: use PowerShell Compress-Archive
-      win_src_pattern="$(cygpath -w "${tmp_dir}")\\*"
+      win_src="$(cygpath -w "${pkg_dir}")"
       win_dst="$(cygpath -w "${RELEASE_DIR}/${archive_name}.zip")"
-      powershell -NoProfile -Command "Compress-Archive -Path '${win_src_pattern}' -DestinationPath '${win_dst}' -Force"
+      powershell -NoProfile -Command "Compress-Archive -Path '${win_src}' -DestinationPath '${win_dst}' -Force"
     fi
     pass "${archive_name}.zip"
   else
@@ -76,7 +79,7 @@ while read -r os arch; do
     # Use --force-local on Windows hosts to avoid tar interpreting drive letters (C:) as remote hosts
     tar_opts="czf"
     [[ "$(detect_os)" == "windows" ]] && tar_opts="--force-local -czf"
-    (cd "$tmp_dir" && tar $tar_opts "${RELEASE_DIR}/${archive_name}.tar.gz" "${BINARY_NAME}${ext}")
+    (cd "$tmp_dir" && tar $tar_opts "${RELEASE_DIR}/${archive_name}.tar.gz" "${pkg_dir_name}")
     pass "${archive_name}.tar.gz"
   fi
 

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -151,16 +150,10 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 
 // resolveRepoRoot determines the target root directory.
 // If rootPath is non-empty, uses that path directly.
-// Otherwise, tries "git rev-parse --show-toplevel" first,
-// falling back to os.Getwd() on failure.
+// Otherwise, falls back to os.Getwd().
 func resolveRepoRoot(rootPath string) string {
 	if rootPath != "" {
 		return rootPath
-	}
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	out, err := cmd.Output()
-	if err == nil {
-		return strings.TrimSpace(string(out))
 	}
 	wd, err := os.Getwd()
 	if err != nil {
