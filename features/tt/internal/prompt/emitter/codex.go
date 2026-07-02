@@ -332,8 +332,8 @@ func (c *CodexEmitter) Check(resolved *manifest.ResolvedManifest, buildDir strin
 		if info.IsDir() {
 			return nil
 		}
-		// Skip the marker file; marker is checked separately
-		if info.Name() == "AGENTS.md.marker" {
+		// Skip the marker file; marker is checked separately in step 5
+		if strings.HasSuffix(info.Name(), ".marker") {
 			return nil
 		}
 		rel, err := filepath.Rel(expectedBaseDir, path)
