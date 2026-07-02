@@ -90,8 +90,9 @@ func TestResolveTemplateVars_CustomPaths(t *testing.T) {
 	// Verify that custom target paths are respected
 	ctx := &TemplateContext{
 		Paths: TargetPaths{
-			Rules:  "custom/rules/",
-			Skills: "custom/skills/",
+			Rules:     "custom/rules/",
+			Skills:    "custom/skills/",
+			Workflows: "custom/workflows/",
 		},
 		MemBase: "custom/memory",
 	}
@@ -107,9 +108,9 @@ func TestResolveTemplateVars_CustomPaths(t *testing.T) {
 			want:  "custom/rules/coding-rules.md",
 		},
 		{
-			name:  "procedure with custom skills path",
+			name:  "procedure with custom workflows path",
 			input: "{{procedure:build-pipeline}}",
-			want:  "custom/skills/build-pipeline/SKILL.md",
+			want:  "custom/workflows/build-pipeline.md",
 		},
 		{
 			name:  "capability with custom skills path",
