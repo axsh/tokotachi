@@ -7,8 +7,9 @@ includes:
   procedure: true
   subagent: false
 paths:
-  rules: .agents/rules/
-  skills: .agents/skills/
+  rules: .agent/rules/
+  skills: .agent/skills/
+  workflows: .agent/workflows/
 limits:
   rules:
     max_file_size: 12000
