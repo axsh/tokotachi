@@ -7,6 +7,6 @@ includes:
   procedure: true
   subagent: false
 paths:
-  rules: .agents/rules/
-  skills: .agents/skills/
-index_file: AGENTS.md
+  rules: .codex/rules/
+  skills: .codex/skills/
+index_file: CODEX.md
