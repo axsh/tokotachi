@@ -110,6 +110,15 @@ func Update(opts UpdateOptions) (*UpdateResult, error) {
 		}
 		tr.DeployResult = deployResult
 
+		// Check for validation errors from Compile
+		if deployResult.CompileResult != nil && len(deployResult.CompileResult.Errors) > 0 {
+			for _, e := range deployResult.CompileResult.Errors {
+				fmt.Fprintln(os.Stderr, e.Error())
+			}
+			return nil, fmt.Errorf("deploy failed for target %s: %d validation error(s)",
+				t, len(deployResult.CompileResult.Errors))
+		}
+
 		// Write metadata (only when not dry-run)
 		if !opts.DryRun {
 			newMeta := &UpdateMetadata{

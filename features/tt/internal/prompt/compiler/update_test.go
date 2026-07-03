@@ -184,3 +184,45 @@ func TestUpdate_Drift(t *testing.T) {
 	_, err = os.Stat(targetFile)
 	require.NoError(t, err)
 }
+
+// initGitRepo initializes a git repo in the given directory for testing.
+func initGitRepo(t *testing.T, dir string) {
+	t.Helper()
+	cmds := [][]string{
+		{"git", "init"},
+		{"git", "config", "user.name", "test"},
+		{"git", "config", "user.email", "test@test.com"},
+		{"git", "add", "."},
+		{"git", "commit", "-m", "initial"},
+	}
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = dir
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("git command %v failed: %v", args, err)
+		}
+	}
+}
+
+func TestUpdate_ValidationErrors_ReturnsError(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "invalid_target"), tmpDir)
+
+	initGitRepo(t, tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+
+	_, err := Update(UpdateOptions{
+		ProjectPath: projectPath,
+		Target:      "antigravity",
+		Force:       true,
+	})
+	require.Error(t, err, "Update should return error when validation fails")
+	assert.Contains(t, err.Error(), "validation error")
+
+	// Verify metadata was NOT written
+	metaDir := filepath.Join(tmpDir, ".agent", ".meta", "antigravity")
+	_, statErr := os.Stat(filepath.Join(metaDir, "last_update.yaml"))
+	assert.True(t, os.IsNotExist(statErr),
+		"metadata should not be written when validation errors exist")
+}

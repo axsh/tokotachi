@@ -1,0 +1,6 @@
+apiVersion: agent.meta/v1
+kind: target
+id: antigravity
+paths:
+  rules: .agent/rules/
+  skills: .agent/skills/
