@@ -22,10 +22,10 @@ func buildCodexTestManifest(tempDir string) *manifest.ResolvedManifest {
 					Title:      "Codex Target",
 					Raw: map[string]any{
 						"paths": map[string]any{
-							"rules":  ".agents/rules/",
-							"skills": ".agents/skills/",
+							"rules":  ".codex/rules/",
+							"skills": ".codex/skills/",
 						},
-						"index_file": "AGENTS.md",
+						"index_file": "CODEX.md",
 					},
 				},
 			},
@@ -106,7 +106,7 @@ func TestEmit_Codex(t *testing.T) {
 	}
 
 	// Verify policy files have NO frontmatter
-	policyPath := filepath.Join(buildDir, "codex", ".agents", "rules", "architecture-memory.md")
+	policyPath := filepath.Join(buildDir, "codex", ".codex", "rules", "architecture-memory.md")
 	data, err := os.ReadFile(policyPath)
 	if err != nil {
 		t.Fatalf("expected file %s to be written, but got error: %v", policyPath, err)
@@ -122,7 +122,7 @@ func TestEmit_Codex(t *testing.T) {
 	}
 
 	// Verify capability as SKILL.md
-	skillPath := filepath.Join(buildDir, "codex", ".agents", "skills", "test-skill", "SKILL.md")
+	skillPath := filepath.Join(buildDir, "codex", ".codex", "skills", "test-skill", "SKILL.md")
 	data, err = os.ReadFile(skillPath)
 	if err != nil {
 		t.Fatalf("expected skill file %s, got error: %v", skillPath, err)
@@ -135,7 +135,7 @@ func TestEmit_Codex(t *testing.T) {
 	}
 
 	// Verify procedure as skill
-	procPath := filepath.Join(buildDir, "codex", ".agents", "skills", "test-proc", "SKILL.md")
+	procPath := filepath.Join(buildDir, "codex", ".codex", "skills", "test-proc", "SKILL.md")
 	data, err = os.ReadFile(procPath)
 	if err != nil {
 		t.Fatalf("expected proc skill file %s, got error: %v", procPath, err)
@@ -149,7 +149,7 @@ func TestEmit_Codex(t *testing.T) {
 }
 
 func TestEmit_Codex_MarkerSection(t *testing.T) {
-	t.Run("no existing AGENTS.md", func(t *testing.T) {
+	t.Run("no existing CODEX.md", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
 		e := NewCodexEmitter(tempDir)
@@ -159,37 +159,37 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
-		agentsPath := filepath.Join(tempDir, "AGENTS.md")
+		agentsPath := filepath.Join(tempDir, "CODEX.md")
 		data, err := os.ReadFile(agentsPath)
 		if err != nil {
-			t.Fatalf("expected AGENTS.md to be created, got error: %v", err)
+			t.Fatalf("expected CODEX.md to be created, got error: %v", err)
 		}
 		content := string(data)
 
 		if !strings.Contains(content, MarkerBegin) {
-			t.Errorf("expected AGENTS.md to contain MarkerBegin")
+			t.Errorf("expected CODEX.md to contain MarkerBegin")
 		}
 		if !strings.Contains(content, MarkerEnd) {
-			t.Errorf("expected AGENTS.md to contain MarkerEnd")
+			t.Errorf("expected CODEX.md to contain MarkerEnd")
 		}
-		if !strings.Contains(content, ".agents/rules/architecture-memory.md") {
-			t.Errorf("expected AGENTS.md to reference architecture-memory rule")
+		if !strings.Contains(content, ".codex/rules/architecture-memory.md") {
+			t.Errorf("expected CODEX.md to reference architecture-memory rule")
 		}
-		if !strings.Contains(content, ".agents/rules/coding-rules.md") {
-			t.Errorf("expected AGENTS.md to reference coding-rules rule")
+		if !strings.Contains(content, ".codex/rules/coding-rules.md") {
+			t.Errorf("expected CODEX.md to reference coding-rules rule")
 		}
 	})
 
-	t.Run("existing AGENTS.md without markers", func(t *testing.T) {
+	t.Run("existing CODEX.md without markers", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
 		e := NewCodexEmitter(tempDir)
 
-		// Write existing AGENTS.md
-		agentsPath := filepath.Join(tempDir, "AGENTS.md")
+		// Write existing CODEX.md
+		agentsPath := filepath.Join(tempDir, "CODEX.md")
 		existingContent := "# My Project Rules\n\nDo not break things.\n"
 		if err := os.WriteFile(agentsPath, []byte(existingContent), 0644); err != nil {
-			t.Fatalf("failed to write AGENTS.md: %v", err)
+			t.Fatalf("failed to write CODEX.md: %v", err)
 		}
 
 		buildDir := filepath.Join(tempDir, "build_output")
@@ -199,7 +199,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 
 		data, err := os.ReadFile(agentsPath)
 		if err != nil {
-			t.Fatalf("failed to read AGENTS.md: %v", err)
+			t.Fatalf("failed to read CODEX.md: %v", err)
 		}
 		content := string(data)
 
@@ -216,18 +216,18 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		}
 	})
 
-	t.Run("existing AGENTS.md with markers - update", func(t *testing.T) {
+	t.Run("existing CODEX.md with markers - update", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
 		e := NewCodexEmitter(tempDir)
 
-		// Write AGENTS.md with existing markers
-		agentsPath := filepath.Join(tempDir, "AGENTS.md")
+		// Write CODEX.md with existing markers
+		agentsPath := filepath.Join(tempDir, "CODEX.md")
 		existingContent := "# Owner Section\n\n" +
 			MarkerBegin + "\nOld marker content\n" + MarkerEnd + "\n\n" +
 			"# Footer\n"
 		if err := os.WriteFile(agentsPath, []byte(existingContent), 0644); err != nil {
-			t.Fatalf("failed to write AGENTS.md: %v", err)
+			t.Fatalf("failed to write CODEX.md: %v", err)
 		}
 
 		buildDir := filepath.Join(tempDir, "build_output")
@@ -237,7 +237,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 
 		data, err := os.ReadFile(agentsPath)
 		if err != nil {
-			t.Fatalf("failed to read AGENTS.md: %v", err)
+			t.Fatalf("failed to read CODEX.md: %v", err)
 		}
 		content := string(data)
 
@@ -253,7 +253,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 			t.Errorf("expected old marker content to be replaced")
 		}
 		// New content present
-		if !strings.Contains(content, ".agents/rules/architecture-memory.md") {
+		if !strings.Contains(content, ".codex/rules/architecture-memory.md") {
 			t.Errorf("expected new marker content to reference rules")
 		}
 	})
@@ -268,21 +268,21 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
-		data, err := os.ReadFile(filepath.Join(tempDir, "AGENTS.md"))
+		data, err := os.ReadFile(filepath.Join(tempDir, "CODEX.md"))
 		if err != nil {
-			t.Fatalf("failed to read AGENTS.md: %v", err)
+			t.Fatalf("failed to read CODEX.md: %v", err)
 		}
 		content := string(data)
 
 		// All policies should be referenced
-		if !strings.Contains(content, ".agents/rules/architecture-memory.md") {
+		if !strings.Contains(content, ".codex/rules/architecture-memory.md") {
 			t.Errorf("expected architecture-memory rule reference")
 		}
-		if !strings.Contains(content, ".agents/rules/coding-rules.md") {
+		if !strings.Contains(content, ".codex/rules/coding-rules.md") {
 			t.Errorf("expected coding-rules rule reference")
 		}
 		// Skills section should exist
-		if !strings.Contains(content, ".agents/skills/") {
+		if !strings.Contains(content, ".codex/skills/") {
 			t.Errorf("expected skills reference")
 		}
 	})
@@ -297,15 +297,15 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
-		data, err := os.ReadFile(filepath.Join(tempDir, "AGENTS.md"))
+		data, err := os.ReadFile(filepath.Join(tempDir, "CODEX.md"))
 		if err != nil {
-			t.Fatalf("failed to read AGENTS.md: %v", err)
+			t.Fatalf("failed to read CODEX.md: %v", err)
 		}
 		content := string(data)
 
 		// architecture-memory has applies_when -> should appear in marker
 		if !strings.Contains(content, "Applies when changing architecture-sensitive code") {
-			t.Errorf("expected applies_when text for architecture-memory in AGENTS.md")
+			t.Errorf("expected applies_when text for architecture-memory in CODEX.md")
 		}
 
 		// coding-rules has NO applies_when -> should only have path, no guidance
@@ -338,14 +338,14 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
-		// AGENTS.md should NOT be created when index_file is not set
-		agentsPath := filepath.Join(tempDir, "AGENTS.md")
+		// CODEX.md should NOT be created when index_file is not set
+		agentsPath := filepath.Join(tempDir, "CODEX.md")
 		if _, err := os.Stat(agentsPath); err == nil {
-			t.Errorf("expected AGENTS.md to NOT exist when index_file is not configured")
+			t.Errorf("expected CODEX.md to NOT exist when index_file is not configured")
 		}
 
 		// Rules files should still be emitted
-		rulesPath := filepath.Join(tempDir, ".agents", "rules", "architecture-memory.md")
+		rulesPath := filepath.Join(tempDir, ".codex", "rules", "architecture-memory.md")
 		if _, err := os.Stat(rulesPath); os.IsNotExist(err) {
 			t.Errorf("expected rules files to still be emitted even without index_file")
 		}
@@ -383,7 +383,7 @@ func TestCheck_Codex(t *testing.T) {
 		}
 
 		// Modify a rule file
-		rulePath := filepath.Join(tempDir, ".agents", "rules", "architecture-memory.md")
+		rulePath := filepath.Join(tempDir, ".codex", "rules", "architecture-memory.md")
 		if err := os.WriteFile(rulePath, []byte("Modified"), 0644); err != nil {
 			t.Fatalf("failed to modify rule: %v", err)
 		}
@@ -407,15 +407,15 @@ func TestCheck_Codex(t *testing.T) {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
-		// Modify the marker section in AGENTS.md
-		agentsPath := filepath.Join(tempDir, "AGENTS.md")
+		// Modify the marker section in CODEX.md
+		agentsPath := filepath.Join(tempDir, "CODEX.md")
 		data, err := os.ReadFile(agentsPath)
 		if err != nil {
-			t.Fatalf("failed to read AGENTS.md: %v", err)
+			t.Fatalf("failed to read CODEX.md: %v", err)
 		}
 		modified := strings.Replace(string(data), "architecture-memory", "MODIFIED", 1)
 		if err := os.WriteFile(agentsPath, []byte(modified), 0644); err != nil {
-			t.Fatalf("failed to write AGENTS.md: %v", err)
+			t.Fatalf("failed to write CODEX.md: %v", err)
 		}
 
 		ok, err := e.Check(resolved, buildDir)
@@ -427,21 +427,21 @@ func TestCheck_Codex(t *testing.T) {
 		}
 	})
 
-	t.Run("no marker in AGENTS.md", func(t *testing.T) {
+	t.Run("no marker in CODEX.md", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
 		e := NewCodexEmitter(tempDir)
 
 		buildDir := filepath.Join(tempDir, "build_output")
 
-		// Deploy files but then remove markers from AGENTS.md
+		// Deploy files but then remove markers from CODEX.md
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
-		agentsPath := filepath.Join(tempDir, "AGENTS.md")
+		agentsPath := filepath.Join(tempDir, "CODEX.md")
 		if err := os.WriteFile(agentsPath, []byte("# No markers here\n"), 0644); err != nil {
-			t.Fatalf("failed to overwrite AGENTS.md: %v", err)
+			t.Fatalf("failed to overwrite CODEX.md: %v", err)
 		}
 
 		ok, err := e.Check(resolved, buildDir)

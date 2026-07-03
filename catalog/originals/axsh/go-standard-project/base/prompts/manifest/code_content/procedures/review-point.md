@@ -6,9 +6,6 @@ title: Review Point
 trigger:
     command: review-point
 ---
----
-description: Review Point
----
 
 # Review Point (ワークフロー一時停止)
 

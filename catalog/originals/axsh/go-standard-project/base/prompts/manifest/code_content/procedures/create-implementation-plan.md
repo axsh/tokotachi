@@ -6,9 +6,6 @@ title: Create Implementation Plan
 trigger:
     command: create-implementation-plan
 ---
----
-description: Create Implementation Plan
----
 
 # 実装計画作成ワークフロー
 
@@ -25,9 +22,6 @@ description: Create Implementation Plan
     *   `scripts/utils/show_current_status.sh` を実行します。
     *   JSON出力から `phase`, `branch`, `next_plan_id` を取得します。
     *   以下、`[Phase]`, `[Branch]`, `[NextID]` とします。
-4.  **メモリの確認**:
-    *   `{{memory:index}}` を読み、設計制約（`{{memory:invariants}}`）を確認してください。
-    *   実装対象に関連する既存の設計判断を把握してください。
 
 ## 2. 出力先の決定
 
@@ -119,29 +113,15 @@ description: Create Implementation Plan
     ```
     *   **Log Verification**: [ログで何を確認すべきか具体的に記述]
 
-3.  **GUI E2E Tests** (GUI関連の変更がある場合は必須):
+3.  **E2E Tests (新規/追加)**:
+    新機能の動作を検証するE2Eテストコードを `tests/` 配下に追加する。
+    手動コマンド実行による確認は、E2Eテストコード化の**代替にはならない**。
+    既存の E2E テストインフラ (`tests/agentservice_e2e_test.go` のヘルパー関数等) を積極的に活用すること。
+    E2E テストが不要な場合（純粋な内部リファクタリング等）は、その理由を明記すること。
 
-    > [!CAUTION]
-    > GUI関連（Webview コンポーネント、VSCode 拡張 UI のインタラクション、プロパティパネル、タスクエディタ等）の変更を含む実装計画では、**E2E テストの計画を省略してはならない**。
-    > 「単体テストで十分カバーされている」は E2E テスト省略の理由にならない。ユーザー操作フローのリグレッション防止は E2E テストでのみ保証される。
-
-    #### E2E シナリオ配置先の決定手順
-
-    1.  `features/frontend/extension/e2e/scenarios/` 配下の既存シナリオファイルを `ls` で一覧し、機能的に関連するシナリオがあるかを確認する。
-    2.  関連するシナリオが見つかった場合:
-        *   そのシナリオファイル内の既存テストケースを `grep` でざっくり確認し、新しいテストを `runTest` ブロックとして追記する。
-        *   例: `04e_logics_tab.test.ts` に devData 関連テストが既にある場合、そこに ConfirmDialog の E2E テストを追加する。
-    3.  関連するシナリオが見つからない場合:
-        *   新規シナリオファイルを作成する。ファイル名は既存の命名規則に従う。
-    4.  **計画書への記載**:
-        *   上記の判断結果（統合先シナリオ名 or 新規作成の理由）を **Verification Plan** セクションに必ず明記する。
-        *   追加する具体的なテストケース名、操作手順、期待結果を記述する。
-
-    ```bash
-    ./scripts/process/integration_test.sh --categories gui --specify "[Scenario Name]"
-    ```
-    *   **対象シナリオ**: [統合先の既存シナリオ名 or 新規作成するファイル名（判断理由付き）]
-    *   **検証内容**: [GUI操作と期待結果を具体的に記述]
+    #### [NEW/MODIFY] [テストファイル名](file://tests/xxx_test.go)
+    *   **テストケース**: [テスト関数名と検証内容]
+    *   **検証ポイント**: [何が動作していれば成功か]
 
 ## Documentation
 
@@ -161,18 +141,6 @@ description: Create Implementation Plan
 > [!IMPORTANT]
 > **一括作成ルール**: 実装計画を複数の Part に分割する場合は、**全ての Part を一括で作成してから**ユーザーへレビュー依頼してください。1つの Part だけ作成して承認を待ち、その後に次の Part を作成する方式は禁止です。全 Part を先に作成することで、ユーザーが実装の全貌を把握してからレビューできます。
 
-## 4.1 ドキュメントの Git コミット
-
-作成・更新した実装計画書ファイルを `git add` → `git commit` してください。
-
-*   コミットメッセージ例: `docs: add implementation plan YYY-Name`
-*   複数ファイルに分割した場合は、全 Part をまとめてコミットします。
-
-```bash
-git add prompts/phases/[Phase]/branches/[Branch]/plans/[ファイル名]
-git commit -m 'docs: add implementation plan YYY-Name'
-```
-
 ## 5. セルフレビューと完了確認
 
 実装計画を完了とみなす前に、以下の観点でセルフレビューを行い、修正を行ってください。
@@ -187,20 +155,13 @@ git commit -m 'docs: add implementation plan YYY-Name'
     *   `./scripts/process/integration_test.sh` は全てを実行すると非常に長い時間がかかりますので、関係のあるテストを選択的に実行すべきです。
         *   `--categories` 及び `--specify` を組み合わせたテスト実行コマンドを必ず明記してあるか。
     *   テスト範囲が適切かどうか、テストシナリオなどを分析して検証すること。
-6.  **GUI E2Eテスト計画チェック** (GUI関連の変更がある場合は必須):
-    *   本実装がGUI関連の機能追加・変更（Webviewコンポーネント、VSCode拡張UIのインタラクション、プロパティパネル、タスクエディタ等）を含む場合、**E2Eテストの計画が必ず含まれているか**。E2Eテスト計画の欠落は許容しない。
-    *   `{{policy:testing-rules}}` の §9（VSCode E2Eテスト実装ルール）に準拠した計画になっているか。
-    *   **既存シナリオの調査を実施したか**:
-        *   `features/frontend/extension/e2e/scenarios/` の一覧を確認し、関連シナリオの有無を調べたか。
-        *   調査結果（統合先シナリオ名 or 新規作成の理由）が Verification Plan に明記されているか。
-    *   **既存シナリオへの統合検討** (Scenario Consolidation):
-        *   新しいE2Eテスト手順は、**まず既存のテストシナリオファイル (`features/frontend/extension/e2e/scenarios/`) に拡張として組み込めないかを検討**すること。
-        *   E2Eテストの「シナリオ」とは、`saveAllFiles` + `closeAllEditors` でセットアップとクリーンアップが行われる一連の手順群を指す。各シナリオの冒頭で全ファイル保存とタブクローズ、末尾でも同様のクリーンアップが行われるため、独立した新規シナリオファイルを作ると毎回このオーバーヘッドが生じる。
-        *   機能的に関連する既存シナリオがある場合は、そのシナリオに新しい `runTest` ブロックを追加する形で統合し、`saveAllFiles`/`closeAllEditors` の繰り返しを最小化すること。
-        *   既存シナリオに統合できない場合（全く異なる機能領域、異なるテストデータセットが必要等）のみ、新規シナリオファイルを作成すること。
-        *   判断結果（統合先シナリオ名 or 新規作成の理由）を実装計画に明記すること。
-7.  **テスト項目設計のセルフレビュー**:
+6.  **テスト項目設計のセルフレビュー**:
     *   `{{policy:testing-rules}}` の §11 に従い、テスト項目がボトムアップ順序で設計され、観点チェックリスト (§11.3) が網羅されているか。
     *   §11.4 のセルフレビュー（網羅性・証拠の十分性・迂回排除・依存関係）の結果が記載されているか。
-8.  **総合判定プロセスの計画**:
+7.  **総合判定プロセスの計画**:
     *   `{{policy:testing-rules}}` の §12 に従い、全テスト完了後に総合判定を実施する手順が検証計画 (Verification Plan) に含まれているか。
+8.  **E2Eテストコード化チェック**:
+    *   新機能の動作確認が「手動コマンド実行」だけで終わっていないか。
+    *   `tests/` 配下にE2Eテストコードが計画されているか。
+    *   既存のE2Eヘルパー (`startE2EServer`, `createE2ESession` 等) を活用できないか確認したか。
+    *   E2Eテストが不要と判断した場合、その理由が Verification Plan に明記されているか。
