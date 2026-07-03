@@ -226,3 +226,86 @@ func TestUpdate_ValidationErrors_ReturnsError(t *testing.T) {
 	assert.True(t, os.IsNotExist(statErr),
 		"metadata should not be written when validation errors exist")
 }
+
+func TestUpdate_CatalogTemplate_AllTargets(t *testing.T) {
+	tmpDir := t.TempDir()
+	copyTestdata(t, filepath.Join("testdata", "catalog_template"), tmpDir)
+
+	initGitRepo(t, tmpDir)
+
+	projectPath := filepath.Join(tmpDir, "prompts", "manifest", "project.yaml")
+
+	tests := []struct {
+		target    string
+		rulesDir  string
+		skillsDir string
+		metaDir   string
+	}{
+		{
+			target:    "antigravity",
+			rulesDir:  ".agent/rules",
+			skillsDir: ".agent/skills",
+			metaDir:   ".agent/.meta/antigravity",
+		},
+		{
+			target:    "codex",
+			rulesDir:  ".codex/rules",
+			skillsDir: ".codex/skills",
+			metaDir:   ".codex/.meta",
+		},
+		{
+			target:    "claude-code",
+			rulesDir:  ".claude/rules",
+			skillsDir: ".claude/skills",
+			metaDir:   ".claude/.meta",
+		},
+		{
+			target:    "cursor",
+			rulesDir:  ".cursor/rules",
+			skillsDir: ".cursor/skills",
+			metaDir:   ".cursor/.meta",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.target, func(t *testing.T) {
+			result, err := Update(UpdateOptions{
+				ProjectPath: projectPath,
+				Target:      tt.target,
+				Force:       true,
+			})
+			require.NoError(t, err, "Update should succeed for target %s", tt.target)
+			require.NotNil(t, result)
+			require.Contains(t, result.TargetResults, tt.target)
+			assert.False(t, result.TargetResults[tt.target].Skipped)
+
+			// Verify rules directory contains files
+			rulesPath := filepath.Join(tmpDir, tt.rulesDir)
+			entries, err := os.ReadDir(rulesPath)
+			require.NoError(t, err,
+				"rules directory %s should exist for target %s", tt.rulesDir, tt.target)
+			assert.Greater(t, len(entries), 0,
+				"rules directory should contain files for target %s", tt.target)
+
+			// Verify skills directory contains files
+			skillsPath := filepath.Join(tmpDir, tt.skillsDir)
+			entries, err = os.ReadDir(skillsPath)
+			require.NoError(t, err,
+				"skills directory %s should exist for target %s", tt.skillsDir, tt.target)
+			assert.Greater(t, len(entries), 0,
+				"skills directory should contain files for target %s", tt.target)
+
+			// Verify metadata was written to the correct path
+			metaPath := filepath.Join(tmpDir, tt.metaDir, "last_update.yaml")
+			_, err = os.Stat(metaPath)
+			require.NoError(t, err,
+				"metadata should exist at %s for target %s", tt.metaDir, tt.target)
+		})
+	}
+
+	// Verify .agents/ directory does NOT exist
+	agentsPath := filepath.Join(tmpDir, ".agents")
+	_, err := os.Stat(agentsPath)
+	assert.True(t, os.IsNotExist(err),
+		".agents/ directory should NOT exist (metadata should be in target-specific dirs)")
+}
