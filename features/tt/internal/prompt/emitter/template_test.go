@@ -47,7 +47,7 @@ func TestResolveTemplateVars(t *testing.T) {
 		{
 			name:  "target meta_dir resolves to meta directory",
 			input: "Check {{target:meta_dir}} for metadata.",
-			want:  "Check .agents/.meta/antigravity/ for metadata.",
+			want:  "Check .agent/.meta/antigravity/ for metadata.",
 		},
 		{
 			name:  "unknown target variable is left as-is",
