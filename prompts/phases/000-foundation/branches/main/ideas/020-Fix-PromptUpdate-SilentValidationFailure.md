@@ -65,12 +65,7 @@
 
 これにより、メタデータの配置先がエミッターの出力先パスのデフォルト (`.agent/`) と一致する。
 
-> 注意: codex の `.agents/.meta/codex/` は `.codex/.meta/` に変更すべきだが、
-> これは antigravity の問題とは独立しており、本仕様のスコープとする。
-
-### 任意要件
-
-#### R4 (任意): codex の targetMetaDirs パスも修正する
+#### R4: codex の targetMetaDirs パスも修正する
 
 codex のメタデータパスを `.agents/.meta/codex/` から `.codex/.meta/` に変更する。他のターゲット (cursor: `.cursor/.meta/`, claude-code: `.claude/.meta/`) と同様に、自分のターゲットディレクトリ配下にメタデータを配置する設計に統一する。
 
