@@ -3,13 +3,23 @@
   "$id": "target.schema.json",
   "title": "Target Definition",
   "type": "object",
-  "required": ["apiVersion", "kind", "id", "capabilities", "paths"],
+  "required": ["apiVersion", "kind", "id", "paths"],
   "properties": {
     "apiVersion": { "type": "string", "const": "agent.meta/v1" },
     "kind": { "type": "string", "const": "target" },
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "includes": {
+      "type": "object",
+      "properties": {
+        "policy": { "type": "boolean" },
+        "capability": { "type": "boolean" },
+        "procedure": { "type": "boolean" },
+        "subagent": { "type": "boolean" }
+      },
+      "additionalProperties": false
     },
     "capabilities": {
       "type": "object",
