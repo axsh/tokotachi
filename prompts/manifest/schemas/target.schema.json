@@ -25,7 +25,8 @@
       "type": "object",
       "properties": {
         "rules": { "type": "string" },
-        "skills": { "type": "string" }
+        "skills": { "type": "string" },
+        "workflows": { "type": "string" }
       },
       "additionalProperties": false
     },

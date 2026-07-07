@@ -62,6 +62,10 @@
         }
       },
       "additionalProperties": false
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the procedure for display in agent UI."
     }
   },
   "additionalProperties": false
