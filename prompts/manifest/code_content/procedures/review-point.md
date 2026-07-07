@@ -5,6 +5,7 @@ kind: procedure
 title: Review Point
 trigger:
     command: review-point
+description: Pause the current workflow to request user review and feedback before proceeding.
 ---
 
 # Review Point (ワークフロー一時停止)
