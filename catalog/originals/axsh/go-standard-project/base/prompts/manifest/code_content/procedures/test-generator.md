@@ -5,6 +5,7 @@ kind: procedure
 title: Test Generator
 trigger:
     command: test-generator
+description: Generate test implementation plans based on specifications and existing test infrastructure.
 ---
 
 # テスト実装計画作成ワークフロー

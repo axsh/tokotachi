@@ -5,9 +5,7 @@ kind: procedure
 title: Create Specification
 trigger:
     command: create-specification
----
----
-description: Create Specification
+description: Create a structured specification document capturing background, requirements, and verification scenarios.
 ---
 
 # 仕様書作成ワークフロー

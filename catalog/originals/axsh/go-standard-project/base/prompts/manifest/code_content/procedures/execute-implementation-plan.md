@@ -5,6 +5,7 @@ kind: procedure
 title: Execute Implementation Plan
 trigger:
     command: execute-implementation-plan
+description: Execute an approved implementation plan following TDD workflow with incremental commits and verification.
 ---
 
 # 実装実行ワークフロー
