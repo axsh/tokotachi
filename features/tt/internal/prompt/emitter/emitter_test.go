@@ -91,7 +91,8 @@ func TestEmit_Antigravity(t *testing.T) {
 					Title:      "Procedure with body",
 					FilePath:   filepath.Join(tempDir, "proc1.yaml"),
 					Raw: map[string]any{
-						"body": "This is body content.\n",
+						"body":        "This is body content.\n",
+						"description": "A procedure for testing body",
 					},
 				},
 				{
@@ -105,6 +106,7 @@ func TestEmit_Antigravity(t *testing.T) {
 							"step-one",
 							"step-two",
 						},
+						"description": "A procedure for testing steps",
 					},
 				},
 			},
@@ -149,11 +151,11 @@ func TestEmit_Antigravity(t *testing.T) {
 		},
 		{
 			path:    filepath.Join(buildDir, "antigravity", "workflows_dir", "test-proc-body.md"),
-			contain: []string{"This is body content."},
+			contain: []string{"name: test-proc-body", "description: A procedure for testing body", "This is body content."},
 		},
 		{
 			path:    filepath.Join(buildDir, "antigravity", "workflows_dir", "test-proc-steps.md"),
-			contain: []string{"1. step-one", "2. step-two"},
+			contain: []string{"name: test-proc-steps", "description: A procedure for testing steps", "1. step-one", "2. step-two"},
 		},
 	}
 

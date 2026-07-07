@@ -213,7 +213,16 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 		body = strings.ReplaceAll(body, "\r\n", "\n")
 		body = ResolveTemplateVars(body, tmplCtx)
 
-		content := body
+		desc, _ := proc.Raw["description"].(string)
+		fm := SkillFrontmatter{
+			Name:        proc.ID,
+			Description: desc,
+		}
+		fmBytes, err := yaml.Marshal(fm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal workflow frontmatter for %s: %w", proc.ID, err)
+		}
+		content := fmt.Sprintf("---\n%s---\n\n%s", string(fmBytes), body)
 
 		// Apply size limit check for workflows (using skills limit as proxy if not defined)
 		if limits != nil && limits.Skills != nil {
