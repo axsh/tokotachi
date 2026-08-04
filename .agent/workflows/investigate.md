@@ -1,6 +1,6 @@
 ---
 name: investigate
-description: Investigate
+description: Investigate a codebase, bug, or technical question and produce a structured investigation report.
 disable-model-invocation: false
 ---
 

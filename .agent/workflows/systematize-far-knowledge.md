@@ -1,6 +1,6 @@
 ---
 name: systematize-far-knowledge
-description: Systematize Far-Knowledge
+description: Process pending intake events and compile far-knowledge into agent-readable skills.
 disable-model-invocation: false
 ---
 
