@@ -113,6 +113,7 @@ func TestEmit_Cursor(t *testing.T) {
 
 	// Test dry-run Emit (apply = false)
 	buildDir := filepath.Join(tempDir, "build_output")
+	selectAllForTest(resolved)
 	if _, err := emitter.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (dry-run) failed: %v", err)
 	}
@@ -175,6 +176,7 @@ func TestEmit_Cursor(t *testing.T) {
 	}
 
 	// Test apply Emit (apply = true)
+	selectAllForTest(resolved)
 	if _, err := emitter.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (apply) failed: %v", err)
 	}
@@ -194,6 +196,7 @@ func TestEmit_Cursor(t *testing.T) {
 	}
 
 	// Test Check when no drift is present
+	selectAllForTest(resolved)
 	ok, err := emitter.Check(resolved, buildDir)
 	if err != nil {
 		t.Fatalf("Check failed: %v", err)
@@ -208,6 +211,7 @@ func TestEmit_Cursor(t *testing.T) {
 		t.Fatalf("failed to modify instructions file: %v", err)
 	}
 
+	selectAllForTest(resolved)
 	ok, err = emitter.Check(resolved, buildDir)
 	if err != nil {
 		t.Fatalf("Check failed: %v", err)
@@ -217,6 +221,7 @@ func TestEmit_Cursor(t *testing.T) {
 	}
 
 	// Reset and test Check when an untracked file is present (drift)
+	selectAllForTest(resolved)
 	if _, err := emitter.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("re-emit failed: %v", err)
 	}
@@ -226,6 +231,7 @@ func TestEmit_Cursor(t *testing.T) {
 		t.Fatalf("failed to write untracked file: %v", err)
 	}
 
+	selectAllForTest(resolved)
 	ok, err = emitter.Check(resolved, buildDir)
 	if err != nil {
 		t.Fatalf("Check failed: %v", err)
