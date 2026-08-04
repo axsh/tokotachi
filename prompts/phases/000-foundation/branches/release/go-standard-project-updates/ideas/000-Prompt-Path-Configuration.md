@@ -166,6 +166,9 @@ CLI フラグ > 環境変数 > project.yaml > 組み込みデフォルト
 
 `tt prompt compile|deploy|update --help` および `tt prompt --help` で、フォルダ／パス指定フラグの意味・基準・デフォルト・環境変数が**一貫した形式**で読めること。
 
+- デフォルト値は **パス式**（例: `{workspace} + {prompts-dir} + manifest/project.yaml`）で記述する
+- 主要パスの解決式一覧（仕様書「パス式」節）と help 文言を一致させる
+
 説明文は実行時に動的生成しない（Cobra `Flags().StringVar(..., help)` のリテラル文字列として実装する）。デフォルト値の変更はフラグ定義側の default 引数と help 文字列をセットで更新する。
 
 ### 任意要件
@@ -255,7 +258,7 @@ Cobra の flag help（第 4 引数）を、次のテンプレートで統一す�
 |---|---|
 | `{役割の一文}` | 英語・能動態・1文。何のパスか（入力／出力／deploy 先）を先に書く |
 | `{相対基準}` | 相対パス時の基準を `Relative to <anchor> unless absolute.` の形で明記。絶対パスはそのまま使用可能であることはこの句で暗黙に含める |
-| `{デフォルト式}` | 未指定時に効く値。推論式は `{workspace}/prompts` のように `{}` で依存関係を示す。`project.yaml` 由来は `project.yaml defaults.build_dir` のように出典を括弧書き |
+| `{デフォルト式}` | 未指定時に効く値。**パス式**（後述）で `{workspace} + {prompts-dir}` のように記述する。`project.yaml` 由来は `{workspace} + project.yaml defaults.build_dir` のように出典を混在可 |
 | `{TT_XXX}` | 対応する環境変数名。無い場合は `Env: (none).` とする |
 | `(flag wins)` | 固定句。CLI フラグが環境変数より優先されることを示す（R5 と一致） |
 
@@ -275,7 +278,54 @@ Cobra の flag help（第 4 引数）を、次のテンプレートで統一す�
 - 禁止: help 内で Go 式や関数呼び出し風の記法（例: `filepath.Join(...)`）
 - 禁止: 日本語 help（CLI help は英語。ユーザーマニュアルで日本語説明を補足）
 - 推奨: デフォルト式は実際の flag default 値と矛盾しないこと
-- 推奨: 依存関係があるフラグは、デフォルト式内で `{prompts-dir}` 等の論理名を使い、実装の `ResolvePaths` と同じ用語に揃える
+- 推奨: 依存関係があるフラグは、デフォルト式内で **パス式** を使い、実装の `ResolvePaths` と同じ用語に揃える
+
+#### パス式（Path Expression）
+
+help の `Default:` およびユーザーマニュアルで、解決後パスを次の記法で表す。
+
+**記法**:
+
+```
+{論理名} + {論理名} + ... + リテラルセグメント
+```
+
+| 要素 | 意味 |
+|---|---|
+| `{workspace}` | 解決済み workspace ルート（`--workspace` または `--project` から推論） |
+| `{prompts-dir}` | 解決済み prompts ソースルート（デフォルト: リテラル `prompts`） |
+| `{build-dir}` | 解決済み build 出力ルート（デフォルト: `project.yaml defaults.build_dir` または `tmp/dist/`） |
+| `{resolved-manifest}` | 解決済み resolved manifest ファイルパス |
+| `{deploy-root}` | 解決済み deploy 先ルート（デフォルト: `{workspace}`） |
+| `{cwd}` | コマンド実行時のカレントディレクトリ |
+| `+` | パス結合（help 上の概念記号。実装では OS ネイティブの join に相当） |
+| リテラルセグメント | `manifest/project.yaml`, `.cursor/rules/` 等。先頭 `/` またはドライブ文字付きは絶対パス |
+
+**絶対パスの扱い**（help の `{相対基準}` と対応）:
+
+- オペランドが絶対パスなら、式全体はその絶対パス（左側の `{workspace}` 等は無視）
+- help では `unless absolute` で一言で触れ、式自体は相対形で示す
+
+**主要パスの解決式一覧**（help / マニュアル / 実装で共通の参照表）:
+
+| 用途 | パス式 |
+|---|---|
+| prompts ソースルート | `{workspace} + {prompts-dir}` |
+| project.yaml（デフォルト） | `{workspace} + {prompts-dir} + manifest/project.yaml` |
+| スキーマディレクトリ | `{workspace} + {prompts-dir} + manifest/schemas` |
+| update git 監視（manifest） | `{workspace} + {prompts-dir} + manifest/` |
+| update git 監視（memory） | `{workspace} + {prompts-dir} + memory/` |
+| build 出力ルート | `{workspace} + {build-dir}` |
+| resolved manifest（フォールバック） | `{workspace} + {build-dir} + manifest.resolved.yaml` |
+| digest ファイル | `{workspace} + {build-dir} + .compile-digest[-{target}]` |
+| deploy 先（apply、例: cursor rules） | `{deploy-root} + .cursor/rules/` |
+| compile staging（apply=false、例） | `{workspace} + {build-dir} + cursor/.cursor/rules/` |
+
+**help 内でのパス式の書き方**:
+
+- `Default:` では上表の式をそのまま使う（例: `Default: {workspace} + {prompts-dir} + manifest/project.yaml.`）
+- 単一論理名のみのデフォルトは `{prompts-dir}` のように `{}` のみ可（暗黙の `{workspace} +` は `{相対基準}` 句で補う）
+- 式が長い場合は help 1 行に収めるため、末尾セグメントのみ省略可（例: `Default: {workspace} + {prompts-dir} (default segment: prompts).`）— ただし `--project` / `--build-dir` は完全式を推奨
 
 #### 各フラグの help 文字列（確定案）
 
@@ -284,12 +334,12 @@ Cobra の flag help（第 4 引数）を、次のテンプレートで統一す�
 ```go
 // 共有定数（prompt compile / deploy / update で同一文字列を使う）
 const (
-    helpWorkspace = "Workspace root for path resolution. Relative to CWD unless absolute. Default: inferred from --project. Env: TT_WORKSPACE (flag wins)."
-    helpPromptsDir = "Prompts source root (manifest and memory). Relative to workspace unless absolute. Default: prompts. Env: TT_PROMPTS_DIR (flag wins)."
-    helpProject = "Path to project.yaml. Relative to workspace if set, else CWD unless absolute. Default: {prompts-dir}/manifest/project.yaml. Env: (none)."
-    helpBuildDir = "Build output directory for staging and digests. Relative to workspace unless absolute. Default: project.yaml defaults.build_dir or tmp/dist/. Env: TT_BUILD_DIR (flag wins)."
-    helpResolvedManifest = "Resolved manifest output path. Relative to workspace unless absolute. Default: project.yaml outputs.resolved_manifest or {build-dir}/manifest.resolved.yaml. Env: TT_RESOLVED_MANIFEST (flag wins)."
-    helpDeployRoot = "Root directory for editor config deployment in apply mode. Relative to CWD unless absolute. Default: workspace. Env: TT_DEPLOY_ROOT (flag wins)."
+    helpWorkspace = "Workspace root for path resolution. Relative to CWD unless absolute. Default: inferred from --project (see path expr: {workspace}). Env: TT_WORKSPACE (flag wins)."
+    helpPromptsDir = "Prompts source root (manifest and memory). Relative to workspace unless absolute. Default: {workspace} + {prompts-dir} (segment: prompts). Env: TT_PROMPTS_DIR (flag wins)."
+    helpProject = "Path to project.yaml. Relative to workspace if set, else CWD unless absolute. Default: {workspace} + {prompts-dir} + manifest/project.yaml. Env: (none)."
+    helpBuildDir = "Build output directory for staging and digests. Relative to workspace unless absolute. Default: {workspace} + {build-dir} (from project.yaml defaults.build_dir or tmp/dist/). Env: TT_BUILD_DIR (flag wins)."
+    helpResolvedManifest = "Resolved manifest output path. Relative to workspace unless absolute. Default: {workspace} + {resolved-manifest} (from project.yaml outputs.resolved_manifest or {build-dir} + manifest.resolved.yaml). Env: TT_RESOLVED_MANIFEST (flag wins)."
+    helpDeployRoot = "Root directory for editor config deployment in apply mode. Relative to CWD unless absolute. Default: {deploy-root} = {workspace}. Env: TT_DEPLOY_ROOT (flag wins)."
 )
 ```
 
@@ -301,7 +351,8 @@ const (
 
 ```
 Path flags resolve in order: --workspace, --prompts-dir, --project, --build-dir,
---resolved-manifest, --deploy-root. See --help for defaults and TT_* env vars.
+--resolved-manifest, --deploy-root. Paths compose as {workspace} + {prompts-dir} + ...
+See --help for defaults and TT_* env vars.
 ```
 
 #### help 表示の検証
