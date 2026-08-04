@@ -6,6 +6,9 @@ title: Run All Tests
 trigger:
     command: run-all-tests
 description: Run all project tests including build, unit, integration, and E2E tests with a repair loop for failures.
+tags:
+  - baseline
+
 ---
   失敗を調査して修正するループを回す。
   「全テストを実行して」「プロジェクト全体を検証して」「テスト失敗を修正して」と

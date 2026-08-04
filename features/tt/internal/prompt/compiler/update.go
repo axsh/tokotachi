@@ -19,6 +19,8 @@ type UpdateOptions struct {
 	Target      string // default: "all"
 	Force       bool
 	DryRun      bool
+	Tags        []string
+	TagRefs     string
 }
 
 // UpdateResult holds the output of the update pipeline.
@@ -98,10 +100,12 @@ func Update(opts UpdateOptions) (*UpdateResult, error) {
 		}
 
 		deployResult, err := Deploy(DeployOptions{
-			Paths:  paths,
-			Target: t,
-			Force:  opts.Force,
-			DryRun: opts.DryRun,
+			Paths:   paths,
+			Target:  t,
+			Force:   opts.Force,
+			DryRun:  opts.DryRun,
+			Tags:    opts.Tags,
+			TagRefs: opts.TagRefs,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("deploy failed for target %s: %w", t, err)

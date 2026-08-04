@@ -10,6 +10,7 @@ import (
 
 	"github.com/axsh/tokotachi/features/tt/internal/prompt/compiler"
 	"github.com/axsh/tokotachi/features/tt/internal/prompt/emitter"
+	"github.com/axsh/tokotachi/features/tt/internal/prompt/manifest"
 	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
@@ -76,10 +77,13 @@ var (
 	promptBuildDir          string
 	promptResolvedManifest  string
 	promptDeployRoot        string
+	promptTags              string
+	promptTagRefs           string
 )
 
 func init() {
 	addPromptPathFlags(promptCompileCmd)
+	addPromptTagFlags(promptCompileCmd)
 	promptCompileCmd.Flags().StringVar(&compileProject, "project",
 		"prompts/manifest/project.yaml", helpProject)
 	promptCompileCmd.Flags().StringVar(&compileTarget, "target",
@@ -90,6 +94,7 @@ func init() {
 		false, "Apply generated files to target directories")
 
 	addPromptPathFlags(promptDeployCmd)
+	addPromptTagFlags(promptDeployCmd)
 	promptDeployCmd.Flags().StringVar(&deployProject, "project",
 		"prompts/manifest/project.yaml", helpProject)
 	promptDeployCmd.Flags().StringVar(&deployTarget, "target",
@@ -102,6 +107,7 @@ func init() {
 		"", "Emit mode: overwrite (default), skip, immune")
 
 	addPromptPathFlags(promptUpdateCmd)
+	addPromptTagFlags(promptUpdateCmd)
 	promptUpdateCmd.Flags().StringVar(&updateProject, "project",
 		"prompts/manifest/project.yaml", helpProject)
 	promptUpdateCmd.Flags().StringVar(&updateTarget, "target",
@@ -122,6 +128,13 @@ func addPromptPathFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&promptBuildDir, "build-dir", "", helpBuildDir)
 	cmd.Flags().StringVar(&promptResolvedManifest, "resolved-manifest", "", helpResolvedManifest)
 	cmd.Flags().StringVar(&promptDeployRoot, "deploy-root", "", helpDeployRoot)
+}
+
+func addPromptTagFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&promptTags, "tags", "",
+		"Comma-separated selection tags (default: TT_TAGS or baseline)")
+	cmd.Flags().StringVar(&promptTagRefs, "tag-refs", "",
+		"Reference mode: include (default) or strict (default: TT_TAG_REFS or include)")
 }
 
 func buildPathOptions(cmd *cobra.Command, projectFlag string) (compiler.PathOptions, error) {
@@ -157,6 +170,34 @@ func resolveTargetFlag(flagValue string) string {
 	return "all"
 }
 
+// resolveTagsFlag resolves --tags / TT_TAGS / baseline.
+// Prefer CLI when the flag was changed; otherwise fall back to TT_TAGS, then baseline.
+func resolveTagsFlag(cmd *cobra.Command) (tags []string, warnings []string, err error) {
+	raw := promptTags
+	if !cmd.Flags().Changed("tags") {
+		raw = os.Getenv(manifest.EnvKeyTags)
+	}
+	if strings.TrimSpace(raw) == "" {
+		return []string{manifest.BaselineTag}, nil, nil
+	}
+	return manifest.NormalizeRequestedTags(raw)
+}
+
+// resolveTagRefsFlag resolves --tag-refs / TT_TAG_REFS / include.
+func resolveTagRefsFlag(cmd *cobra.Command) (string, error) {
+	raw := promptTagRefs
+	if !cmd.Flags().Changed("tag-refs") {
+		raw = os.Getenv(manifest.EnvKeyTagRefs)
+	}
+	return manifest.NormalizeTagRefsMode(raw)
+}
+
+func printTagWarnings(cmd *cobra.Command, warnings []string) {
+	for _, w := range warnings {
+		fmt.Fprintf(cmd.ErrOrStderr(), "WARNING: %s\n", w)
+	}
+}
+
 func runPromptCompile(cmd *cobra.Command, args []string) error {
 	target := resolveTargetFlag(compileTarget)
 
@@ -170,6 +211,16 @@ func runPromptCompile(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	tags, warnings, err := resolveTagsFlag(cmd)
+	if err != nil {
+		return fmt.Errorf("invalid --tags: %w", err)
+	}
+	printTagWarnings(cmd, warnings)
+	tagRefs, err := resolveTagRefsFlag(cmd)
+	if err != nil {
+		return fmt.Errorf("invalid --tag-refs: %w", err)
+	}
+
 	pathOpts, err := buildPathOptions(cmd, compileProject)
 	if err != nil {
 		return err
@@ -181,10 +232,12 @@ func runPromptCompile(cmd *cobra.Command, args []string) error {
 
 	for _, t := range targets {
 		result, err := compiler.Compile(compiler.CompileOptions{
-			Paths:  paths,
-			DryRun: compileDryRun,
-			Target: t,
-			Apply:  compileApply,
+			Paths:   paths,
+			DryRun:  compileDryRun,
+			Target:  t,
+			Apply:   compileApply,
+			Tags:    tags,
+			TagRefs: tagRefs,
 		})
 		if err != nil {
 			return fmt.Errorf("compile failed for target %s: %w", t, err)
@@ -224,6 +277,16 @@ func runPromptDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid mode %q: must be overwrite, skip, or immune", deployMode)
 	}
 
+	tags, warnings, err := resolveTagsFlag(cmd)
+	if err != nil {
+		return fmt.Errorf("invalid --tags: %w", err)
+	}
+	printTagWarnings(cmd, warnings)
+	tagRefs, err := resolveTagRefsFlag(cmd)
+	if err != nil {
+		return fmt.Errorf("invalid --tag-refs: %w", err)
+	}
+
 	pathOpts, err := buildPathOptions(cmd, deployProject)
 	if err != nil {
 		return err
@@ -241,11 +304,13 @@ func runPromptDeploy(cmd *cobra.Command, args []string) error {
 
 	for _, t := range targets {
 		result, err := compiler.Deploy(compiler.DeployOptions{
-			Paths:  paths,
-			Target: t,
-			Force:  deployForce,
-			DryRun: deployDryRun,
-			Mode:   mode,
+			Paths:   paths,
+			Target:  t,
+			Force:   deployForce,
+			DryRun:  deployDryRun,
+			Mode:    mode,
+			Tags:    tags,
+			TagRefs: tagRefs,
 		})
 		if err != nil {
 			return fmt.Errorf("deploy failed for target %s: %w", t, err)
@@ -298,6 +363,16 @@ func deduplicateDirs(dirs []string) []string {
 func runPromptUpdate(cmd *cobra.Command, args []string) error {
 	target := resolveTargetFlag(updateTarget)
 
+	tags, warnings, err := resolveTagsFlag(cmd)
+	if err != nil {
+		return fmt.Errorf("invalid --tags: %w", err)
+	}
+	printTagWarnings(cmd, warnings)
+	tagRefs, err := resolveTagRefsFlag(cmd)
+	if err != nil {
+		return fmt.Errorf("invalid --tag-refs: %w", err)
+	}
+
 	pathOpts, err := buildPathOptions(cmd, updateProject)
 	if err != nil {
 		return err
@@ -308,10 +383,12 @@ func runPromptUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	result, err := compiler.Update(compiler.UpdateOptions{
-		Paths:  paths,
-		Target: target,
-		Force:  updateForce,
-		DryRun: updateDryRun,
+		Paths:   paths,
+		Target:  target,
+		Force:   updateForce,
+		DryRun:  updateDryRun,
+		Tags:    tags,
+		TagRefs: tagRefs,
 	})
 	if err != nil {
 		return err

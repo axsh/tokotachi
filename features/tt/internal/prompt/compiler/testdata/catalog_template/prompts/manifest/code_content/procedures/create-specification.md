@@ -5,6 +5,9 @@ kind: procedure
 title: Create Specification
 trigger:
     command: create-specification
+tags:
+  - baseline
+
 ---
 ---
 description: Create Specification

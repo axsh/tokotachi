@@ -24,6 +24,7 @@ type Entity struct {
 	Kind       string         `yaml:"kind"`
 	ID         string         `yaml:"id"`
 	Title      string         `yaml:"title"`
+	Selected   bool           `yaml:"selected"`
 	FilePath   string         `yaml:"-"`
 	Raw        map[string]any `yaml:"-"`
 }
@@ -38,6 +39,7 @@ func (e *Entity) UnmarshalYAML(value *yaml.Node) error {
 	e.Kind = aux.Kind
 	e.ID = aux.ID
 	e.Title = aux.Title
+	e.Selected = aux.Selected
 
 	var raw map[string]any
 	if err := value.Decode(&raw); err != nil {
@@ -58,6 +60,7 @@ func (e *Entity) MarshalYAML() (any, error) {
 	if e.Title != "" {
 		raw["title"] = e.Title
 	}
+	raw["selected"] = e.Selected
 	return raw, nil
 }
 

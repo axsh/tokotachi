@@ -11,6 +11,9 @@ paths:
   - "**/*.md"
 manual_only: false
 body: inline
+tags:
+  - baseline
+
 ---
 
 # Markdown 内ファイル参照のポータビリティ規約

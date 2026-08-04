@@ -6,6 +6,9 @@ title: Systematize Far-Knowledge
 trigger:
     command: systematize-far-knowledge
 description: Process pending intake events and compile far-knowledge into agent-readable skills.
+tags:
+  - baseline
+
 ---
 
 # 遠方知識の体系化ワークフロー

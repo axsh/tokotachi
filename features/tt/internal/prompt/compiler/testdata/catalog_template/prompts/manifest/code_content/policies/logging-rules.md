@@ -7,6 +7,9 @@ kind: policy
 scope: project
 title: Logging Rules
 applies_when: Applies when writing Go code that includes logging statements
+tags:
+  - baseline
+
 ---
 # ログ記述規範 (Logging Rules)
 

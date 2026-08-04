@@ -6,6 +6,9 @@ title: Review Point
 trigger:
     command: review-point
 description: Pause the current workflow to request user review and feedback before proceeding.
+tags:
+  - baseline
+
 ---
 
 # Review Point (ワークフロー一時停止)

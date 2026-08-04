@@ -7,6 +7,9 @@ kind: policy
 scope: project
 title: Coding Rules
 applies_when: Applies when writing or reviewing Go/TypeScript code
+tags:
+  - baseline
+
 ---
 # コーディング規範 (Coding Rules)
 

@@ -5,5 +5,7 @@ title: Test Compile Policy
 scope: project
 activation:
   mode: always
+tags:
+  - baseline
 body: |
   Test policy for compiler pipeline tests.

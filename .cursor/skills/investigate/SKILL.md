@@ -4,6 +4,7 @@ description: Investigate
 disable-model-invocation: false
 ---
 
+
 # 調査ワークフロー (Investigation)
 
 このワークフローは、コードベースの調査・分析を行い、その結果をレポートとしてまとめます。

@@ -1,6 +1,39 @@
 package manifest
 
-import "testing"
+import (
+	"testing"
+
+	"gopkg.in/yaml.v3"
+)
+
+func TestEntity_SelectedRoundTrip(t *testing.T) {
+	src := &Entity{
+		APIVersion: "agent.meta/v1",
+		Kind:       "capability",
+		ID:         "cap-a",
+		Title:      "A",
+		Selected:   true,
+		Raw: map[string]any{
+			"apiVersion":  "agent.meta/v1",
+			"kind":        "capability",
+			"id":          "cap-a",
+			"title":       "A",
+			"description": "d",
+			"body":        "b",
+		},
+	}
+	data, err := yaml.Marshal(src)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var dst Entity
+	if err := yaml.Unmarshal(data, &dst); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !dst.Selected {
+		t.Fatalf("selected not preserved; yaml=\n%s", string(data))
+	}
+}
 
 func TestEntity_ValidateKind(t *testing.T) {
 	tests := []struct {

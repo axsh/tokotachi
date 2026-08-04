@@ -5,6 +5,9 @@ kind: procedure
 title: Investigate
 trigger:
     command: investigate
+tags:
+  - baseline
+
 ---
 ---
 description: Investigate

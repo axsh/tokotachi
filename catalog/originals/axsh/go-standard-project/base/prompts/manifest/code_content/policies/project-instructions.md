@@ -7,6 +7,9 @@ kind: policy
 scope: project
 title: Project Instructions
 applies_when: Applies when starting work, understanding project workflows, or running scripts
+tags:
+  - baseline
+
 ---
 
 # プロジェクト共通指示書 (`.agent/instructions.md`)

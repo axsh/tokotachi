@@ -4,6 +4,7 @@ description: Create Specification
 disable-model-invocation: false
 ---
 
+
 # 仕様書作成ワークフロー
 
 このワークフローは、ユーザーが述べた内容を元に、構造化された仕様書 (`.../ideas/.../XXX-{Name}.md`) を作成します。

@@ -7,6 +7,9 @@ kind: policy
 scope: project
 title: Testing Rules
 applies_when: Applies when writing tests, running test scripts, or debugging test failures
+tags:
+  - baseline
+
 ---
 # テストのルール (Testing Rules)
 

@@ -10,6 +10,9 @@ paths:
   - "**/*.md"
 manual_only: false
 body: inline
+tags:
+  - baseline
+
 ---
 
 # Philosophy: Agentic System as Code

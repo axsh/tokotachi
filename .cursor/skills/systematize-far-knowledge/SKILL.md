@@ -4,6 +4,7 @@ description: Systematize Far-Knowledge
 disable-model-invocation: false
 ---
 
+
 # 遠方知識の体系化ワークフロー
 
 pending intake events を確認し、遠方知識をカテゴリ化・体系化・スキル化する。

@@ -101,6 +101,7 @@ func TestEmit_Codex(t *testing.T) {
 	e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 	buildDir := filepath.Join(tempDir, "build_output")
+	selectAllForTest(resolved)
 	if _, err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 		t.Fatalf("Emit (dry-run) failed: %v", err)
 	}
@@ -155,6 +156,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -193,6 +195,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		}
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -231,6 +234,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		}
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -264,6 +268,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -293,6 +298,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -334,6 +340,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -359,10 +366,12 @@ func TestCheck_Codex(t *testing.T) {
 		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
 
+		selectAllForTest(resolved)
 		ok, err := e.Check(resolved, buildDir)
 		if err != nil {
 			t.Fatalf("Check failed: %v", err)
@@ -378,6 +387,7 @@ func TestCheck_Codex(t *testing.T) {
 		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -388,6 +398,7 @@ func TestCheck_Codex(t *testing.T) {
 			t.Fatalf("failed to modify rule: %v", err)
 		}
 
+		selectAllForTest(resolved)
 		ok, err := e.Check(resolved, buildDir)
 		if err != nil {
 			t.Fatalf("Check failed: %v", err)
@@ -403,6 +414,7 @@ func TestCheck_Codex(t *testing.T) {
 		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -418,6 +430,7 @@ func TestCheck_Codex(t *testing.T) {
 			t.Fatalf("failed to write CODEX.md: %v", err)
 		}
 
+		selectAllForTest(resolved)
 		ok, err := e.Check(resolved, buildDir)
 		if err != nil {
 			t.Fatalf("Check failed: %v", err)
@@ -435,6 +448,7 @@ func TestCheck_Codex(t *testing.T) {
 		buildDir := filepath.Join(tempDir, "build_output")
 
 		// Deploy files but then remove markers from CODEX.md
+		selectAllForTest(resolved)
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
 			t.Fatalf("Emit (apply) failed: %v", err)
 		}
@@ -444,6 +458,7 @@ func TestCheck_Codex(t *testing.T) {
 			t.Fatalf("failed to overwrite CODEX.md: %v", err)
 		}
 
+		selectAllForTest(resolved)
 		ok, err := e.Check(resolved, buildDir)
 		if err != nil {
 			t.Fatalf("Check failed: %v", err)

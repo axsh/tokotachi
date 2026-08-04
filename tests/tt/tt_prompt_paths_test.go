@@ -11,31 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func copyCompilerValidFixture(t *testing.T, dst string) {
-	t.Helper()
-	src := filepath.Join(projectRoot(), "features", "tt", "internal", "prompt", "compiler", "testdata", "valid")
-	require.NoError(t, os.MkdirAll(dst, 0o755))
-	copyDirContents(t, src, dst)
-}
-
-func copyDirContents(t *testing.T, src, dst string) {
-	t.Helper()
-	entries, err := os.ReadDir(src)
-	require.NoError(t, err)
-	for _, e := range entries {
-		srcPath := filepath.Join(src, e.Name())
-		dstPath := filepath.Join(dst, e.Name())
-		if e.IsDir() {
-			require.NoError(t, os.MkdirAll(dstPath, 0o755))
-			copyDirContents(t, srcPath, dstPath)
-			continue
-		}
-		data, err := os.ReadFile(srcPath)
-		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(dstPath, data, 0o644))
-	}
-}
-
 func TestPromptPaths_BackwardCompatible(t *testing.T) {
 	tmp := t.TempDir()
 	copyCompilerValidFixture(t, tmp)

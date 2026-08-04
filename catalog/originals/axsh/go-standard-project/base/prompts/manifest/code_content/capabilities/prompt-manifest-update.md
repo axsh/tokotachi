@@ -30,6 +30,9 @@ references:
   - "prompts/manifest/schemas/policy.schema.json"
   - "prompts/manifest/schemas/procedure.schema.json"
 body: inline
+tags:
+  - baseline
+
 ---
 
 # Prompt Manifest Update（ルール・スキル・プロンプト改変手順）

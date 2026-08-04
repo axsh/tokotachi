@@ -5,6 +5,9 @@ kind: procedure
 title: Create Implementation Plan
 trigger:
     command: create-implementation-plan
+tags:
+  - baseline
+
 ---
 
 # 実装計画作成ワークフロー

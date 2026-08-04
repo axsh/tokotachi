@@ -81,6 +81,9 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	// 1. Emit Policies as pure Markdown (no frontmatter)
 	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
+		if !policy.Selected {
+			continue
+		}
 		filename := policy.ID + ".md"
 
 		var body string
@@ -121,6 +124,9 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	// 2. Emit Capabilities as SKILL.md
 	if inc.Capability {
 	for _, skill := range resolved.Entities["capability"] {
+		if !skill.Selected {
+			continue
+		}
 		var body string
 		if b, ok := skill.Raw["body"].(string); ok {
 			body = b
@@ -169,6 +175,9 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	// 3. Emit Procedures as Skills
 	if inc.Procedure {
 	for _, proc := range resolved.Entities["procedure"] {
+		if !proc.Selected {
+			continue
+		}
 		var body string
 		if b, ok := proc.Raw["body"].(string); ok {
 			body = b

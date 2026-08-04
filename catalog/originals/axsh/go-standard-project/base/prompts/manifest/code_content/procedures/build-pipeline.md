@@ -6,6 +6,9 @@ title: Build, Test, and Verify Pipeline
 trigger:
     command: build-pipeline
 description: Run the full build, unit test, and integration test pipeline to verify code changes.
+tags:
+  - baseline
+
 ---
 
 # Build and Verification Workflow

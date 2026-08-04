@@ -6,6 +6,9 @@ title: Test Generator
 trigger:
     command: test-generator
 description: Generate test implementation plans based on specifications and existing test infrastructure.
+tags:
+  - baseline
+
 ---
 
 # テスト実装計画作成ワークフロー

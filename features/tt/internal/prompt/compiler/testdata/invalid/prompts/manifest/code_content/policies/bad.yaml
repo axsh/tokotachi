@@ -2,3 +2,5 @@ apiVersion: agent.meta/v1
 kind: policy
 id: invalid-policy
 title: Invalid Policy
+tags:
+  - baseline
