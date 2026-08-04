@@ -13,12 +13,24 @@ import (
 
 // ClaudeCodeEmitter emits resolved manifest entities to .claude/ directory.
 type ClaudeCodeEmitter struct {
-	RootDir string
+	RootDir    string
+	DeployRoot string
+	PromptsDir string
 }
 
 // NewClaudeCodeEmitter creates a new ClaudeCodeEmitter.
-func NewClaudeCodeEmitter(rootDir string) *ClaudeCodeEmitter {
-	return &ClaudeCodeEmitter{RootDir: rootDir}
+func NewClaudeCodeEmitter(workspaceRoot, deployRoot, promptsDir string) *ClaudeCodeEmitter {
+	if deployRoot == "" {
+		deployRoot = workspaceRoot
+	}
+	if promptsDir == "" {
+		promptsDir = "prompts"
+	}
+	return &ClaudeCodeEmitter{
+		RootDir:    workspaceRoot,
+		DeployRoot: deployRoot,
+		PromptsDir: promptsDir,
+	}
 }
 
 // ClaudeCodeRuleFrontmatter is the YAML frontmatter for .claude/rules/*.md.
@@ -47,8 +59,8 @@ func (c *ClaudeCodeEmitter) resolvePaths(resolved *manifest.ResolvedManifest, bu
 	}
 
 	if apply {
-		return filepath.Join(c.RootDir, rulesPath),
-			filepath.Join(c.RootDir, skillsPath)
+		return filepath.Join(c.DeployRoot, rulesPath),
+			filepath.Join(c.DeployRoot, skillsPath)
 	}
 
 	return filepath.Join(buildDir, "claude-code", rulesPath),
@@ -234,7 +246,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 	} // end if inc.Procedure
 
 	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
-	branchSkills, err := ScanBranchSkills(c.RootDir)
+	branchSkills, err := ScanBranchSkills(c.RootDir, c.PromptsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan branch skills: %w", err)
 	}
@@ -330,7 +342,7 @@ func (c *ClaudeCodeEmitter) Check(resolved *manifest.ResolvedManifest, buildDir 
 		}
 
 		if !matched {
-			livePath = filepath.Join(c.RootDir, relPath)
+			livePath = filepath.Join(c.DeployRoot, relPath)
 		}
 
 		liveFilesFound[filepath.Clean(livePath)] = true

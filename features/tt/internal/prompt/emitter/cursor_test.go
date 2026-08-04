@@ -109,7 +109,7 @@ func TestEmit_Cursor(t *testing.T) {
 		},
 	}
 
-	emitter := NewCursorEmitter(tempDir)
+	emitter := NewCursorEmitter(tempDir, tempDir, "prompts")
 
 	// Test dry-run Emit (apply = false)
 	buildDir := filepath.Join(tempDir, "build_output")

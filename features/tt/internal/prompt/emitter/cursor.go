@@ -13,12 +13,24 @@ import (
 
 // CursorEmitter emits resolved manifest entities to Cursor IDE's .cursor/ directory.
 type CursorEmitter struct {
-	RootDir string
+	RootDir    string // workspace root for branch skills scan
+	DeployRoot string // apply-mode output base
+	PromptsDir string // prompts source root segment relative to workspace
 }
 
 // NewCursorEmitter creates a new CursorEmitter.
-func NewCursorEmitter(rootDir string) *CursorEmitter {
-	return &CursorEmitter{RootDir: rootDir}
+func NewCursorEmitter(workspaceRoot, deployRoot, promptsDir string) *CursorEmitter {
+	if deployRoot == "" {
+		deployRoot = workspaceRoot
+	}
+	if promptsDir == "" {
+		promptsDir = "prompts"
+	}
+	return &CursorEmitter{
+		RootDir:    workspaceRoot,
+		DeployRoot: deployRoot,
+		PromptsDir: promptsDir,
+	}
 }
 
 // CursorRuleFrontmatter is the YAML frontmatter for .mdc rule files.
@@ -48,8 +60,8 @@ func (c *CursorEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildD
 	}
 
 	if apply {
-		return filepath.Join(c.RootDir, rulesPath),
-			filepath.Join(c.RootDir, skillsPath)
+		return filepath.Join(c.DeployRoot, rulesPath),
+			filepath.Join(c.DeployRoot, skillsPath)
 	}
 
 	return filepath.Join(buildDir, "cursor", rulesPath),
@@ -239,7 +251,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 	} // end if inc.Procedure
 
 	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
-	branchSkills, err := ScanBranchSkills(c.RootDir)
+	branchSkills, err := ScanBranchSkills(c.RootDir, c.PromptsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan branch skills: %w", err)
 	}
@@ -335,7 +347,7 @@ func (c *CursorEmitter) Check(resolved *manifest.ResolvedManifest, buildDir stri
 		}
 
 		if !matched {
-			livePath = filepath.Join(c.RootDir, relPath)
+			livePath = filepath.Join(c.DeployRoot, relPath)
 		}
 
 		liveFilesFound[filepath.Clean(livePath)] = true

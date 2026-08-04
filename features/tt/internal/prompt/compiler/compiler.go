@@ -13,6 +13,7 @@ import (
 // CompileOptions holds options for the compile pipeline
 type CompileOptions struct {
 	ProjectPath string
+	Paths       *PathConfig
 	DryRun      bool
 	Target      string
 	Apply       bool
@@ -28,20 +29,36 @@ type CompileResult struct {
 	EmitResult   *emitter.EmitResult // emitted files info for coordinated cleanup
 }
 
+func newEmitterForTarget(target string, paths *PathConfig) (emitter.Emitter, error) {
+	switch target {
+	case "antigravity":
+		return emitter.NewAntigravityEmitter(paths.Workspace, paths.DeployRoot, paths.PromptsDir), nil
+	case "cursor":
+		return emitter.NewCursorEmitter(paths.Workspace, paths.DeployRoot, paths.PromptsDir), nil
+	case "claude-code":
+		return emitter.NewClaudeCodeEmitter(paths.Workspace, paths.DeployRoot, paths.PromptsDir), nil
+	case "codex":
+		return emitter.NewCodexEmitter(paths.Workspace, paths.DeployRoot, paths.PromptsDir), nil
+	default:
+		return nil, fmt.Errorf("unknown emitter target: %s", target)
+	}
+}
+
 // Compile executes the full parse -> validate -> resolve -> generate pipeline
 func Compile(opts CompileOptions) (*CompileResult, error) {
 	result := &CompileResult{}
 
-	// 1. Load config
-	cfg, err := LoadConfig(opts.ProjectPath)
+	paths, err := resolvePathsFromOptions(opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+		return nil, err
 	}
 
-	// 2. Resolve project root
-	rootDir, err := ResolveProjectRoot(opts.ProjectPath)
+	rootDir := paths.Workspace
+
+	// 1. Load config
+	cfg, err := LoadConfig(paths.ProjectYAML)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve project root: %w", err)
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
 	// 3. Parse all entities
@@ -58,8 +75,7 @@ func Compile(opts CompileOptions) (*CompileResult, error) {
 	}
 
 	// 5. Schema validation
-	schemasDir := filepath.Join(rootDir, "prompts", "manifest", "schemas")
-	validator, err := manifest.NewValidator(schemasDir)
+	validator, err := manifest.NewValidator(paths.SchemasDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validator: %w", err)
 	}
@@ -97,8 +113,7 @@ func Compile(opts CompileOptions) (*CompileResult, error) {
 
 	// 11. Write files (unless DryRun)
 	if !opts.DryRun {
-		// Write resolved manifest
-		resolvedPath := filepath.Join(rootDir, cfg.Outputs.ResolvedManifest)
+		resolvedPath := paths.ResolvedManifestAbs()
 		if err := writeFile(resolvedPath, resolvedYAML); err != nil {
 			return nil, fmt.Errorf("failed to write resolved manifest: %w", err)
 		}
@@ -106,21 +121,12 @@ func Compile(opts CompileOptions) (*CompileResult, error) {
 
 	// 13. Call emitter if Target is specified
 	if opts.Target != "" {
-		var emitObj emitter.Emitter
-		switch opts.Target {
-		case "antigravity":
-			emitObj = emitter.NewAntigravityEmitter(rootDir)
-		case "cursor":
-			emitObj = emitter.NewCursorEmitter(rootDir)
-		case "claude-code":
-			emitObj = emitter.NewClaudeCodeEmitter(rootDir)
-		case "codex":
-			emitObj = emitter.NewCodexEmitter(rootDir)
-		default:
-			return nil, fmt.Errorf("unknown emitter target: %s", opts.Target)
+		emitObj, err := newEmitterForTarget(opts.Target, paths)
+		if err != nil {
+			return nil, err
 		}
 		apply := opts.Apply && !opts.DryRun
-		buildDir := filepath.Clean(filepath.Join(rootDir, cfg.Defaults.BuildDir))
+		buildDir := paths.BuildDirAbs()
 		emitOpts := emitter.EmitOptions{
 			Mode:   opts.EmitMode,
 			DryRun: opts.EmitDryRun,

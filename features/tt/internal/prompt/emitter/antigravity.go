@@ -12,11 +12,23 @@ import (
 )
 
 type AntigravityEmitter struct {
-	RootDir string
+	RootDir    string
+	DeployRoot string
+	PromptsDir string
 }
 
-func NewAntigravityEmitter(rootDir string) *AntigravityEmitter {
-	return &AntigravityEmitter{RootDir: rootDir}
+func NewAntigravityEmitter(workspaceRoot, deployRoot, promptsDir string) *AntigravityEmitter {
+	if deployRoot == "" {
+		deployRoot = workspaceRoot
+	}
+	if promptsDir == "" {
+		promptsDir = "prompts"
+	}
+	return &AntigravityEmitter{
+		RootDir:    workspaceRoot,
+		DeployRoot: deployRoot,
+		PromptsDir: promptsDir,
+	}
 }
 
 type SkillFrontmatter struct {
@@ -51,9 +63,9 @@ func (a *AntigravityEmitter) resolvePaths(resolved *manifest.ResolvedManifest, b
 	}
 
 	if apply {
-		return filepath.Join(a.RootDir, rulesPath),
-			filepath.Join(a.RootDir, skillsPath),
-			filepath.Join(a.RootDir, workflowsPath)
+		return filepath.Join(a.DeployRoot, rulesPath),
+			filepath.Join(a.DeployRoot, skillsPath),
+			filepath.Join(a.DeployRoot, workflowsPath)
 	}
 
 	return filepath.Join(buildDir, "antigravity", rulesPath),
@@ -246,7 +258,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 	} // end if inc.Procedure
 
 	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
-	branchSkills, err := ScanBranchSkills(a.RootDir)
+	branchSkills, err := ScanBranchSkills(a.RootDir, a.PromptsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan branch skills: %w", err)
 	}
@@ -381,7 +393,7 @@ func (a *AntigravityEmitter) Check(resolved *manifest.ResolvedManifest, buildDir
 
 		if !matched {
 			// Fallback: join relPath directly with root dir
-			livePath = filepath.Join(a.RootDir, relPath)
+			livePath = filepath.Join(a.DeployRoot, relPath)
 		}
 
 		liveFilesFound[filepath.Clean(livePath)] = true
