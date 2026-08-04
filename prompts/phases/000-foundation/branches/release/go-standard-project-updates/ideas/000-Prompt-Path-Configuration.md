@@ -162,6 +162,12 @@ CLI フラグ > 環境変数 > project.yaml > 組み込みデフォルト
 - 新フラグ・環境変数未指定時は現行挙動と同一結果になること
 - 既存の `project.yaml` および `ResolveProjectRoot()` の推論ロジックは維持
 
+#### R8. `--help` におけるパス系フラグの説明文
+
+`tt prompt compile|deploy|update --help` および `tt prompt --help` で、フォルダ／パス指定フラグの意味・基準・デフォルト・環境変数が**一貫した形式**で読めること。
+
+説明文は実行時に動的生成しない（Cobra `Flags().StringVar(..., help)` のリテラル文字列として実装する）。デフォルト値の変更はフラグ定義側の default 引数と help 文字列をセットで更新する。
+
 ### 任意要件
 
 - `tt-user-manual.md` に新フラグ・環境変数の説明を追記
@@ -234,6 +240,75 @@ tt prompt compile|deploy|update \
   [--target <name>] \
   ...既存フラグ...
 ```
+
+### `--help` パス系フラグ説明文の組み立て規則
+
+Cobra の flag help（第 4 引数）を、次のテンプレートで統一する。
+
+#### テンプレート
+
+```
+{役割の一文}. {相対基準}. Default: {デフォルト式}. Env: {TT_XXX} (flag wins).
+```
+
+| プレースホルダ | 記述ルール |
+|---|---|
+| `{役割の一文}` | 英語・能動態・1文。何のパスか（入力／出力／deploy 先）を先に書く |
+| `{相対基準}` | 相対パス時の基準を `Relative to <anchor> unless absolute.` の形で明記。絶対パスはそのまま使用可能であることはこの句で暗黙に含める |
+| `{デフォルト式}` | 未指定時に効く値。推論式は `{workspace}/prompts` のように `{}` で依存関係を示す。`project.yaml` 由来は `project.yaml defaults.build_dir` のように出典を括弧書き |
+| `{TT_XXX}` | 対応する環境変数名。無い場合は `Env: (none).` とする |
+| `(flag wins)` | 固定句。CLI フラグが環境変数より優先されることを示す（R5 と一致） |
+
+**相対基準（anchor）の対応表**:
+
+| フラグ | anchor 文言（help 内） | 実際の解決 |
+|---|---|---|
+| `--workspace` | `Relative to CWD unless absolute` | CWD 基準 |
+| `--prompts-dir` | `Relative to workspace unless absolute` | workspace 基準 |
+| `--project` | `Relative to workspace if set, else CWD unless absolute` | workspace 未設定時は CWD |
+| `--build-dir` | `Relative to workspace unless absolute` | workspace 基準 |
+| `--resolved-manifest` | `Relative to workspace unless absolute` | workspace 基準 |
+| `--deploy-root` | `Relative to CWD unless absolute` | CWD 基準（別 checkout 指定を想定） |
+
+**文字列組み立ての禁止・推奨**:
+
+- 禁止: help 内で Go 式や関数呼び出し風の記法（例: `filepath.Join(...)`）
+- 禁止: 日本語 help（CLI help は英語。ユーザーマニュアルで日本語説明を補足）
+- 推奨: デフォルト式は実際の flag default 値と矛盾しないこと
+- 推奨: 依存関係があるフラグは、デフォルト式内で `{prompts-dir}` 等の論理名を使い、実装の `ResolvePaths` と同じ用語に揃える
+
+#### 各フラグの help 文字列（確定案）
+
+`features/tt/cmd/prompt.go` の `Flags().StringVar` 第 4 引数にそのまま設定する。
+
+```go
+// 共有定数（prompt compile / deploy / update で同一文字列を使う）
+const (
+    helpWorkspace = "Workspace root for path resolution. Relative to CWD unless absolute. Default: inferred from --project. Env: TT_WORKSPACE (flag wins)."
+    helpPromptsDir = "Prompts source root (manifest and memory). Relative to workspace unless absolute. Default: prompts. Env: TT_PROMPTS_DIR (flag wins)."
+    helpProject = "Path to project.yaml. Relative to workspace if set, else CWD unless absolute. Default: {prompts-dir}/manifest/project.yaml. Env: (none)."
+    helpBuildDir = "Build output directory for staging and digests. Relative to workspace unless absolute. Default: project.yaml defaults.build_dir or tmp/dist/. Env: TT_BUILD_DIR (flag wins)."
+    helpResolvedManifest = "Resolved manifest output path. Relative to workspace unless absolute. Default: project.yaml outputs.resolved_manifest or {build-dir}/manifest.resolved.yaml. Env: TT_RESOLVED_MANIFEST (flag wins)."
+    helpDeployRoot = "Root directory for editor config deployment in apply mode. Relative to CWD unless absolute. Default: workspace. Env: TT_DEPLOY_ROOT (flag wins)."
+)
+```
+
+**既存フラグ `--project` の help 更新**: 現行 `"Path to project.yaml"` を上記 `helpProject` に置き換える。
+
+#### コマンド Long への補足（任意）
+
+各サブコマンドの `Long` フィールド末尾に、パス解決の概要を 2 行追加してもよい。
+
+```
+Path flags resolve in order: --workspace, --prompts-dir, --project, --build-dir,
+--resolved-manifest, --deploy-root. See --help for defaults and TT_* env vars.
+```
+
+#### help 表示の検証
+
+1. `tt prompt compile --help` で上記 6 フラグ（＋更新済み `--project`）の説明がテンプレート形式で表示されること
+2. `tt prompt deploy --help` / `tt prompt update --help` でも compile と同一文言であること（共有定数利用）
+3. 単体テストで help 文字列定数のスナップショット、または `grep` による存在確認を `paths_test.go` または `prompt_test.go` に追加してもよい（任意）
 
 ### 使用例
 
@@ -310,3 +385,4 @@ tt prompt deploy \
 | R5 優先順位 | `paths_test.go`: flag > env > yaml |
 | R6 ラッパー | shell スクリプトの引数透過テスト（可能なら bats、最低限手動シナリオ 6） |
 | R7 後方互換 | 既存 `compiler/testdata/valid` による regression |
+| R8 help 文言 | `tt prompt compile --help` 出力確認、または help 定数の Go テスト |
