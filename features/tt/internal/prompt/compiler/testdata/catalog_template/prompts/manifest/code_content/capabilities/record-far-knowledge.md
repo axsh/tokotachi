@@ -14,6 +14,9 @@ scripts:
   - "scripts/code/agent/record.sh"
 manual_only: true
 body: inline
+tags:
+  - baseline
+
 ---
 
 # Record Far-Knowledge via record.sh

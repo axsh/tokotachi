@@ -7,6 +7,9 @@ scope: project
 activation:
     mode: always
 applies_when: Applies when changing architecture-sensitive code, module boundaries, or establishing cross-cutting patterns
+tags:
+  - baseline
+
 ---
 
 ## Mandatory Record After Far-Knowledge Changes

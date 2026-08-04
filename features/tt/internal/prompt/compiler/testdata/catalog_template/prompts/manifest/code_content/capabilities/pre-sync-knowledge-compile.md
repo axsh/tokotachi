@@ -16,6 +16,9 @@ references:
 scripts:
   - "scripts/code/agent/intake.sh"
 body: inline
+tags:
+  - baseline
+
 ---
 
 # Pre-Sync Knowledge Compile

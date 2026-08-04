@@ -6,6 +6,9 @@ title: Execute Implementation Plan
 trigger:
     command: execute-implementation-plan
 description: Execute an approved implementation plan following TDD workflow with incremental commits and verification.
+tags:
+  - baseline
+
 ---
 
 # 実装実行ワークフロー

@@ -6,6 +6,9 @@ id: vibe-coding-standard
 kind: skip
 scope: project
 title: Vibe Coding Standard
+tags:
+  - baseline
+
 ---
 # 🤖 Vibe Coding 標準 (2026年6月4日版)
 

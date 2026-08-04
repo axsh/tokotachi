@@ -19,6 +19,9 @@ references:
 scripts:
   - "scripts/code/agent/record.sh"
 body: inline
+tags:
+  - baseline
+
 ---
 
 # Pre-Push Knowledge Check

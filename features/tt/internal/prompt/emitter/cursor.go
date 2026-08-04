@@ -82,6 +82,9 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 	// 1. Emit Policies as .mdc files
 	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
+		if !policy.Selected {
+			continue
+		}
 		filename := policy.ID + ".mdc"
 
 		var body string
@@ -145,6 +148,9 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 	// 2. Emit Capabilities as SKILL.md (same format as Antigravity skills)
 	if inc.Capability {
 	for _, skill := range resolved.Entities["capability"] {
+		if !skill.Selected {
+			continue
+		}
 		var body string
 		if b, ok := skill.Raw["body"].(string); ok {
 			body = b
@@ -193,6 +199,9 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 	//    but skills serve as on-demand procedure guides)
 	if inc.Procedure {
 	for _, proc := range resolved.Entities["procedure"] {
+		if !proc.Selected {
+			continue
+		}
 		var body string
 		if b, ok := proc.Raw["body"].(string); ok {
 			body = b

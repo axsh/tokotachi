@@ -7,6 +7,9 @@ kind: policy
 scope: project
 title: Planning Rules
 applies_when: Applies when creating implementation plans or design documents
+tags:
+  - baseline
+
 ---
 # 計画立案規範 (Planning Rules)
 

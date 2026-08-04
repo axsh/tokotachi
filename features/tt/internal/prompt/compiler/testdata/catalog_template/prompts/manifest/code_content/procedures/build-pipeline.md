@@ -5,6 +5,9 @@ kind: procedure
 title: Build, Test, and Verify Pipeline
 trigger:
     command: build-pipeline
+tags:
+  - baseline
+
 ---
 
 # Build and Verification Workflow

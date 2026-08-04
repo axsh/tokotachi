@@ -6,6 +6,9 @@ title: Create Implementation Plan
 trigger:
     command: create-implementation-plan
 description: Create a detailed implementation plan document with proposed changes, verification steps, and user review.
+tags:
+  - baseline
+
 ---
 
 # 実装計画作成ワークフロー

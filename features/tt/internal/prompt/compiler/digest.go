@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -22,8 +23,17 @@ type DigestInfo struct {
 }
 
 // ComputeSourceDigest computes a SHA-256 digest of all source files
-// defined in the project config's sources section.
-func ComputeSourceDigest(cfg *manifest.ProjectConfig, rootDir string) (string, error) {
+// defined in the project config's sources section, plus selection context.
+// tags are sorted before hashing so order does not affect the digest.
+// tagRefs should be include|strict (empty is treated as include).
+func ComputeSourceDigest(cfg *manifest.ProjectConfig, rootDir string, tags []string, tagRefs string) (string, error) {
+	if len(tags) == 0 {
+		tags = []string{manifest.BaselineTag}
+	}
+	if tagRefs == "" {
+		tagRefs = manifest.TagRefsInclude
+	}
+
 	var allFiles []string
 
 	for _, pattern := range cfg.Sources {
@@ -63,6 +73,13 @@ func ComputeSourceDigest(cfg *manifest.ProjectConfig, rootDir string) (string, e
 		}
 		hasher.Write(data)
 	}
+
+	sortedTags := append([]string(nil), tags...)
+	sort.Strings(sortedTags)
+	hasher.Write([]byte("\n#tags\n"))
+	hasher.Write([]byte(strings.Join(sortedTags, ",")))
+	hasher.Write([]byte("\n#tag-refs\n"))
+	hasher.Write([]byte(tagRefs))
 
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }

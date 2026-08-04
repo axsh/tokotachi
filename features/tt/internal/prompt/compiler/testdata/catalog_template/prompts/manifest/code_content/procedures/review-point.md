@@ -5,6 +5,9 @@ kind: procedure
 title: Review Point
 trigger:
     command: review-point
+tags:
+  - baseline
+
 ---
 
 # Review Point (ワークフロー一時停止)

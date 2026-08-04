@@ -18,11 +18,11 @@ func TestComputeSourceDigest(t *testing.T) {
 	}
 
 	t.Run("stability", func(t *testing.T) {
-		d1, err := ComputeSourceDigest(cfg, rootDir)
+		d1, err := ComputeSourceDigest(cfg, rootDir, nil, "")
 		if err != nil {
 			t.Fatalf("ComputeSourceDigest() error = %v", err)
 		}
-		d2, err := ComputeSourceDigest(cfg, rootDir)
+		d2, err := ComputeSourceDigest(cfg, rootDir, nil, "")
 		if err != nil {
 			t.Fatalf("ComputeSourceDigest() error = %v", err)
 		}
@@ -31,6 +31,38 @@ func TestComputeSourceDigest(t *testing.T) {
 		}
 		if d1 == "" {
 			t.Error("digest should not be empty")
+		}
+	})
+
+	t.Run("tags_affect_digest", func(t *testing.T) {
+		d1, err := ComputeSourceDigest(cfg, rootDir, []string{"baseline"}, "include")
+		if err != nil {
+			t.Fatalf("ComputeSourceDigest() error = %v", err)
+		}
+		d2, err := ComputeSourceDigest(cfg, rootDir, []string{"test"}, "include")
+		if err != nil {
+			t.Fatalf("ComputeSourceDigest() error = %v", err)
+		}
+		if d1 == d2 {
+			t.Error("digest should differ when tags differ")
+		}
+		d3, err := ComputeSourceDigest(cfg, rootDir, []string{"test", "baseline"}, "include")
+		if err != nil {
+			t.Fatalf("ComputeSourceDigest() error = %v", err)
+		}
+		d4, err := ComputeSourceDigest(cfg, rootDir, []string{"baseline", "test"}, "include")
+		if err != nil {
+			t.Fatalf("ComputeSourceDigest() error = %v", err)
+		}
+		if d3 != d4 {
+			t.Error("tag order should not affect digest")
+		}
+		d5, err := ComputeSourceDigest(cfg, rootDir, []string{"baseline"}, "strict")
+		if err != nil {
+			t.Fatalf("ComputeSourceDigest() error = %v", err)
+		}
+		if d1 == d5 {
+			t.Error("digest should differ when tag-refs differ")
 		}
 	})
 
@@ -49,7 +81,7 @@ func TestComputeSourceDigest(t *testing.T) {
 			t.Fatalf("ResolveProjectRoot() error = %v", err)
 		}
 
-		d1, err := ComputeSourceDigest(tmpCfg, tmpRootDir)
+		d1, err := ComputeSourceDigest(tmpCfg, tmpRootDir, nil, "")
 		if err != nil {
 			t.Fatalf("ComputeSourceDigest() error = %v", err)
 		}
@@ -64,7 +96,7 @@ func TestComputeSourceDigest(t *testing.T) {
 			t.Fatalf("failed to modify policy file: %v", err)
 		}
 
-		d2, err := ComputeSourceDigest(tmpCfg, tmpRootDir)
+		d2, err := ComputeSourceDigest(tmpCfg, tmpRootDir, nil, "")
 		if err != nil {
 			t.Fatalf("ComputeSourceDigest() error = %v", err)
 		}

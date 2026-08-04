@@ -5,6 +5,9 @@ kind: procedure
 title: Run All Tests
 trigger:
     command: run-all-tests
+tags:
+  - baseline
+
 ---
   失敗を調査して修正するループを回す。
   「全テストを実行して」「プロジェクト全体を検証して」「テスト失敗を修正して」と

@@ -147,6 +147,8 @@ type envVarDef struct {
 var knownEnvVars = []envVarDef{
 	{"TT_EDITOR", "cursor"},
 	{"TT_TARGET", "all"},
+	{"TT_TAGS", "baseline"},
+	{"TT_TAG_REFS", "include"},
 	{"TT_CMD_CODE", "code"},
 	{"TT_CMD_CURSOR", "cursor"},
 	{"TT_CMD_AG", "antigravity"},

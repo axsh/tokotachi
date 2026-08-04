@@ -5,6 +5,9 @@ kind: procedure
 title: Test Generator
 trigger:
     command: test-generator
+tags:
+  - baseline
+
 ---
 
 # テスト実装計画作成ワークフロー

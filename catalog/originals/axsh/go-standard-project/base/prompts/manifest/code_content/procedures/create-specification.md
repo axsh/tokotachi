@@ -6,6 +6,9 @@ title: Create Specification
 trigger:
     command: create-specification
 description: Create a structured specification document capturing background, requirements, and verification scenarios.
+tags:
+  - baseline
+
 ---
 
 # 仕様書作成ワークフロー

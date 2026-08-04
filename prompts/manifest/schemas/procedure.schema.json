@@ -4,16 +4,31 @@
   "title": "Procedure Definition",
   "description": "Schema for agent procedure (workflow) definitions in the manifest system.",
   "type": "object",
-  "required": ["apiVersion", "kind", "id", "title", "trigger"],
+  "required": [
+    "apiVersion",
+    "kind",
+    "id",
+    "title",
+    "trigger"
+  ],
   "properties": {
-    "apiVersion": { "type": "string", "const": "agent.meta/v1" },
-    "kind": { "type": "string", "const": "procedure" },
+    "apiVersion": {
+      "type": "string",
+      "const": "agent.meta/v1"
+    },
+    "kind": {
+      "type": "string",
+      "const": "procedure"
+    },
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "description": "Globally unique kebab-case identifier."
     },
-    "title": { "type": "string", "description": "Human-readable title." },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title."
+    },
     "trigger": {
       "type": "object",
       "properties": {
@@ -31,7 +46,9 @@
     },
     "steps": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Ordered list of step identifiers."
     },
     "body": {
@@ -40,7 +57,9 @@
     },
     "uses_capabilities": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "IDs of capabilities used by this procedure."
     },
     "arguments": {
@@ -49,7 +68,9 @@
     },
     "side_effects": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Side effects produced by this procedure."
     },
     "approval": {
@@ -58,7 +79,9 @@
       "properties": {
         "human_required_for": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false
@@ -66,6 +89,25 @@
     "description": {
       "type": "string",
       "description": "Human-readable description of the procedure for display in agent UI."
+    },
+    "tags": {
+      "description": "Selection tags for compile/deploy/update filtering. If omitted, the entity implicitly has the 'baseline' tag. Explicit tags replace the implicit baseline; include 'baseline' explicitly when needed. Empty arrays are forbidden.",
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "minLength": 1
+          }
+        }
+      ]
     }
   },
   "additionalProperties": false

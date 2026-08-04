@@ -17,6 +17,8 @@ type DeployOptions struct {
 	Force       bool
 	DryRun      bool
 	Mode        emitter.EmitMode
+	Tags        []string
+	TagRefs     string
 }
 
 // DeployResult holds the output of the deploy pipeline
@@ -51,7 +53,16 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 		target = "antigravity"
 	}
 
-	currentDigest, err := ComputeSourceDigest(cfg, rootDir)
+	tags := opts.Tags
+	if len(tags) == 0 {
+		tags = []string{manifest.BaselineTag}
+	}
+	tagRefs := opts.TagRefs
+	if tagRefs == "" {
+		tagRefs = manifest.TagRefsInclude
+	}
+
+	currentDigest, err := ComputeSourceDigest(cfg, rootDir, tags, tagRefs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute digest: %w", err)
 	}
@@ -79,6 +90,8 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 		Apply:      !opts.DryRun,
 		EmitMode:   opts.Mode,
 		EmitDryRun: opts.DryRun,
+		Tags:       tags,
+		TagRefs:    tagRefs,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("compile failed: %w", err)
@@ -91,7 +104,7 @@ func Deploy(opts DeployOptions) (*DeployResult, error) {
 	}
 
 	if !opts.DryRun {
-		postDigest, err := ComputeSourceDigest(cfg, rootDir)
+		postDigest, err := ComputeSourceDigest(cfg, rootDir, tags, tagRefs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to recompute digest after compile: %w", err)
 		}

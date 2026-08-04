@@ -6,6 +6,9 @@ title: Create Pull Request
 trigger:
     command: create-pull-request
 description: Create a pull request from committed code changes and manage post-merge revisions.
+tags:
+  - baseline
+
 ---
 
 # PR作成ワークフロー (Create Pull Request Workflow)

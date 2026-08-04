@@ -19,6 +19,8 @@ type CompileOptions struct {
 	Apply       bool
 	EmitMode    emitter.EmitMode
 	EmitDryRun  bool
+	Tags        []string // normalized selection tags; empty defaults to baseline
+	TagRefs     string   // include|strict; empty defaults to include
 }
 
 // CompileResult holds the output of the compile pipeline
@@ -93,6 +95,25 @@ func Compile(opts CompileOptions) (*CompileResult, error) {
 	result.Errors = append(result.Errors, refErrors...)
 
 	// 8. If validation errors exist, return without generating
+	if len(result.Errors) > 0 {
+		return result, nil
+	}
+
+	tags := opts.Tags
+	if len(tags) == 0 {
+		tags = []string{manifest.BaselineTag}
+	}
+	tagRefs := opts.TagRefs
+	if tagRefs == "" {
+		tagRefs = manifest.TagRefsInclude
+	}
+	if _, err := manifest.NormalizeTagRefsMode(tagRefs); err != nil {
+		return nil, fmt.Errorf("invalid tag-refs: %w", err)
+	}
+
+	// 8b. Tag selection (sets Entity.Selected; include/strict reference modes)
+	selErrors := manifest.ApplyTagSelection(entities, tags, tagRefs)
+	result.Errors = append(result.Errors, selErrors...)
 	if len(result.Errors) > 0 {
 		return result, nil
 	}

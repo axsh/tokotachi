@@ -3,6 +3,7 @@ package compiler
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -86,6 +87,61 @@ func TestCompile_WithValidationErrors(t *testing.T) {
 	if result.ResolvedYAML != "" {
 		t.Error("Compile() should not produce ResolvedYAML when validation fails")
 	}
+}
+
+func TestCompile_TagsSelectedInResolved(t *testing.T) {
+	projectPath := filepath.Join("testdata", "valid", "prompts", "manifest", "project.yaml")
+	result, err := Compile(CompileOptions{
+		ProjectPath: projectPath,
+		DryRun:      true,
+		Tags:        []string{"baseline"},
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	if len(result.Errors) > 0 {
+		t.Fatalf("Compile() errors: %v", result.Errors)
+	}
+	if result.Resolved == nil || len(result.Resolved.Entities["policy"]) == 0 {
+		t.Fatal("expected policy entities")
+	}
+	for _, p := range result.Resolved.Entities["policy"] {
+		if !p.Selected {
+			t.Errorf("policy %s should be selected for baseline tags", p.ID)
+		}
+	}
+	if !contains(result.ResolvedYAML, "selected: true") {
+		t.Error("ResolvedYAML should contain selected: true")
+	}
+
+	result2, err := Compile(CompileOptions{
+		ProjectPath: projectPath,
+		DryRun:      true,
+		Tags:        []string{"test"},
+	})
+	if err != nil {
+		t.Fatalf("Compile() error = %v", err)
+	}
+	if len(result2.Errors) > 0 {
+		t.Fatalf("Compile() errors: %v", result2.Errors)
+	}
+	for _, p := range result2.Resolved.Entities["policy"] {
+		if p.Selected {
+			t.Errorf("policy %s should not be selected for test-only tags", p.ID)
+		}
+	}
+}
+
+func contains(s, sub string) bool {
+	return len(s) >= len(sub) && (s == sub || len(sub) == 0 ||
+		(func() bool {
+			for i := 0; i+len(sub) <= len(s); i++ {
+				if s[i:i+len(sub)] == sub {
+					return true
+				}
+			}
+			return false
+		})())
 }
 
 // copyTestdata recursively copies src to dst

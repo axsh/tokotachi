@@ -6,6 +6,9 @@ title: Investigate
 trigger:
     command: investigate
 description: Investigate a codebase, bug, or technical question and produce a structured investigation report.
+tags:
+  - baseline
+
 ---
 
 # 調査ワークフロー (Investigation)

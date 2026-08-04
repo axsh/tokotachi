@@ -94,6 +94,9 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 	// 1. Emit Policies
 	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
+		if !policy.Selected {
+			continue
+		}
 		var filename string
 		if policy.ID == "project-instructions" {
 			filename = "instructions.md"
@@ -150,6 +153,9 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 	// 2. Emit Capabilities (Skills)
 	if inc.Capability {
 	for _, skill := range resolved.Entities["capability"] {
+		if !skill.Selected {
+			continue
+		}
 		var body string
 		if b, ok := skill.Raw["body"].(string); ok {
 			body = b
@@ -208,6 +214,9 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 	// 3. Emit Procedures
 	if inc.Procedure {
 	for _, proc := range resolved.Entities["procedure"] {
+		if !proc.Selected {
+			continue
+		}
 		var body string
 		if b, ok := proc.Raw["body"].(string); ok {
 			body = b

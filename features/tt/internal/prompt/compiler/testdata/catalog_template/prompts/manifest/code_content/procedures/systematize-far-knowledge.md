@@ -5,6 +5,9 @@ id: systematize-far-knowledge
 title: Systematize Far-Knowledge
 trigger:
     command: systematize-far-knowledge
+tags:
+  - baseline
+
 ---
 ---
 description: Systematize Far-Knowledge
