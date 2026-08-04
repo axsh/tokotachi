@@ -19,11 +19,14 @@ type BranchSkill struct {
 	BranchID string
 }
 
-// ScanBranchSkills scans prompts/memory/branches/*/skills/ directories
+// ScanBranchSkills scans {prompts-dir}/memory/branches/*/skills/ directories
 // for far-knowledge skills and returns them as BranchSkill entries.
 // Skills are identified by having a SKILL.md file in a subdirectory.
-func ScanBranchSkills(rootDir string) ([]BranchSkill, error) {
-	branchesDir := filepath.Join(rootDir, "prompts", "memory", "branches")
+func ScanBranchSkills(rootDir, promptsDir string) ([]BranchSkill, error) {
+	if promptsDir == "" {
+		promptsDir = "prompts"
+	}
+	branchesDir := filepath.Join(rootDir, promptsDir, "memory", "branches")
 
 	if _, err := os.Stat(branchesDir); os.IsNotExist(err) {
 		return nil, nil

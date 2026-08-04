@@ -98,7 +98,7 @@ func buildCodexTestManifest(tempDir string) *manifest.ResolvedManifest {
 func TestEmit_Codex(t *testing.T) {
 	tempDir := t.TempDir()
 	resolved := buildCodexTestManifest(tempDir)
-	e := NewCodexEmitter(tempDir)
+	e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 	buildDir := filepath.Join(tempDir, "build_output")
 	if _, err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
@@ -152,7 +152,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 	t.Run("no existing CODEX.md", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
@@ -183,7 +183,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 	t.Run("existing CODEX.md without markers", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		// Write existing CODEX.md
 		agentsPath := filepath.Join(tempDir, "CODEX.md")
@@ -219,7 +219,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 	t.Run("existing CODEX.md with markers - update", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		// Write CODEX.md with existing markers
 		agentsPath := filepath.Join(tempDir, "CODEX.md")
@@ -261,7 +261,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 	t.Run("marker content lists all rules and skills", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
@@ -290,7 +290,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 	t.Run("applies_when appears in marker content", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
@@ -331,7 +331,7 @@ func TestEmit_Codex_MarkerSection(t *testing.T) {
 			}
 		}
 
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
@@ -356,7 +356,7 @@ func TestCheck_Codex(t *testing.T) {
 	t.Run("no drift", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
@@ -375,7 +375,7 @@ func TestCheck_Codex(t *testing.T) {
 	t.Run("rules file drift", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
@@ -400,7 +400,7 @@ func TestCheck_Codex(t *testing.T) {
 	t.Run("marker section drift", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
 		if _, err := e.Emit(resolved, buildDir, true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
@@ -430,7 +430,7 @@ func TestCheck_Codex(t *testing.T) {
 	t.Run("no marker in CODEX.md", func(t *testing.T) {
 		tempDir := t.TempDir()
 		resolved := buildCodexTestManifest(tempDir)
-		e := NewCodexEmitter(tempDir)
+		e := NewCodexEmitter(tempDir, tempDir, "prompts")
 
 		buildDir := filepath.Join(tempDir, "build_output")
 

@@ -110,7 +110,7 @@ func buildClaudeCodeTestManifest(tempDir string) *manifest.ResolvedManifest {
 func TestEmit_ClaudeCode(t *testing.T) {
 	tempDir := t.TempDir()
 	resolved := buildClaudeCodeTestManifest(tempDir)
-	e := NewClaudeCodeEmitter(tempDir)
+	e := NewClaudeCodeEmitter(tempDir, tempDir, "prompts")
 
 	// Test dry-run Emit (apply = false)
 	buildDir := filepath.Join(tempDir, "build_output")
@@ -210,7 +210,7 @@ func TestEmit_ClaudeCode(t *testing.T) {
 func TestCheck_ClaudeCode(t *testing.T) {
 	tempDir := t.TempDir()
 	resolved := buildClaudeCodeTestManifest(tempDir)
-	e := NewClaudeCodeEmitter(tempDir)
+	e := NewClaudeCodeEmitter(tempDir, tempDir, "prompts")
 
 	buildDir := filepath.Join(tempDir, "build_output")
 

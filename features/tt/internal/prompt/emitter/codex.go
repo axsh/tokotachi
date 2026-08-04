@@ -15,12 +15,24 @@ import (
 // CodexEmitter emits resolved manifest entities to .agents/ directory
 // and manages the AGENTS.md marker section.
 type CodexEmitter struct {
-	RootDir string
+	RootDir    string
+	DeployRoot string
+	PromptsDir string
 }
 
 // NewCodexEmitter creates a new CodexEmitter.
-func NewCodexEmitter(rootDir string) *CodexEmitter {
-	return &CodexEmitter{RootDir: rootDir}
+func NewCodexEmitter(workspaceRoot, deployRoot, promptsDir string) *CodexEmitter {
+	if deployRoot == "" {
+		deployRoot = workspaceRoot
+	}
+	if promptsDir == "" {
+		promptsDir = "prompts"
+	}
+	return &CodexEmitter{
+		RootDir:    workspaceRoot,
+		DeployRoot: deployRoot,
+		PromptsDir: promptsDir,
+	}
 }
 
 // resolvePaths returns the target rules and skills directory paths.
@@ -43,8 +55,8 @@ func (c *CodexEmitter) resolvePaths(resolved *manifest.ResolvedManifest, buildDi
 	}
 
 	if apply {
-		return filepath.Join(c.RootDir, rulesPath),
-			filepath.Join(c.RootDir, skillsPath)
+		return filepath.Join(c.DeployRoot, rulesPath),
+			filepath.Join(c.DeployRoot, skillsPath)
 	}
 
 	return filepath.Join(buildDir, "codex", rulesPath),
@@ -216,7 +228,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	} // end if inc.Procedure
 
 	// 4. Emit Branch Skills (far-knowledge skills from branches/*/skills/)
-	branchSkills, err := ScanBranchSkills(c.RootDir)
+	branchSkills, err := ScanBranchSkills(c.RootDir, c.PromptsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan branch skills: %w", err)
 	}
@@ -236,7 +248,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	if indexFile != "" {
 		markerContent := c.generateMarkerContent(emittedPolicies, skillIDs)
 		if apply {
-			agentsPath := filepath.Join(c.RootDir, indexFile)
+			agentsPath := filepath.Join(c.DeployRoot, indexFile)
 			if err := ReplaceMarkerSection(agentsPath, markerContent); err != nil {
 				return nil, fmt.Errorf("failed to update %s marker section: %w", indexFile, err)
 			}
@@ -390,7 +402,7 @@ func (c *CodexEmitter) Check(resolved *manifest.ResolvedManifest, buildDir strin
 		}
 
 		if !matched {
-			livePath = filepath.Join(c.RootDir, relPath)
+			livePath = filepath.Join(c.DeployRoot, relPath)
 		}
 
 		liveFilesFound[filepath.Clean(livePath)] = true
@@ -458,7 +470,7 @@ func (c *CodexEmitter) Check(resolved *manifest.ResolvedManifest, buildDir strin
 		}
 		expectedMarker := strings.ReplaceAll(string(expectedMarkerData), "\r\n", "\n")
 
-		agentsPath := filepath.Join(c.RootDir, indexFile)
+		agentsPath := filepath.Join(c.DeployRoot, indexFile)
 		agentsData, err := os.ReadFile(agentsPath)
 		if err != nil {
 			if os.IsNotExist(err) {

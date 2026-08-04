@@ -15,6 +15,7 @@ import (
 // UpdateOptions holds options for the update pipeline.
 type UpdateOptions struct {
 	ProjectPath string
+	Paths       *PathConfig
 	Target      string // default: "all"
 	Force       bool
 	DryRun      bool
@@ -52,10 +53,12 @@ func Update(opts UpdateOptions) (*UpdateResult, error) {
 		return nil, fmt.Errorf("failed to resolve targets: %w", err)
 	}
 
-	rootDir, err := ResolveProjectRoot(opts.ProjectPath)
+	paths, err := resolvePathsFromUpdateOptions(opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve project root: %w", err)
+		return nil, fmt.Errorf("failed to resolve paths: %w", err)
 	}
+
+	rootDir := paths.Workspace
 
 	result := &UpdateResult{
 		TargetResults: make(map[string]*TargetUpdateResult),
@@ -65,28 +68,24 @@ func Update(opts UpdateOptions) (*UpdateResult, error) {
 		tr := &TargetUpdateResult{}
 		metaDir := filepath.Join(rootDir, resolve.MetaDir(t))
 
-		// Read metadata
 		meta, err := ReadMetadata(metaDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read metadata for target %s: %w", t, err)
 		}
 
-		// Check if update is needed
 		needsUpdate := shouldUpdate(meta, opts.Force)
 		if !needsUpdate {
-			// Additional check: git-based change detection
 			if meta != nil {
 				updatedAt, err := time.Parse(time.RFC3339, meta.UpdatedAt)
 				if err == nil {
-					gitChanged, _ := CheckForChanges(rootDir, updatedAt)
+					gitChanged, _ := CheckForChanges(rootDir, paths.PromptsDir, updatedAt)
 					needsUpdate = gitChanged
 				}
 			}
 		}
 
 		if !needsUpdate {
-			// Additional check: drift detection
-			if CheckDrift(rootDir, opts.ProjectPath, t) {
+			if CheckDrift(paths, t) {
 				needsUpdate = true
 			}
 		}
@@ -98,12 +97,11 @@ func Update(opts UpdateOptions) (*UpdateResult, error) {
 			continue
 		}
 
-		// Run deploy
 		deployResult, err := Deploy(DeployOptions{
-			ProjectPath: opts.ProjectPath,
-			Target:      t,
-			Force:       opts.Force,
-			DryRun:      opts.DryRun,
+			Paths:  paths,
+			Target: t,
+			Force:  opts.Force,
+			DryRun: opts.DryRun,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("deploy failed for target %s: %w", t, err)
@@ -149,16 +147,21 @@ func shouldUpdate(meta *UpdateMetadata, force bool) bool {
 }
 
 // CheckForChanges checks if source files have changed since the given time
-// by examining git log for modifications to prompts/manifest/ and prompts/memory/.
-func CheckForChanges(rootDir string, since time.Time) (bool, error) {
+// by examining git log for modifications under prompts-dir.
+func CheckForChanges(rootDir, promptsDir string, since time.Time) (bool, error) {
 	sinceStr := since.Format(time.RFC3339)
-	cmd := exec.Command("git", "log", "--since="+sinceStr,
+	watchPaths := []string{
+		filepath.ToSlash(filepath.Join(promptsDir, "manifest")),
+		filepath.ToSlash(filepath.Join(promptsDir, "memory")),
+	}
+	args := append([]string{
+		"log", "--since=" + sinceStr,
 		"--name-only", "--pretty=format:", "--",
-		"prompts/manifest/", "prompts/memory/")
+	}, watchPaths...)
+	cmd := exec.Command("git", args...)
 	cmd.Dir = rootDir
 	output, err := cmd.Output()
 	if err != nil {
-		// git not available or not a repo: assume changes exist
 		return true, nil
 	}
 	trimmed := strings.TrimSpace(string(output))

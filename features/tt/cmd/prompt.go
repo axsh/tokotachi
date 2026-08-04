@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -12,17 +13,45 @@ import (
 	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
+const (
+	helpWorkspace = "Workspace root for path resolution. Relative to CWD unless absolute. Default: inferred from --project (see path expr: {workspace}). Env: TT_WORKSPACE (flag wins)."
+	helpPromptsDir = "Prompts source root (manifest and memory). Relative to workspace unless absolute. Default: {workspace} + {prompts-dir} (segment: prompts). Env: TT_PROMPTS_DIR (flag wins)."
+	helpProject = "Path to project.yaml. Relative to workspace if set, else CWD unless absolute. Default: {workspace} + {prompts-dir} + manifest/project.yaml. Env: (none)."
+	helpBuildDir = "Build output directory for staging and digests. Relative to workspace unless absolute. Default: {workspace} + {build-dir} (from project.yaml defaults.build_dir or tmp/dist/). Env: TT_BUILD_DIR (flag wins)."
+	helpResolvedManifest = "Resolved manifest output path. Relative to workspace unless absolute. Default: {workspace} + {resolved-manifest} (from project.yaml outputs.resolved_manifest or {build-dir} + manifest.resolved.yaml). Env: TT_RESOLVED_MANIFEST (flag wins)."
+	helpDeployRoot = "Root directory for editor config deployment in apply mode. Relative to CWD unless absolute. Default: {deploy-root} = {workspace}. Env: TT_DEPLOY_ROOT (flag wins)."
+
+	promptPathLongSuffix = `
+
+Path flags resolve in order: --workspace, --prompts-dir, --project, --build-dir,
+--resolved-manifest, --deploy-root. Paths compose as {workspace} + {prompts-dir} + ...
+See --help for defaults and TT_* env vars.`
+)
+
 var promptCmd = &cobra.Command{
 	Use:   "prompt",
 	Short: "Manage prompt manifest compilation and deployment",
 }
 
-// --- compile ---
-
 var promptCompileCmd = &cobra.Command{
 	Use:   "compile",
 	Short: "Compile prompt manifest and memory documents",
+	Long:  "Compile prompt manifest and memory documents." + promptPathLongSuffix,
 	RunE:  runPromptCompile,
+}
+
+var promptDeployCmd = &cobra.Command{
+	Use:   "deploy",
+	Short: "Compile and deploy prompt files to target directories",
+	Long:  "Compile and deploy prompt files to target directories." + promptPathLongSuffix,
+	RunE:  runPromptDeploy,
+}
+
+var promptUpdateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Check for changes and update prompt files if needed",
+	Long:  "Check for changes and update prompt files if needed." + promptPathLongSuffix,
+	RunE:  runPromptUpdate,
 }
 
 var (
@@ -30,43 +59,29 @@ var (
 	compileTarget  string
 	compileDryRun  bool
 	compileApply   bool
-)
 
-// --- deploy ---
-
-var promptDeployCmd = &cobra.Command{
-	Use:   "deploy",
-	Short: "Compile and deploy prompt files to target directories",
-	RunE:  runPromptDeploy,
-}
-
-var (
 	deployProject string
 	deployTarget  string
 	deployForce   bool
 	deployDryRun  bool
 	deployMode    string
-)
 
-// --- update ---
-
-var promptUpdateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "Check for changes and update prompt files if needed",
-	RunE:  runPromptUpdate,
-}
-
-var (
 	updateProject string
 	updateTarget  string
 	updateForce   bool
 	updateDryRun  bool
+
+	promptWorkspace         string
+	promptPromptsDir        string
+	promptBuildDir          string
+	promptResolvedManifest  string
+	promptDeployRoot        string
 )
 
 func init() {
-	// compile flags
+	addPromptPathFlags(promptCompileCmd)
 	promptCompileCmd.Flags().StringVar(&compileProject, "project",
-		"prompts/manifest/project.yaml", "Path to project.yaml")
+		"prompts/manifest/project.yaml", helpProject)
 	promptCompileCmd.Flags().StringVar(&compileTarget, "target",
 		"", "Emitter target (default from TT_TARGET or 'all')")
 	promptCompileCmd.Flags().BoolVar(&compileDryRun, "dry-run",
@@ -74,9 +89,9 @@ func init() {
 	promptCompileCmd.Flags().BoolVar(&compileApply, "apply",
 		false, "Apply generated files to target directories")
 
-	// deploy flags
+	addPromptPathFlags(promptDeployCmd)
 	promptDeployCmd.Flags().StringVar(&deployProject, "project",
-		"prompts/manifest/project.yaml", "Path to project.yaml")
+		"prompts/manifest/project.yaml", helpProject)
 	promptDeployCmd.Flags().StringVar(&deployTarget, "target",
 		"", "Emitter target (default from TT_TARGET or 'all')")
 	promptDeployCmd.Flags().BoolVar(&deployForce, "force",
@@ -86,9 +101,9 @@ func init() {
 	promptDeployCmd.Flags().StringVar(&deployMode, "mode",
 		"", "Emit mode: overwrite (default), skip, immune")
 
-	// update flags
+	addPromptPathFlags(promptUpdateCmd)
 	promptUpdateCmd.Flags().StringVar(&updateProject, "project",
-		"prompts/manifest/project.yaml", "Path to project.yaml")
+		"prompts/manifest/project.yaml", helpProject)
 	promptUpdateCmd.Flags().StringVar(&updateTarget, "target",
 		"", "Emitter target (default from TT_TARGET or 'all')")
 	promptUpdateCmd.Flags().BoolVar(&updateForce, "force",
@@ -101,7 +116,37 @@ func init() {
 	promptCmd.AddCommand(promptUpdateCmd)
 }
 
-// resolveTargetFlag resolves the target from flag -> env -> default("all").
+func addPromptPathFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&promptWorkspace, "workspace", "", helpWorkspace)
+	cmd.Flags().StringVar(&promptPromptsDir, "prompts-dir", "", helpPromptsDir)
+	cmd.Flags().StringVar(&promptBuildDir, "build-dir", "", helpBuildDir)
+	cmd.Flags().StringVar(&promptResolvedManifest, "resolved-manifest", "", helpResolvedManifest)
+	cmd.Flags().StringVar(&promptDeployRoot, "deploy-root", "", helpDeployRoot)
+}
+
+func buildPathOptions(cmd *cobra.Command, projectFlag string) (compiler.PathOptions, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return compiler.PathOptions{}, fmt.Errorf("failed to get working directory: %w", err)
+	}
+	f := cmd.Flags()
+	return compiler.PathOptions{
+		CWD:                     cwd,
+		WorkspaceFlag:           promptWorkspace,
+		WorkspaceFlagSet:        f.Changed("workspace"),
+		PromptsDirFlag:          promptPromptsDir,
+		PromptsDirFlagSet:       f.Changed("prompts-dir"),
+		ProjectFlag:             projectFlag,
+		ProjectFlagSet:          f.Changed("project"),
+		BuildDirFlag:            promptBuildDir,
+		BuildDirFlagSet:         f.Changed("build-dir"),
+		ResolvedManifestFlag:    promptResolvedManifest,
+		ResolvedManifestFlagSet: f.Changed("resolved-manifest"),
+		DeployRootFlag:          promptDeployRoot,
+		DeployRootFlagSet:       f.Changed("deploy-root"),
+	}, nil
+}
+
 func resolveTargetFlag(flagValue string) string {
 	if flagValue != "" {
 		return flagValue
@@ -125,12 +170,21 @@ func runPromptCompile(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	pathOpts, err := buildPathOptions(cmd, compileProject)
+	if err != nil {
+		return err
+	}
+	paths, err := compiler.ResolvePaths(pathOpts)
+	if err != nil {
+		return err
+	}
+
 	for _, t := range targets {
 		result, err := compiler.Compile(compiler.CompileOptions{
-			ProjectPath: compileProject,
-			DryRun:      compileDryRun,
-			Target:      t,
-			Apply:       compileApply,
+			Paths:  paths,
+			DryRun: compileDryRun,
+			Target: t,
+			Apply:  compileApply,
 		})
 		if err != nil {
 			return fmt.Errorf("compile failed for target %s: %w", t, err)
@@ -165,13 +219,20 @@ func runPromptDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Validate mode flag
 	mode := emitter.EmitMode(deployMode)
 	if mode != "" && !emitter.ValidEmitModes(mode) {
 		return fmt.Errorf("invalid mode %q: must be overwrite, skip, or immune", deployMode)
 	}
 
-	// Collect deploy results for immune mode coordination
+	pathOpts, err := buildPathOptions(cmd, deployProject)
+	if err != nil {
+		return err
+	}
+	paths, err := compiler.ResolvePaths(pathOpts)
+	if err != nil {
+		return err
+	}
+
 	type deployEntry struct {
 		target string
 		result *compiler.DeployResult
@@ -180,11 +241,11 @@ func runPromptDeploy(cmd *cobra.Command, args []string) error {
 
 	for _, t := range targets {
 		result, err := compiler.Deploy(compiler.DeployOptions{
-			ProjectPath: deployProject,
-			Target:      t,
-			Force:       deployForce,
-			DryRun:      deployDryRun,
-			Mode:        mode,
+			Paths:  paths,
+			Target: t,
+			Force:  deployForce,
+			DryRun: deployDryRun,
+			Mode:   mode,
 		})
 		if err != nil {
 			return fmt.Errorf("deploy failed for target %s: %w", t, err)
@@ -199,7 +260,6 @@ func runPromptDeploy(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Immune mode: coordinated orphan cleanup across all deployed targets
 	if mode == emitter.EmitModeImmune && !deployDryRun {
 		mergedEmitted := make(map[string]bool)
 		var allTargetDirs []string
@@ -222,7 +282,6 @@ func runPromptDeploy(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// deduplicateDirs removes duplicate directory paths from the list.
 func deduplicateDirs(dirs []string) []string {
 	seen := make(map[string]bool)
 	var result []string
@@ -239,11 +298,20 @@ func deduplicateDirs(dirs []string) []string {
 func runPromptUpdate(cmd *cobra.Command, args []string) error {
 	target := resolveTargetFlag(updateTarget)
 
+	pathOpts, err := buildPathOptions(cmd, updateProject)
+	if err != nil {
+		return err
+	}
+	paths, err := compiler.ResolvePaths(pathOpts)
+	if err != nil {
+		return err
+	}
+
 	result, err := compiler.Update(compiler.UpdateOptions{
-		ProjectPath: updateProject,
-		Target:      target,
-		Force:       updateForce,
-		DryRun:      updateDryRun,
+		Paths:  paths,
+		Target: target,
+		Force:  updateForce,
+		DryRun: updateDryRun,
 	})
 	if err != nil {
 		return err
@@ -259,4 +327,20 @@ func runPromptUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+// Exported for tests.
+func PromptPathHelpConstants() []string {
+	return []string{
+		helpWorkspace,
+		helpPromptsDir,
+		helpProject,
+		helpBuildDir,
+		helpResolvedManifest,
+		helpDeployRoot,
+	}
+}
+
+func PromptPathHelpContainsPathExpr(s string) bool {
+	return strings.Contains(s, "{workspace} + {prompts-dir}")
 }

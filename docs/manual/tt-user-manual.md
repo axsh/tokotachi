@@ -141,10 +141,17 @@ tt prompt compile [flags]
 ```
 
 - **主なフラグ**:
-  - `--project <path>`: `project.yaml` のパスを指定します（デフォルト: `prompts/manifest/project.yaml`）。
+  - `--workspace <path>`: パス解決のワークスペースルート（デフォルト: `--project` から推論）。
+  - `--prompts-dir <path>`: プロンプトソースルート（デフォルト: `prompts`）。
+  - `--project <path>`: `project.yaml` のパス（デフォルト: `{workspace} + {prompts-dir} + manifest/project.yaml`）。
+  - `--build-dir <path>`: ビルド出力ディレクトリ（デフォルト: `project.yaml` の `defaults.build_dir` または `tmp/dist/`）。
+  - `--resolved-manifest <path>`: resolved manifest の出力先。
+  - `--deploy-root <path>`: deploy 先ルート（apply 時。デフォルト: workspace）。
   - `--target <name>`: コンパイル対象のターゲットを指定します（デフォルト: `TT_TARGET` 環境変数 または `all`）。
   - `--dry-run`: ファイルを書き出さず、結果を stdout に出力します。
   - `--apply`: 生成されたファイルをターゲットディレクトリに配置します。
+
+パス設定の優先順位: **CLI フラグ > 環境変数 > project.yaml > 組み込みデフォルト**
 
 #### `prompt deploy` --- コンパイルとデプロイ
 コンパイルしたプロンプトファイルをターゲットディレクトリにデプロイします。ダイジェストベースの変更検知により、変更がない場合はスキップされます。
@@ -154,10 +161,11 @@ tt prompt deploy [flags]
 ```
 
 - **主なフラグ**:
-  - `--project <path>`: `project.yaml` のパスを指定します。
+  - `--workspace`, `--prompts-dir`, `--project`, `--build-dir`, `--resolved-manifest`, `--deploy-root`: compile と同様のパス指定。
   - `--target <name>`: デプロイ対象のターゲットを指定します。
   - `--force`: 変更がない場合でも強制的にデプロイを実行します。
   - `--dry-run`: ファイルを書き出さず、実行内容を表示します。
+  - `--mode <mode>`: `overwrite` / `skip` / `immune`
 
 #### `prompt update` --- 変更検知と自動更新
 前回の更新以降にソースファイルに変更があったかを git log で検査し、変更があった場合のみコンパイルとデプロイを実行します。
@@ -167,7 +175,7 @@ tt prompt update [flags]
 ```
 
 - **主なフラグ**:
-  - `--project <path>`: `project.yaml` のパスを指定します。
+  - `--workspace`, `--prompts-dir`, `--project`, `--build-dir`, `--resolved-manifest`, `--deploy-root`: compile と同様のパス指定。
   - `--target <name>`: 更新対象のターゲットを指定します。
   - `--force`: 変更検知をバイパスし、強制的に更新を実行します。
   - `--dry-run`: ファイルを書き出さず、実行内容を表示します。
@@ -203,6 +211,11 @@ tt prompt update [flags]
 |---|---|---|
 | `TT_EDITOR` | 使用するデフォルトエディタの上書き（`code`, `cursor` 等） | (自動検出) |
 | `TT_TARGET` | `tt prompt` コマンドのデフォルトターゲット | `all` |
+| `TT_WORKSPACE` | `tt prompt` のワークスペースルート | (`--project` から推論) |
+| `TT_PROMPTS_DIR` | プロンプトソースルート | `prompts` |
+| `TT_BUILD_DIR` | ビルド出力ディレクトリ | `project.yaml` の `defaults.build_dir` |
+| `TT_RESOLVED_MANIFEST` | resolved manifest 出力先 | `project.yaml` の `outputs.resolved_manifest` |
+| `TT_DEPLOY_ROOT` | deploy 先ルート | workspace と同一 |
 
 ### 外部コマンドパスのオーバーライド
 

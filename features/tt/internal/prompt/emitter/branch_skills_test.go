@@ -11,7 +11,7 @@ import (
 
 func TestScanBranchSkills_NoBranchesDir(t *testing.T) {
 	root := t.TempDir()
-	skills, err := ScanBranchSkills(root)
+	skills, err := ScanBranchSkills(root, "prompts")
 	require.NoError(t, err)
 	assert.Empty(t, skills)
 }
@@ -20,7 +20,7 @@ func TestScanBranchSkills_EmptyBranches(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "prompts", "memory", "branches"), 0o755))
 
-	skills, err := ScanBranchSkills(root)
+	skills, err := ScanBranchSkills(root, "prompts")
 	require.NoError(t, err)
 	assert.Empty(t, skills)
 }
@@ -30,7 +30,7 @@ func TestScanBranchSkills_BranchWithoutSkills(t *testing.T) {
 	branchDir := filepath.Join(root, "prompts", "memory", "branches", "BR-test-123")
 	require.NoError(t, os.MkdirAll(branchDir, 0o755))
 
-	skills, err := ScanBranchSkills(root)
+	skills, err := ScanBranchSkills(root, "prompts")
 	require.NoError(t, err)
 	assert.Empty(t, skills)
 }
@@ -45,7 +45,7 @@ func TestScanBranchSkills_SingleSkill(t *testing.T) {
 		0o644,
 	))
 
-	skills, err := ScanBranchSkills(root)
+	skills, err := ScanBranchSkills(root, "prompts")
 	require.NoError(t, err)
 	require.Len(t, skills, 1)
 	assert.Equal(t, "__far-knowledge-error-handling", skills[0].ID)
@@ -76,7 +76,7 @@ func TestScanBranchSkills_MultipleSkillsMultipleBranches(t *testing.T) {
 		0o644,
 	))
 
-	skills, err := ScanBranchSkills(root)
+	skills, err := ScanBranchSkills(root, "prompts")
 	require.NoError(t, err)
 	assert.Len(t, skills, 3)
 }
@@ -87,7 +87,7 @@ func TestScanBranchSkills_SkipsDirWithoutSKILLMD(t *testing.T) {
 	require.NoError(t, os.MkdirAll(skillDir, 0o755))
 	// No SKILL.md file
 
-	skills, err := ScanBranchSkills(root)
+	skills, err := ScanBranchSkills(root, "prompts")
 	require.NoError(t, err)
 	assert.Empty(t, skills)
 }
