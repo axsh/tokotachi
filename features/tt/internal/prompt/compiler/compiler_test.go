@@ -110,7 +110,7 @@ func TestCompile_TagsSelectedInResolved(t *testing.T) {
 			t.Errorf("policy %s should be selected for baseline tags", p.ID)
 		}
 	}
-	if !contains(result.ResolvedYAML, "selected: true") {
+	if !strings.Contains(result.ResolvedYAML, "selected: true") {
 		t.Error("ResolvedYAML should contain selected: true")
 	}
 
@@ -130,18 +130,6 @@ func TestCompile_TagsSelectedInResolved(t *testing.T) {
 			t.Errorf("policy %s should not be selected for test-only tags", p.ID)
 		}
 	}
-}
-
-func contains(s, sub string) bool {
-	return len(s) >= len(sub) && (s == sub || len(sub) == 0 ||
-		(func() bool {
-			for i := 0; i+len(sub) <= len(s); i++ {
-				if s[i:i+len(sub)] == sub {
-					return true
-				}
-			}
-			return false
-		})())
 }
 
 // copyTestdata recursively copies src to dst

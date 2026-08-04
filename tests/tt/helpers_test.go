@@ -197,6 +197,42 @@ func cleanupContainers() {
 	}
 }
 
+// copyCompilerValidFixture copies compiler testdata/valid into dst.
+func copyCompilerValidFixture(t *testing.T, dst string) {
+	t.Helper()
+	src := filepath.Join(projectRoot(), "features", "tt", "internal", "prompt", "compiler", "testdata", "valid")
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	copyDirContents(t, src, dst)
+}
+
+func copyDirContents(t *testing.T, src, dst string) {
+	t.Helper()
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		t.Fatalf("readdir %s: %v", src, err)
+	}
+	for _, e := range entries {
+		srcPath := filepath.Join(src, e.Name())
+		dstPath := filepath.Join(dst, e.Name())
+		if e.IsDir() {
+			if err := os.MkdirAll(dstPath, 0o755); err != nil {
+				t.Fatalf("mkdir: %v", err)
+			}
+			copyDirContents(t, srcPath, dstPath)
+			continue
+		}
+		data, err := os.ReadFile(srcPath)
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		if err := os.WriteFile(dstPath, data, 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+}
+
 // TestMain runs all tests with pre/post container cleanup.
 func TestMain(m *testing.M) {
 	// Pre-cleanup: remove stale containers from previous test runs
