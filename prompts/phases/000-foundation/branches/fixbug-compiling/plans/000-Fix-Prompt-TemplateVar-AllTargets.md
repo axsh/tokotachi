@@ -4,14 +4,14 @@
 
 ## Goal Description
 
-Claude / Codex / Cursor の prompt emit でも `{{policy:…}}` / `{{procedure:…}}` 等をターゲット固有パスへ解決し、policy ソース内の `.agent/workflows/…` ハードコードをテンプレート変数（または中立表現）へ置き換える。これにより、再デプロイ後の全ターゲット成果物で参照パスが実ファイルと一致する。
+Claude / Codex / Cursor の prompt emit でも `{{policy:…}}` / `{{procedure:…}}` 等をターゲット固有パスへ解決し、policy ソース内の `.agent/workflows/…` ハードコード（ファイル参照およびディレクトリ参照）をテンプレート変数へ置き換える。これにより、再デプロイ後の全ターゲット成果物で参照パスが実ファイルと一致する。
 
 ## User Review Required
 
-1. **ディレクトリ直書きの言い換え文言**（例: 「`.agent/workflows/` 配下に定義されたワークフローは…」）を、テンプレート変数ではなく中立表現にする方針でよいか（仕様 R3 の許容範囲内）。代替案として `{{target:…}}` 系の新変数追加は本計画では行わない。
-2. 任意要件 **O1（`.agents/` 残骸掃除）** は本計画のスコープ外（仕様どおり先送り）でよいか。
+1. ~~ディレクトリ直書きは中立表現にするか / `{{target:…}}` を追加するか~~ → **決定済み（レビュー）**: ディレクトリもテンプレート変数で置換する。`{{target:workflows}}` / `{{target:rules}}` / `{{target:skills}}` を追加する（中立表現のみでは不足）。
+2. 任意要件 **O1（`.agents/` 残骸掃除）** は本計画のスコープ外（仕様どおり先送り）でよいか。未回答のため **先送りのまま** とする（異議があれば指示ください）。
 
-それ以外は None（技術方針は仕様の表に従う）。
+それ以外は None。
 
 ## Requirement Traceability
 
@@ -19,9 +19,10 @@ Claude / Codex / Cursor の prompt emit でも `{{policy:…}}` / `{{procedure:�
 | :--- | :--- |
 | R1: 全ターゲットで `ResolveTemplateVars` | Proposed Changes > claude_code.go / codex.go / cursor.go |
 | R2: 解決パスと実配置の一致（拡張子・instructions リネーム） | Proposed Changes > template.go（`TemplateContext` 拡張） |
-| R3: policy ハードコードを可搬化 | Proposed Changes > policies（workspace / catalog / compiler testdata） |
+| R3: policy ハードコードを可搬化（ファイル + ディレクトリ） | Proposed Changes > policies + `{{target:workflows|rules|skills}}` |
 | R4: 再デプロイ後に未展開・誤パスが残らない | Verification Plan > Integration `TestPromptTemplateVars_*` + Update 後アサーション |
 | R5: 全ターゲット展開の単体テスト固定 | Proposed Changes > template_test.go / *_test.go（各 emitter） |
+| （レビュー追加）ディレクトリパスのターゲット別解決 | Proposed Changes > template.go `resolveTargetVar` |
 | O1: `.agents/` 残骸 | 先送り（本計画では実装しない） |
 | O2: 未知プレースホルダは現状維持 | template.go の既存挙動を変更しない |
 
@@ -49,6 +50,10 @@ Claude / Codex / Cursor の prompt emit でも `{{policy:…}}` / `{{procedure:�
 | `antigravity` | `.md` | true | `{{policy:project-instructions}}` | `.agent/rules/instructions.md` |
 | `claude-code` | `.md` | false | `{{procedure:build-pipeline}}` | `.claude/skills/build-pipeline/SKILL.md`（Workflows 空） |
 | `antigravity` | `.md` | true | `{{procedure:build-pipeline}}` | `.agent/workflows/build-pipeline.md`（Workflows 設定あり） |
+| `antigravity` | `.md` | true | `{{target:workflows}}` | `.agent/workflows/` |
+| `claude-code` | `.md` | false | `{{target:workflows}}` | `.claude/skills/`（Workflows 空時は Skills にフォールバック＝procedure 配置先） |
+| `codex` | `.md` | false | `{{target:rules}}` | `.codex/rules/` |
+| `cursor` | `.mdc` | false | `{{target:skills}}` | `.cursor/skills/` |
 | any | — | — | `{{unknown:foo}}` | `{{unknown:foo}}`（未変更） |
 
 #### [MODIFY] [features/tt/internal/prompt/emitter/template.go](file://features/tt/internal/prompt/emitter/template.go)
@@ -89,7 +94,31 @@ func NewTemplateContext(targetName string, paths TargetPaths) *TemplateContext {
     2. `filename := id + ext`。
     3. `id == "project-instructions"` かつ `ctx.RenameProjectInstructions` のときだけ `filename = "instructions" + ext`。
     4. `return ensureTrailingSlash(ctx.Paths.Rules) + filename`。
-    5. `resolveRef` の procedure / capability / target 分岐は現行ロジックを維持（Workflows 非空なら `{workflows}{id}.md`、空なら `{skills}{id}/SKILL.md`）。
+    5. `resolveRef` の procedure / capability 分岐は現行ロジックを維持（Workflows 非空なら `{workflows}{id}.md`、空なら `{skills}{id}/SKILL.md`）。
+    6. **`resolveTargetVar` を拡張**（レビュー決定: ディレクトリ置換）:
+
+```go
+func resolveTargetVar(id string, ctx *TemplateContext) string {
+	switch id {
+	case "name":
+		return ctx.TargetName
+	case "meta_dir":
+		return resolve.MetaDir(ctx.TargetName)
+	case "rules":
+		return ensureTrailingSlash(ctx.Paths.Rules)
+	case "skills":
+		return ensureTrailingSlash(ctx.Paths.Skills)
+	case "workflows":
+		// Procedure の配置先ディレクトリ。Workflows が無いターゲットは Skills にフォールバック。
+		if ctx.Paths.Workflows != "" {
+			return ensureTrailingSlash(ctx.Paths.Workflows)
+		}
+		return ensureTrailingSlash(ctx.Paths.Skills)
+	default:
+		return ""
+	}
+}
+```
 
 #### [MODIFY] TargetPaths 抽出ヘルパー（`features/tt/internal/prompt/emitter/` 内の既存共通ファイル、または `paths_helpers.go` を NEW）
 
@@ -195,7 +224,7 @@ tmplCtx := NewTemplateContext("claude-code", ExtractTargetPaths(claudeTarget, Ta
 
 | 変更前 | 変更後 |
 | :--- | :--- |
-| 「`.agent/workflows/` 配下に定義されたワークフローは、以下の順序で連携して動作します:」 | 「プロジェクトのワークフロー（procedure）は、以下の順序で連携して動作します:」 |
+| 「`.agent/workflows/` 配下に定義されたワークフローは、以下の順序で連携して動作します:」 | 「`{{target:workflows}}` 配下に定義されたワークフローは、以下の順序で連携して動作します:」 |
 | `[create-specification.md](.agent/workflows/create-specification.md)` | `[{{procedure:create-specification}}]({{procedure:create-specification}})` |
 | create-implementation-plan / execute-implementation-plan / build-pipeline / investigate の同様リンク | 対応する `{{procedure:...}}` |
 
@@ -205,14 +234,14 @@ tmplCtx := NewTemplateContext("claude-code", ExtractTargetPaths(claudeTarget, Ta
 
 | 変更前 | 変更後 |
 | :--- | :--- |
-| 「一連の作業手順…は `.agent/workflows/` に定義し、定型化する。」 | 「一連の作業手順…は procedure（ワークフロー）として定義し、定型化する。」 |
+| 「一連の作業手順…は `.agent/workflows/` に定義し、定型化する。」 | 「一連の作業手順…は `{{target:workflows}}` に定義し、定型化する。」 |
 | 「`.agent/workflows/build-pipeline.md` に相当するフロー」 | 「`{{procedure:build-pipeline}}` に相当するフロー」 |
 
 ##### planning-rules.md
 
 | 変更前 | 変更後 |
 | :--- | :--- |
-| 「本プロジェクトは `.agent/workflows/` および `scripts/` を活用した…」 | 「本プロジェクトはワークフロー（procedure）および `scripts/` を活用した…」 |
+| 「本プロジェクトは `.agent/workflows/` および `scripts/` を活用した…」 | 「本プロジェクトは `{{target:workflows}}` および `scripts/` を活用した…」 |
 
 ##### testing-rules.md
 
@@ -221,6 +250,7 @@ tmplCtx := NewTemplateContext("claude-code", ExtractTargetPaths(claudeTarget, Ta
 | 表セル「`.agent/workflows/build-pipeline.md`」 | 「`{{procedure:build-pipeline}}`」 |
 
 *   **完了条件（ソース）**: 上記 3 ツリーの policies に対し `grep '\.agent/workflows'` が 0 件。
+*   **解決後の例**: Claude では `{{target:workflows}}` → `.claude/skills/`、Antigravity では `.agent/workflows/`。
 
 ### 統合テスト（CLI / ファイルシステム）
 
@@ -234,10 +264,10 @@ tmplCtx := NewTemplateContext("claude-code", ExtractTargetPaths(claudeTarget, Ta
 
 | 関数 | 検証内容 |
 | :--- | :--- |
-| `TestPromptTemplateVars_ClaudeResolvesPolicyAndProcedure` | update `--target claude-code` 後、`.claude/skills/build-pipeline/SKILL.md` に `.claude/rules/testing-rules.md` があり `{{policy:` が無い。`.claude/rules/project-instructions.md` に `.agent/workflows` が無く `.claude/skills/build-pipeline/SKILL.md` を含む |
+| `TestPromptTemplateVars_ClaudeResolvesPolicyAndProcedure` | update `--target claude-code` 後、`.claude/skills/build-pipeline/SKILL.md` に `.claude/rules/testing-rules.md` があり `{{policy:` が無い。`.claude/rules/project-instructions.md` に `.agent/workflows` が無く、`{{target:workflows}}` 由来の `.claude/skills/` と `.claude/skills/build-pipeline/SKILL.md` を含む |
 | `TestPromptTemplateVars_CodexResolves` | 同上（`.codex/...`） |
-| `TestPromptTemplateVars_CursorResolvesMdc` | `.cursor/skills/build-pipeline/SKILL.md` が `.cursor/rules/testing-rules.mdc` を参照 |
-| `TestPromptTemplateVars_AntigravityRegression` | `.agent/workflows/build-pipeline.md` が `.agent/rules/testing-rules.md` を参照し、`instructions.md` 命名が維持される |
+| `TestPromptTemplateVars_CursorResolvesMdc` | `.cursor/skills/build-pipeline/SKILL.md` が `.cursor/rules/testing-rules.mdc` を参照。ディレクトリ参照は `.cursor/skills/` |
+| `TestPromptTemplateVars_AntigravityRegression` | `.agent/workflows/build-pipeline.md` が `.agent/rules/testing-rules.md` を参照し、`instructions.md` 命名と `.agent/workflows/` ディレクトリ表記が維持される |
 
 #### [MODIFY] [features/tt/internal/prompt/compiler/update_test.go](file://features/tt/internal/prompt/compiler/update_test.go)（任意強化）
 
@@ -274,7 +304,7 @@ tmplCtx := NewTemplateContext("claude-code", ExtractTargetPaths(claudeTarget, Ta
 
 | Step | 層 | テスト | 確認すること |
 | :---: | :--- | :--- | :--- |
-| 1 | C: `ResolveTemplateVars` | `template_test.go` | ターゲット別パス・拡張子・リネーム・未知 kind 放置 |
+| 1 | C: `ResolveTemplateVars` | `template_test.go` | ターゲット別パス・拡張子・リネーム・`{{target:workflows|rules|skills}}`・未知 kind 放置 |
 | 2 | B: 各 `Emit` | `claude_code_test` / `codex_test` / `cursor_test` / antigravity 回帰 | body 書き出し時に解決が入り、実ファイル内容に期待パスが現れる |
 | 3 | A: CLI update | `tests/tt/tt_prompt_template_vars_test.go` | `tt prompt update` 経由で FS 上の成果物が仕様シナリオどおり |
 

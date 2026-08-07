@@ -52,6 +52,7 @@ Claude / Codex / Cursor の各 `Emit` でも、Antigravity と同様に policy /
 - `{{procedure:id}}`
 - `{{capability:id}}`
 - `{{target:name}}` / `{{target:meta_dir}}`（既存仕様どおり）
+- `{{target:rules}}` / `{{target:skills}}` / `{{target:workflows}}`（ディレクトリ置換。`workflows` は Workflows 空時に Skills へフォールバック）
 
 `--target all` 実行時は、各エミッターが自ターゲットのパスで解決すること（他ターゲットのパスを埋め込まない）。
 
@@ -76,7 +77,9 @@ Claude / Codex / Cursor の各 `Emit` でも、Antigravity と同様に policy /
 |---|---|
 | `.agent/workflows/build-pipeline.md` | `{{procedure:build-pipeline}}` |
 | `.agent/workflows/create-specification.md` 等の個別 workflow リンク | 対応する `{{procedure:...}}` |
-| 「`.agent/workflows/` 配下に定義されたワークフロー」のようなディレクトリ直書き | テンプレート変数またはターゲット中立な表現 |
+| 「`.agent/workflows/` 配下に定義されたワークフロー」のようなディレクトリ直書き | `{{target:workflows}}`（ターゲット別ディレクトリ。Workflows が無いターゲットは Skills＝procedure 配置先へフォールバック） |
+
+加えて、必要に応じて `{{target:rules}}` / `{{target:skills}}` も利用可能とすること（rules / skills ディレクトリへの直書き置換用）。
 
 対象ソース（ワークスペース）:
 
@@ -104,6 +107,7 @@ Claude / Codex / Cursor の各 `Emit` でも、Antigravity と同様に policy /
 3. Cursor: `{{policy:testing-rules}}` → `.cursor/rules/testing-rules.mdc`
 4. 各ターゲットで `{{procedure:build-pipeline}}` が当該ターゲットの実配置パスへ解決されること
 5. Antigravity 既存ケースの回帰（`instructions.md` リネーム、workflows パス）
+6. `{{target:workflows}}` が AG では `.agent/workflows/`、Claude/Codex/Cursor では各 `{skills}/` へ解決されること
 
 ### 任意要件
 
