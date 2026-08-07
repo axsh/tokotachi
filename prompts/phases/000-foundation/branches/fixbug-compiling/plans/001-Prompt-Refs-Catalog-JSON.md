@@ -277,3 +277,30 @@ exec "$TOOL" prompt refs "$@"
 *   `prompts/specifications` に独立仕様が無ければ追加不要。
 *   正本は Source Specification と本計画。
 *   README の prompt サブコマンド一覧があれば 1 行追加してよい（任意・本計画必須ではない）。
+
+---
+
+### 総合判定結果
+
+**判定**: ✅ 動作確認完了
+
+#### テスト結果サマリ
+- Build: `./scripts/process/build.sh` PASS
+- Integration `PromptRefs`: 3 PASS
+- Integration `PromptTags|PromptTemplateVars`: 9 PASS（リグレッション）
+- 失敗: 0
+- 事実上スキップ: 0
+
+#### チェック項目の結果
+| # | チェック項目 | 結果 | 備考 |
+|---|------------|------|------|
+| 1 | スキップされたテスト | ✅ | build tag なし。PromptRefs 3 件すべて実行 |
+| 2 | 部分的なエラー | ✅ | parse エラー時は非 0、カタログ非返却 |
+| 3 | 迂回処理による偽成功 | ✅ | refs 専用パス。dry-run 未変更 |
+| 4 | アダプタ・コンフィグ | ✅ | `--target` 無しで JSON 出力 |
+| 5 | テスト間の依存・順序 | ✅ | `--specify PromptRefs` 単独 PASS |
+| 6 | カバレッジ | ✅ | refs.go / CLI / refs.sh / 統合テスト |
+| 7 | 外部システムの状態 | ✅ | temp fixture のみ |
+
+#### 判定理由
+単体・CLI 統合・既存 prompt リグレッションがすべて成功し、解決パス非出力と exit コード要件もテストで固定できたため。
