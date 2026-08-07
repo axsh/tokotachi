@@ -26,7 +26,7 @@ tags:
 | **Backend (Go)**   | **Integration** | `scripts/process/integration_test.sh`                  | コンテナやAPIとの連携確認。              |
 | **Frontend (GUI)** | **Unit**        | `scripts/process/build.sh`                             | Webviewコンポーネント等の単体テスト。       |
 | **Frontend (GUI)** | **E2E**         | `scripts/process/integration_test.sh --categories gui` | VSCode上での挙動検証 (Test Driver)。 |
-| **Full Stack**     | **Pipeline**    | `.agent/workflows/build-pipeline.md`                   | PR/コミット前の全体健全性確認。            |
+| **Full Stack**     | **Pipeline**    | `{{procedure:build-pipeline}}`                   | PR/コミット前の全体健全性確認。            |
 
 
 ### Linux / Remote-SSH での全体ビルド (`build.sh`)
