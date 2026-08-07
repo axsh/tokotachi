@@ -15,7 +15,7 @@ disable-model-invocation: false
 
 > [!IMPORTANT]
 > テスト実行の詳細ルール（Linux/Remote-SSH 対応、エラー修正フロー、タイムアウト方針等）は
-> `{{policy:testing-rules}}` を参照すること。
+> `.cursor/rules/testing-rules.mdc` を参照すること。
 
 ---
 

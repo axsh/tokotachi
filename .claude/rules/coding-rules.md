@@ -28,7 +28,7 @@
    > `npm run build`, `go build`, `go test` などの直接実行は、環境間の差異や成果物の配置不整合を招くため **禁止** します。必ず対応する `scripts/process/` 配下のスクリプトを使用してください。
 
 2. **ワークフローによるオーケストレーション**:
-   一連の作業手順（例: 修正→テスト→再テスト）は `.agent/workflows/` に定義し、定型化する。
+   一連の作業手順（例: 修正→テスト→再テスト）は `.claude/skills/` に定義し、定型化する。
 
 3. **TDD (テスト駆動開発) の徹底**:
    開発は必ず以下のサイクルで進めること。
@@ -77,7 +77,7 @@
 
 ### 4.2 テスト自動化
 
-*   PR作成前やコミット前には必ず `.agent/workflows/build-pipeline.md` に相当するフロー（Unit Test -> Build -> Integration Test）を実行し、品質を担保すること。
+*   PR作成前やコミット前には必ず `.claude/skills/build-pipeline/SKILL.md` に相当するフロー（Unit Test -> Build -> Integration Test）を実行し、品質を担保すること。
 
 ### 4.3 E2Eテストの堅牢性 (E2E Test Robustness)
 
