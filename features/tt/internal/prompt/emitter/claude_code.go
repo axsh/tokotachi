@@ -78,6 +78,11 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 	limits := ExtractLimits(claudeTarget)
 	inc := ExtractIncludes(claudeTarget)
 
+	tmplCtx := NewTemplateContext("claude-code", ExtractTargetPaths(claudeTarget, TargetPaths{
+		Rules:  ".claude/rules/",
+		Skills: ".claude/skills/",
+	}))
+
 	// 1. Emit Policies as .md files
 	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
@@ -93,6 +98,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		// Extract paths for frontmatter
 		var paths []string
@@ -153,6 +159,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		desc, _ := skill.Raw["description"].(string)
 		manualOnly, _ := skill.Raw["manual_only"].(bool)
@@ -212,6 +219,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		manualOnly := false
 		if trigger, ok := proc.Raw["trigger"].(map[string]any); ok {

@@ -10,8 +10,10 @@ func TestResolveTemplateVars(t *testing.T) {
 			Rules:  ".agents/rules/",
 			Skills: ".agents/skills/",
 		},
-		MemBase:    "prompts/memory",
-		TargetName: "antigravity",
+		MemBase:                   "prompts/memory",
+		TargetName:                "antigravity",
+		PolicyExt:                 ".md",
+		RenameProjectInstructions: true,
 	}
 
 	tests := []struct {
@@ -87,7 +89,6 @@ func TestResolveTemplateVars(t *testing.T) {
 }
 
 func TestResolveTemplateVars_CustomPaths(t *testing.T) {
-	// Verify that custom target paths are respected
 	ctx := &TemplateContext{
 		Paths: TargetPaths{
 			Rules:     "custom/rules/",
@@ -122,6 +123,145 @@ func TestResolveTemplateVars_CustomPaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ResolveTemplateVars(tt.input, ctx)
+			if got != tt.want {
+				t.Errorf("ResolveTemplateVars() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveTemplateVars_PerTargetPolicyNaming(t *testing.T) {
+	tests := []struct {
+		name string
+		ctx  *TemplateContext
+		in   string
+		want string
+	}{
+		{
+			name: "claude policy testing-rules",
+			ctx: NewTemplateContext("claude-code", TargetPaths{
+				Rules:  ".claude/rules/",
+				Skills: ".claude/skills/",
+			}),
+			in:   "{{policy:testing-rules}}",
+			want: ".claude/rules/testing-rules.md",
+		},
+		{
+			name: "codex policy testing-rules",
+			ctx: NewTemplateContext("codex", TargetPaths{
+				Rules:  ".codex/rules/",
+				Skills: ".codex/skills/",
+			}),
+			in:   "{{policy:testing-rules}}",
+			want: ".codex/rules/testing-rules.md",
+		},
+		{
+			name: "cursor policy testing-rules uses mdc",
+			ctx: NewTemplateContext("cursor", TargetPaths{
+				Rules:  ".cursor/rules/",
+				Skills: ".cursor/skills/",
+			}),
+			in:   "{{policy:testing-rules}}",
+			want: ".cursor/rules/testing-rules.mdc",
+		},
+		{
+			name: "cursor project-instructions keeps id with mdc",
+			ctx: NewTemplateContext("cursor", TargetPaths{
+				Rules:  ".cursor/rules/",
+				Skills: ".cursor/skills/",
+			}),
+			in:   "{{policy:project-instructions}}",
+			want: ".cursor/rules/project-instructions.mdc",
+		},
+		{
+			name: "claude project-instructions keeps id",
+			ctx: NewTemplateContext("claude-code", TargetPaths{
+				Rules:  ".claude/rules/",
+				Skills: ".claude/skills/",
+			}),
+			in:   "{{policy:project-instructions}}",
+			want: ".claude/rules/project-instructions.md",
+		},
+		{
+			name: "antigravity project-instructions renames",
+			ctx: NewTemplateContext("antigravity", TargetPaths{
+				Rules:     ".agent/rules/",
+				Skills:    ".agent/skills/",
+				Workflows: ".agent/workflows/",
+			}),
+			in:   "{{policy:project-instructions}}",
+			want: ".agent/rules/instructions.md",
+		},
+		{
+			name: "claude procedure falls back to skills",
+			ctx: NewTemplateContext("claude-code", TargetPaths{
+				Rules:  ".claude/rules/",
+				Skills: ".claude/skills/",
+			}),
+			in:   "{{procedure:build-pipeline}}",
+			want: ".claude/skills/build-pipeline/SKILL.md",
+		},
+		{
+			name: "antigravity procedure uses workflows",
+			ctx: NewTemplateContext("antigravity", TargetPaths{
+				Rules:     ".agent/rules/",
+				Skills:    ".agent/skills/",
+				Workflows: ".agent/workflows/",
+			}),
+			in:   "{{procedure:build-pipeline}}",
+			want: ".agent/workflows/build-pipeline.md",
+		},
+		{
+			name: "antigravity target workflows dir",
+			ctx: NewTemplateContext("antigravity", TargetPaths{
+				Rules:     ".agent/rules/",
+				Skills:    ".agent/skills/",
+				Workflows: ".agent/workflows/",
+			}),
+			in:   "{{target:workflows}}",
+			want: ".agent/workflows/",
+		},
+		{
+			name: "claude target workflows falls back to skills",
+			ctx: NewTemplateContext("claude-code", TargetPaths{
+				Rules:  ".claude/rules/",
+				Skills: ".claude/skills/",
+			}),
+			in:   "{{target:workflows}}",
+			want: ".claude/skills/",
+		},
+		{
+			name: "codex target rules",
+			ctx: NewTemplateContext("codex", TargetPaths{
+				Rules:  ".codex/rules/",
+				Skills: ".codex/skills/",
+			}),
+			in:   "{{target:rules}}",
+			want: ".codex/rules/",
+		},
+		{
+			name: "cursor target skills",
+			ctx: NewTemplateContext("cursor", TargetPaths{
+				Rules:  ".cursor/rules/",
+				Skills: ".cursor/skills/",
+			}),
+			in:   "{{target:skills}}",
+			want: ".cursor/skills/",
+		},
+		{
+			name: "unknown kind left as-is",
+			ctx: NewTemplateContext("claude-code", TargetPaths{
+				Rules:  ".claude/rules/",
+				Skills: ".claude/skills/",
+			}),
+			in:   "{{unknown:foo}}",
+			want: "{{unknown:foo}}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveTemplateVars(tt.in, tt.ctx)
 			if got != tt.want {
 				t.Errorf("ResolveTemplateVars() = %q, want %q", got, tt.want)
 			}

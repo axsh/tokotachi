@@ -74,6 +74,11 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	limits := ExtractLimits(codexTarget)
 	inc := ExtractIncludes(codexTarget)
 
+	tmplCtx := NewTemplateContext("codex", ExtractTargetPaths(codexTarget, TargetPaths{
+		Rules:  ".codex/rules/",
+		Skills: ".codex/skills/",
+	}))
+
 	// Track emitted entity data for AGENTS.md marker content
 	var emittedPolicies []*manifest.Entity
 	var skillIDs []string
@@ -93,6 +98,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		// Codex: emit without any frontmatter
 		content := body
@@ -133,6 +139,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		desc, _ := skill.Raw["description"].(string)
 		manualOnly, _ := skill.Raw["manual_only"].(bool)
@@ -193,6 +200,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		manualOnly := false
 		if trigger, ok := proc.Raw["trigger"].(map[string]any); ok {

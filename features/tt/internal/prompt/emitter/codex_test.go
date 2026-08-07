@@ -468,3 +468,81 @@ func TestCheck_Codex(t *testing.T) {
 		}
 	})
 }
+
+func TestCodexEmitter_ResolvesTemplateVars(t *testing.T) {
+	tempDir := t.TempDir()
+	resolved := &manifest.ResolvedManifest{
+		Version:   1,
+		ProjectID: "test-project",
+		Entities: map[string][]*manifest.Entity{
+			"target": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "target",
+					ID:         "codex",
+					Title:      "Codex",
+					Raw: map[string]any{
+						"paths": map[string]any{
+							"rules":  ".codex/rules/",
+							"skills": ".codex/skills/",
+						},
+					},
+				},
+			},
+			"policy": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "policy",
+					ID:         "project-instructions",
+					Title:      "Project Instructions",
+					Raw: map[string]any{
+						"body": "See {{policy:testing-rules}} and {{procedure:build-pipeline}}",
+					},
+				},
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "policy",
+					ID:         "testing-rules",
+					Title:      "Testing Rules",
+					Raw:        map[string]any{"body": "testing body"},
+				},
+			},
+			"procedure": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "procedure",
+					ID:         "build-pipeline",
+					Title:      "Build Pipeline",
+					Raw: map[string]any{
+						"body": "Use {{policy:testing-rules}}",
+						"trigger": map[string]any{
+							"command": "build-pipeline",
+						},
+					},
+				},
+			},
+		},
+	}
+	selectAllForTest(resolved)
+	e := NewCodexEmitter(tempDir, tempDir, "prompts")
+	buildDir := filepath.Join(tempDir, "build")
+	if _, err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		t.Fatalf("Emit failed: %v", err)
+	}
+
+	instrPath := filepath.Join(buildDir, "codex", ".codex", "rules", "project-instructions.md")
+	data, err := os.ReadFile(instrPath)
+	if err != nil {
+		t.Fatalf("read instructions: %v", err)
+	}
+	content := string(data)
+	if strings.Contains(content, "{{policy:testing-rules}}") {
+		t.Errorf("unresolved policy placeholder remains:\n%s", content)
+	}
+	if !strings.Contains(content, ".codex/rules/testing-rules.md") {
+		t.Errorf("expected resolved policy path, got:\n%s", content)
+	}
+	if !strings.Contains(content, ".codex/skills/build-pipeline/SKILL.md") {
+		t.Errorf("expected resolved procedure path, got:\n%s", content)
+	}
+}

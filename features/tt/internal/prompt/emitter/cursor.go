@@ -79,6 +79,11 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 	limits := ExtractLimits(cursorTarget)
 	inc := ExtractIncludes(cursorTarget)
 
+	tmplCtx := NewTemplateContext("cursor", ExtractTargetPaths(cursorTarget, TargetPaths{
+		Rules:  ".cursor/rules/",
+		Skills: ".cursor/skills/",
+	}))
+
 	// 1. Emit Policies as .mdc files
 	if inc.Policy {
 	for _, policy := range resolved.Entities["policy"] {
@@ -94,6 +99,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		var mode string
 		if activation, ok := policy.Raw["activation"].(map[string]any); ok {
@@ -157,6 +163,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		desc, _ := skill.Raw["description"].(string)
 		manualOnly, _ := skill.Raw["manual_only"].(bool)
@@ -217,6 +224,7 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		manualOnly := false
 		if trigger, ok := proc.Raw["trigger"].(map[string]any); ok {
