@@ -267,3 +267,97 @@ func TestCheck_ClaudeCode(t *testing.T) {
 		t.Errorf("expected Check to detect untracked file drift, but it passed")
 	}
 }
+
+func TestClaudeCodeEmitter_ResolvesTemplateVars(t *testing.T) {
+	tempDir := t.TempDir()
+	resolved := &manifest.ResolvedManifest{
+		Version:   1,
+		ProjectID: "test-project",
+		Entities: map[string][]*manifest.Entity{
+			"target": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "target",
+					ID:         "claude-code",
+					Title:      "Claude Code",
+					Raw: map[string]any{
+						"paths": map[string]any{
+							"rules":  ".claude/rules/",
+							"skills": ".claude/skills/",
+						},
+					},
+				},
+			},
+			"policy": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "policy",
+					ID:         "project-instructions",
+					Title:      "Project Instructions",
+					Raw: map[string]any{
+						"body": "See {{policy:testing-rules}} and {{procedure:build-pipeline}} under {{target:workflows}}",
+					},
+				},
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "policy",
+					ID:         "testing-rules",
+					Title:      "Testing Rules",
+					Raw:        map[string]any{"body": "testing body"},
+				},
+			},
+			"procedure": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "procedure",
+					ID:         "build-pipeline",
+					Title:      "Build Pipeline",
+					Raw: map[string]any{
+						"body": "Use {{policy:testing-rules}}",
+						"trigger": map[string]any{
+							"command": "build-pipeline",
+						},
+					},
+				},
+			},
+		},
+	}
+	selectAllForTest(resolved)
+	e := NewClaudeCodeEmitter(tempDir, tempDir, "prompts")
+	buildDir := filepath.Join(tempDir, "build")
+	if _, err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		t.Fatalf("Emit failed: %v", err)
+	}
+
+	instrPath := filepath.Join(buildDir, "claude-code", ".claude", "rules", "project-instructions.md")
+	data, err := os.ReadFile(instrPath)
+	if err != nil {
+		t.Fatalf("read instructions: %v", err)
+	}
+	content := string(data)
+	if strings.Contains(content, "{{policy:testing-rules}}") {
+		t.Errorf("unresolved policy placeholder remains:\n%s", content)
+	}
+	if !strings.Contains(content, ".claude/rules/testing-rules.md") {
+		t.Errorf("expected resolved policy path, got:\n%s", content)
+	}
+	if !strings.Contains(content, ".claude/skills/build-pipeline/SKILL.md") {
+		t.Errorf("expected resolved procedure path, got:\n%s", content)
+	}
+	if !strings.Contains(content, ".claude/skills/") {
+		t.Errorf("expected target workflows fallback to skills, got:\n%s", content)
+	}
+
+	skillPath := filepath.Join(buildDir, "claude-code", ".claude", "skills", "build-pipeline", "SKILL.md")
+	sdata, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatalf("read skill: %v", err)
+	}
+	scontent := string(sdata)
+	if strings.Contains(scontent, "{{policy:testing-rules}}") {
+		t.Errorf("procedure still has unresolved policy:\n%s", scontent)
+	}
+	if !strings.Contains(scontent, ".claude/rules/testing-rules.md") {
+		t.Errorf("procedure missing resolved policy path:\n%s", scontent)
+	}
+}

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,6 +56,13 @@ var promptUpdateCmd = &cobra.Command{
 	RunE:  runPromptUpdate,
 }
 
+var promptRefsCmd = &cobra.Command{
+	Use:   "refs",
+	Short: "List prompt template refs as JSON (file, kind, id, ref)",
+	Long:  "List file-backed template references as JSON. Refs are logical IDs and do not depend on --target or deploy paths." + promptPathLongSuffix,
+	RunE:  runPromptRefs,
+}
+
 var (
 	compileProject string
 	compileTarget  string
@@ -71,6 +79,8 @@ var (
 	updateTarget  string
 	updateForce   bool
 	updateDryRun  bool
+
+	refsProject string
 
 	promptWorkspace         string
 	promptPromptsDir        string
@@ -117,9 +127,14 @@ func init() {
 	promptUpdateCmd.Flags().BoolVar(&updateDryRun, "dry-run",
 		false, "Do not write files, print to stdout")
 
+	addPromptPathFlags(promptRefsCmd)
+	promptRefsCmd.Flags().StringVar(&refsProject, "project",
+		"prompts/manifest/project.yaml", helpProject)
+
 	promptCmd.AddCommand(promptCompileCmd)
 	promptCmd.AddCommand(promptDeployCmd)
 	promptCmd.AddCommand(promptUpdateCmd)
+	promptCmd.AddCommand(promptRefsCmd)
 }
 
 func addPromptPathFlags(cmd *cobra.Command) {
@@ -404,6 +419,23 @@ func runPromptUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+func runPromptRefs(cmd *cobra.Command, args []string) error {
+	pathOpts, err := buildPathOptions(cmd, refsProject)
+	if err != nil {
+		return err
+	}
+	paths, err := compiler.ResolvePaths(pathOpts)
+	if err != nil {
+		return err
+	}
+	catalog, err := compiler.ListRefs(paths)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(cmd.OutOrStdout())
+	return enc.Encode(catalog)
 }
 
 // Exported for tests.

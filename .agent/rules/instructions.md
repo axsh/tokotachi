@@ -22,10 +22,10 @@
 
 ## ワークフロー間の流れ
 
-`.agent/workflows/` 配下に定義されたワークフローは、以下の順序で連携して動作します:
+`{{target:workflows}}` 配下に定義されたワークフローは、以下の順序で連携して動作します:
 
 ### 1. 仕様書作成フェーズ
-**ワークフロー**: [`create-specification.md`](.agent/workflows/create-specification.md)
+**ワークフロー**: [`.agent/workflows/create-specification.md`](.agent/workflows/create-specification.md)
 
 1. **人間**: 実装のアイディアを考える
 2. **AI**: `create-specification.md` を使って仕様のマークダウンファイルを生成
@@ -36,7 +36,7 @@
    - 問題なければ、**明示的に次のフェーズへ進むよう指示する**（勝手に進まないこと）
 
 ### 2. 実装計画作成フェーズ
-**ワークフロー**: [`create-implementation-plan.md`](.agent/workflows/create-implementation-plan.md)
+**ワークフロー**: [`.agent/workflows/create-implementation-plan.md`](.agent/workflows/create-implementation-plan.md)
 
 1. **人間**: 仕様マークダウンファイルを指定
 2. **AI**: `create-implementation-plan.md` を使って詳細な実装計画を作成
@@ -49,7 +49,7 @@
    - 問題なければ、**明示的に次のフェーズへ進むよう指示する**（勝手に進まないこと）
 
 ### 3. 実装実行フェーズ
-**ワークフロー**: [`execute-implementation-plan.md`](.agent/workflows/execute-implementation-plan.md)
+**ワークフロー**: [`.agent/workflows/execute-implementation-plan.md`](.agent/workflows/execute-implementation-plan.md)
 
 1. **人間**: 実装計画ファイルを指定
 2. **AI**: `execute-implementation-plan.md` に従って実装を実行
@@ -61,7 +61,7 @@
      - 進行中項目は `[/]` でマーク
 
 ### 4. ビルド・検証フェーズ
-**ワークフロー**: [`build-pipeline.md`](.agent/workflows/build-pipeline.md)
+**ワークフロー**: [`.agent/workflows/build-pipeline.md`](.agent/workflows/build-pipeline.md)
 
 実装実行フェーズ内で自動的に使用されます:
 
@@ -76,7 +76,7 @@
 3. **AI**: 必要に応じて全テストを再実行してリグレッション確認
 
 ### 調査ワークフロー（開発フローとは独立）
-**ワークフロー**: [`investigate.md`](.agent/workflows/investigate.md)
+**ワークフロー**: [`.agent/workflows/investigate.md`](.agent/workflows/investigate.md)
 
 開発フロー（仕様 → 計画 → 実装）とは独立した、**読み取り専用**の調査ワークフローです。
 

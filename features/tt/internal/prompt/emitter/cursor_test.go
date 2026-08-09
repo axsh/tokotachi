@@ -240,3 +240,84 @@ func TestEmit_Cursor(t *testing.T) {
 		t.Errorf("expected Check to detect untracked file drift, but it passed")
 	}
 }
+
+func TestCursorEmitter_ResolvesTemplateVars(t *testing.T) {
+	tempDir := t.TempDir()
+	resolved := &manifest.ResolvedManifest{
+		Version:   1,
+		ProjectID: "test-project",
+		Entities: map[string][]*manifest.Entity{
+			"target": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "target",
+					ID:         "cursor",
+					Title:      "Cursor",
+					Raw: map[string]any{
+						"paths": map[string]any{
+							"rules":  ".cursor/rules/",
+							"skills": ".cursor/skills/",
+						},
+					},
+				},
+			},
+			"policy": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "policy",
+					ID:         "project-instructions",
+					Title:      "Project Instructions",
+					Raw: map[string]any{
+						"body": "See {{policy:testing-rules}} and {{procedure:build-pipeline}} under {{target:workflows}}",
+					},
+				},
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "policy",
+					ID:         "testing-rules",
+					Title:      "Testing Rules",
+					Raw:        map[string]any{"body": "testing body"},
+				},
+			},
+			"procedure": {
+				{
+					APIVersion: "agent.meta/v1",
+					Kind:       "procedure",
+					ID:         "build-pipeline",
+					Title:      "Build Pipeline",
+					Raw: map[string]any{
+						"body": "Use {{policy:testing-rules}}",
+						"trigger": map[string]any{
+							"command": "build-pipeline",
+						},
+					},
+				},
+			},
+		},
+	}
+	selectAllForTest(resolved)
+	e := NewCursorEmitter(tempDir, tempDir, "prompts")
+	buildDir := filepath.Join(tempDir, "build")
+	if _, err := e.Emit(resolved, buildDir, false, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		t.Fatalf("Emit failed: %v", err)
+	}
+
+	instrPath := filepath.Join(buildDir, "cursor", ".cursor", "rules", "project-instructions.mdc")
+	data, err := os.ReadFile(instrPath)
+	if err != nil {
+		t.Fatalf("read instructions: %v", err)
+	}
+	content := string(data)
+	if strings.Contains(content, "{{policy:testing-rules}}") {
+		t.Errorf("unresolved policy placeholder remains:\n%s", content)
+	}
+	if !strings.Contains(content, ".cursor/rules/testing-rules.mdc") {
+		t.Errorf("expected resolved mdc policy path, got:\n%s", content)
+	}
+	if !strings.Contains(content, ".cursor/skills/build-pipeline/SKILL.md") {
+		t.Errorf("expected resolved procedure path, got:\n%s", content)
+	}
+	if !strings.Contains(content, ".cursor/skills/") {
+		t.Errorf("expected workflows fallback to skills dir, got:\n%s", content)
+	}
+}

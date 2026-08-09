@@ -13,9 +13,11 @@ var templateVarRegex = regexp.MustCompile(`\{\{(\w+):([\w][\w-]*)\}\}`)
 
 // TemplateContext holds the information needed to resolve template variables.
 type TemplateContext struct {
-	Paths      TargetPaths
-	MemBase    string // e.g., "prompts/memory"
-	TargetName string // e.g., "antigravity"
+	Paths                     TargetPaths
+	MemBase                   string // e.g., "prompts/memory"
+	TargetName                string // e.g., "antigravity"
+	PolicyExt                 string // ".md" or ".mdc"; empty defaults to ".md"
+	RenameProjectInstructions bool   // true => project-instructions -> instructions{ext}
 }
 
 // TargetPaths holds the target-specific output paths.
@@ -24,6 +26,23 @@ type TargetPaths struct {
 	Rules     string // e.g., ".agents/rules/"
 	Skills    string // e.g., ".agents/skills/"
 	Workflows string // e.g., ".agents/workflows/"
+}
+
+// NewTemplateContext builds a TemplateContext with target-specific naming defaults.
+func NewTemplateContext(targetName string, paths TargetPaths) *TemplateContext {
+	ctx := &TemplateContext{
+		Paths:      normalizeTargetPaths(paths),
+		MemBase:    "prompts/memory",
+		TargetName: targetName,
+		PolicyExt:  ".md",
+	}
+	switch targetName {
+	case "cursor":
+		ctx.PolicyExt = ".mdc"
+	case "antigravity":
+		ctx.RenameProjectInstructions = true
+	}
+	return ctx
 }
 
 // ResolveTemplateVars replaces all {{kind:id}} occurrences in text
@@ -66,17 +85,24 @@ func resolveRef(kind, id string, ctx *TemplateContext) string {
 }
 
 // resolvePolicyPath resolves a policy ID to a file path.
-// project-instructions is renamed to instructions.md by convention.
+// When RenameProjectInstructions is set, project-instructions becomes instructions{ext}.
 func resolvePolicyPath(id string, ctx *TemplateContext) string {
-	filename := id + ".md"
-	if id == "project-instructions" {
-		filename = "instructions.md"
+	ext := ctx.PolicyExt
+	if ext == "" {
+		ext = ".md"
+	}
+	filename := id + ext
+	if id == "project-instructions" && ctx.RenameProjectInstructions {
+		filename = "instructions" + ext
 	}
 	return ensureTrailingSlash(ctx.Paths.Rules) + filename
 }
 
 // ensureTrailingSlash adds a trailing slash if not already present.
 func ensureTrailingSlash(s string) string {
+	if s == "" {
+		return s
+	}
 	if !strings.HasSuffix(s, "/") {
 		return s + "/"
 	}
@@ -84,13 +110,23 @@ func ensureTrailingSlash(s string) string {
 }
 
 // resolveTargetVar resolves a target-scoped template variable.
-// Supported IDs: "name" (target name), "meta_dir" (metadata directory).
+// Supported IDs: name, meta_dir, rules, skills, workflows.
 func resolveTargetVar(id string, ctx *TemplateContext) string {
 	switch id {
 	case "name":
 		return ctx.TargetName
 	case "meta_dir":
 		return resolve.MetaDir(ctx.TargetName)
+	case "rules":
+		return ensureTrailingSlash(ctx.Paths.Rules)
+	case "skills":
+		return ensureTrailingSlash(ctx.Paths.Skills)
+	case "workflows":
+		// Procedure home directory: prefer Workflows, else Skills.
+		if ctx.Paths.Workflows != "" {
+			return ensureTrailingSlash(ctx.Paths.Workflows)
+		}
+		return ensureTrailingSlash(ctx.Paths.Skills)
 	default:
 		return ""
 	}

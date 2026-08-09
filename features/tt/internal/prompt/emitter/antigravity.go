@@ -79,17 +79,18 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 	// Track emitted files for immune mode orphan cleanup
 	emittedFiles := make(map[string]bool)
 
-	// Build template context for resolving {{kind:id}} variables in body text
-	tmplCtx := &TemplateContext{
-		Paths:      a.resolveTargetPaths(resolved),
-		MemBase:    resolveMemoryBase(),
-		TargetName: "antigravity",
-	}
-
 	// Extract size limits and includes from the antigravity target entity
 	antigravityTarget := FindTarget(resolved, "antigravity")
 	limits := ExtractLimits(antigravityTarget)
 	inc := ExtractIncludes(antigravityTarget)
+
+	// Build template context for resolving {{kind:id}} variables in body text
+	tmplCtx := NewTemplateContext("antigravity", ExtractTargetPaths(antigravityTarget, TargetPaths{
+		Rules:     ".agent/rules/",
+		Skills:    ".agent/skills/",
+		Workflows: ".agent/workflows/",
+	}))
+	tmplCtx.MemBase = resolveMemoryBase()
 
 	// 1. Emit Policies
 	if inc.Policy {
@@ -284,31 +285,6 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 		EmittedFiles: emittedFiles,
 		TargetDirs:   []string{rulesDir, skillsDir, workflowsDir},
 	}, nil
-}
-
-// resolveTargetPaths extracts the target paths from the antigravity target entity.
-func (a *AntigravityEmitter) resolveTargetPaths(resolved *manifest.ResolvedManifest) TargetPaths {
-	tp := TargetPaths{
-		Rules:     ".agent/rules/",
-		Skills:    ".agent/skills/",
-		Workflows: ".agent/workflows/",
-	}
-	for _, target := range resolved.Entities["target"] {
-		if target.ID == "antigravity" {
-			if paths, ok := target.Raw["paths"].(map[string]any); ok {
-				if r, ok := paths["rules"].(string); ok {
-					tp.Rules = ensureTrailingSlash(r)
-				}
-				if s, ok := paths["skills"].(string); ok {
-					tp.Skills = ensureTrailingSlash(s)
-				}
-				if w, ok := paths["workflows"].(string); ok {
-					tp.Workflows = ensureTrailingSlash(w)
-				}
-			}
-		}
-	}
-	return tp
 }
 
 // resolveMemoryBase returns the base directory for memory documents.

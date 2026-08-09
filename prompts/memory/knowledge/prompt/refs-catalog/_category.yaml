@@ -1,0 +1,5 @@
+category_id: refs-catalog
+title: Prompt Refs Catalog Command
+description: tt prompt refs load/parse-only JSON catalog of logical {{kind:id}} references without emit or resolved paths
+created_at: 2026-08-09T14:56:50.072131Z
+last_updated: 2026-08-09T14:56:50.072131Z
