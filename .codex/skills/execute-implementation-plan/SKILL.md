@@ -14,9 +14,9 @@ disable-model-invocation: false
 1.  **入力ファイルの特定**:
     *   ユーザーが指定したファイル、または現在エディタで開いているファイルを「実装計画書」として扱う。
 2.  **ルールの読み込み**:
-    *   `.codex/rules/coding-rules.md` (コーディングルール)
-    *   `.codex/rules/testing-rules.md` (テスト実施ルール)
-    *   `.codex/rules/logging-rules.md` (ログ記述ルール)
+    *   `{{policy:coding-rules}}` (コーディングルール)
+    *   `{{policy:testing-rules}}` (テスト実施ルール)
+    *   `{{policy:logging-rules}}` (ログ記述ルール)
 
 ## 2. 実装の実行
 
@@ -27,8 +27,8 @@ disable-model-invocation: false
     *   `[ ]` → `[/]` (進行中) → `[x]` (完了) でチェックボックスを更新する。
 3.  **コーディング**:
     *   計画書の手順に従ってコードを記述・修正する。
-    *   `.codex/rules/coding-rules.md` のスタイルや設計原則を厳守する。
-    *   `.codex/rules/logging-rules.md` のレベル基準に従い、DEBUG ログを積極的に挿入する。
+    *   `{{policy:coding-rules}}` のスタイルや設計原則を厳守する。
+    *   `{{policy:logging-rules}}` のレベル基準に従い、DEBUG ログを積極的に挿入する。
 4.  **こまめな Git コミット**:
     *   各ステップ完了ごとに `git add` → `git commit` を実施する。
     *   コミットルールの詳細は `instructions.md` の「Git 操作ルール」を参照。
@@ -50,7 +50,7 @@ disable-model-invocation: false
 
 ## 3. テストと検証
 
-テスト実施の詳細ルール（実行順序、修正ループ、タイムアウト方針等）は `.codex/rules/testing-rules.md` を参照。
+テスト実施の詳細ルール（実行順序、修正ループ、タイムアウト方針等）は `{{policy:testing-rules}}` を参照。
 
 ### 3.1 テスト実施の順序
 
@@ -67,7 +67,7 @@ disable-model-invocation: false
 > [!CAUTION]
 > **NEVER IGNORE FAILURES**: ビルドやテストの失敗を無視してタスクを完了させることは禁止。
 
-修正ループの詳細手順は `.codex/rules/testing-rules.md` Section 3 を参照。
+修正ループの詳細手順は `{{policy:testing-rules}}` Section 3 を参照。
 「後で直す」は禁止。その場で修正し、コミットする。
 
 

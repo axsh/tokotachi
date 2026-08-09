@@ -22,7 +22,7 @@
 
 ## ワークフロー間の流れ
 
-`.agent/workflows/` 配下に定義されたワークフローは、以下の順序で連携して動作します:
+`{{target:workflows}}` 配下に定義されたワークフローは、以下の順序で連携して動作します:
 
 ### 1. 仕様書作成フェーズ
 **ワークフロー**: [`.agent/workflows/create-specification.md`](.agent/workflows/create-specification.md)

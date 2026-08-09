@@ -11,7 +11,7 @@ disable-model-invocation: false
 
 > [!IMPORTANT]
 > テスト実行の詳細ルール（Linux/Remote-SSH 対応、エラー修正フロー、タイムアウト方針等）は
-> `.cursor/rules/testing-rules.mdc` を参照すること。
+> `{{policy:testing-rules}}` を参照すること。
 
 ## 1. Full Build & Unit Test
 
@@ -21,7 +21,7 @@ disable-model-invocation: false
 // turbo
 ./scripts/process/build.sh
 
-> **Linux / Remote-SSH**: `./scripts/process/build.sh --skip-etc` を使うこと（詳細は `.cursor/rules/testing-rules.mdc` Section 1 参照）。
+> **Linux / Remote-SSH**: `./scripts/process/build.sh --skip-etc` を使うこと（詳細は `{{policy:testing-rules}}` Section 1 参照）。
 
 ## 2. Environment Setup
 
@@ -37,7 +37,7 @@ disable-model-invocation: false
 // turbo
 ./scripts/process/integration_test.sh
 
-> **Linux / Remote-SSH**: `xvfb-run -a` でラップすること（詳細は `.cursor/rules/testing-rules.mdc` Section 1 参照）。
+> **Linux / Remote-SSH**: `xvfb-run -a` でラップすること（詳細は `{{policy:testing-rules}}` Section 1 参照）。
 
 特定のカテゴリやテストのみを実行したい場合:
 
@@ -49,7 +49,7 @@ disable-model-invocation: false
 
 ## 4. Fix Loop
 
-テストが失敗した場合は、`.cursor/rules/testing-rules.mdc` Section 3「エラー修正フロー」に従い修正する。
+テストが失敗した場合は、`{{policy:testing-rules}}` Section 3「エラー修正フロー」に従い修正する。
 
 1. エラーログを確認し原因を特定
 2. コードを修正

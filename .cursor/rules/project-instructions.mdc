@@ -27,10 +27,10 @@ alwaysApply: false
 
 ## ワークフロー間の流れ
 
-`.cursor/skills/` 配下に定義されたワークフローは、以下の順序で連携して動作します:
+`{{target:workflows}}` 配下に定義されたワークフローは、以下の順序で連携して動作します:
 
 ### 1. 仕様書作成フェーズ
-**ワークフロー**: [`.cursor/skills/create-specification/SKILL.md`](.cursor/skills/create-specification/SKILL.md)
+**ワークフロー**: [`{{procedure:create-specification}}`]({{procedure:create-specification}})
 
 1. **人間**: 実装のアイディアを考える
 2. **AI**: `create-specification.md` を使って仕様のマークダウンファイルを生成
@@ -41,7 +41,7 @@ alwaysApply: false
    - 問題なければ、**明示的に次のフェーズへ進むよう指示する**（勝手に進まないこと）
 
 ### 2. 実装計画作成フェーズ
-**ワークフロー**: [`.cursor/skills/create-implementation-plan/SKILL.md`](.cursor/skills/create-implementation-plan/SKILL.md)
+**ワークフロー**: [`{{procedure:create-implementation-plan}}`]({{procedure:create-implementation-plan}})
 
 1. **人間**: 仕様マークダウンファイルを指定
 2. **AI**: `create-implementation-plan.md` を使って詳細な実装計画を作成
@@ -54,19 +54,19 @@ alwaysApply: false
    - 問題なければ、**明示的に次のフェーズへ進むよう指示する**（勝手に進まないこと）
 
 ### 3. 実装実行フェーズ
-**ワークフロー**: [`.cursor/skills/execute-implementation-plan/SKILL.md`](.cursor/skills/execute-implementation-plan/SKILL.md)
+**ワークフロー**: [`{{procedure:execute-implementation-plan}}`]({{procedure:execute-implementation-plan}})
 
 1. **人間**: 実装計画ファイルを指定
 2. **AI**: `execute-implementation-plan.md` に従って実装を実行
    - 入力: `prompts/phases/000-xxx/branches/[ブランチ名]/plans/YYY-Name.md`
    - プロセス:
-     - コーディングルール (`.cursor/rules/coding-rules.mdc`) を遵守してコード実装
-     - テストルール (`.cursor/rules/testing-rules.mdc`) を遵守してテスト作成
+     - コーディングルール (`{{policy:coding-rules}}`) を遵守してコード実装
+     - テストルール (`{{policy:testing-rules}}`) を遵守してテスト作成
      - 実装計画のチェックボックス `[ ]` → `[x]` で進捗管理
      - 進行中項目は `[/]` でマーク
 
 ### 4. ビルド・検証フェーズ
-**ワークフロー**: [`.cursor/skills/build-pipeline/SKILL.md`](.cursor/skills/build-pipeline/SKILL.md)
+**ワークフロー**: [`{{procedure:build-pipeline}}`]({{procedure:build-pipeline}})
 
 実装実行フェーズ内で自動的に使用されます:
 
@@ -81,7 +81,7 @@ alwaysApply: false
 3. **AI**: 必要に応じて全テストを再実行してリグレッション確認
 
 ### 調査ワークフロー（開発フローとは独立）
-**ワークフロー**: [`.cursor/skills/investigate/SKILL.md`](.cursor/skills/investigate/SKILL.md)
+**ワークフロー**: [`{{procedure:investigate}}`]({{procedure:investigate}})
 
 開発フロー（仕様 → 計画 → 実装）とは独立した、**読み取り専用**の調査ワークフローです。
 

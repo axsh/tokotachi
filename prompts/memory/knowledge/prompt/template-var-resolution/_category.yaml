@@ -1,0 +1,5 @@
+category_id: template-var-resolution
+title: Prompt Template Variable Resolution Across Emitters
+description: Cross-cutting rules for ResolveTemplateVars on all emitters and portable {{target:*}} / {{procedure:*}} usage in policy sources
+created_at: 2026-08-09T14:56:40.5205299Z
+last_updated: 2026-08-09T14:56:40.5205299Z
