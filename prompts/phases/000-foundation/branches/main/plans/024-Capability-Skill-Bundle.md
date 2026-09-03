@@ -152,7 +152,7 @@ None. ユーザーより実装計画作成 → 実装実行 → ツール/コン
 - [x] **Migrate record-far-knowledge**
 - [x] **Integration test** (`tt_prompt_bundle_test.go`)
 - [x] **Verification Plan 実行**
-- [/] Far-knowledge / push / releases
+- [x] Far-knowledge / push / releases
 
 ### 総合判定結果
 
