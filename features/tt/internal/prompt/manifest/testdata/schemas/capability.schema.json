@@ -60,14 +60,38 @@
       "items": {
         "type": "string"
       },
-      "description": "Paths to reference documents."
+      "description": "Advisory paths to related documents. Not copied into the emitted skill folder; use bundle for physical inclusion."
     },
     "scripts": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Paths to associated scripts."
+      "description": "Advisory workspace-relative paths to execution entrypoints. Not copied into the emitted skill folder; use bundle for physical inclusion."
+    },
+    "bundle": {
+      "type": "array",
+      "description": "Files to physically copy into the emitted skill folder ({skillsDir}/{id}/). Emitters rewrite matching workspace-relative paths in the skill body to dest (skill-root-relative). Distinct from references and scripts.",
+      "items": {
+        "type": "object",
+        "required": [
+          "src",
+          "dest"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "src": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Workspace-relative source path to copy."
+          },
+          "dest": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Destination path relative to the skill root. Must not escape the skill directory (no .. or absolute paths)."
+          }
+        }
+      }
     },
     "owners": {
       "type": "array",

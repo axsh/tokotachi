@@ -3,7 +3,7 @@ apiVersion: agent.meta/v1
 id: Capability-Skill-Bundle
 kind: idea
 title: Capability の bundle アトリビュートによるスキルフォルダ同梱
-status: draft
+status: approved
 ---
 
 # Capability の bundle アトリビュートによるスキルフォルダ同梱
@@ -51,7 +51,12 @@ capability 側では **`bundle`** という名称を採用する（命名衝突�
 - `dest` はスキルルート内に収まること（`..` や絶対パスを禁止）
 - `additionalProperties: false` を維持する
 
-推奨スキーマ形状（実装計画で最終確定してよい）:
+> **Review Point (2026-09-03)**: スキーマ改変を先行適用済み。
+> `prompts/manifest/schemas/capability.schema.json` およびカタログ原本・testdata の同ファイルに
+> `bundle`（`src`/`dest` 必須）を追加し、`references` / `scripts` の description を
+> 「同梱しない案内用」と明記した。実装計画では emitter 実装とテストを中心とする。
+
+スキーマ形状:
 
 ```yaml
 bundle:
