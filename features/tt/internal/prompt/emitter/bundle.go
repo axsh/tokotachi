@@ -50,14 +50,14 @@ func ValidateSkillDest(dest string) error {
 	if strings.TrimSpace(dest) == "" {
 		return fmt.Errorf("bundle dest is empty")
 	}
-	if filepath.IsAbs(dest) {
+	slashForm := filepath.ToSlash(strings.TrimSpace(dest))
+	if filepath.IsAbs(dest) || strings.HasPrefix(slashForm, "/") || (len(slashForm) >= 2 && slashForm[1] == ':') {
 		return fmt.Errorf("bundle dest must be relative to skill root, got absolute path %q", dest)
 	}
 	cleaned := filepath.Clean(dest)
 	if cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) || strings.HasPrefix(cleaned, "../") {
 		return fmt.Errorf("bundle dest escapes skill root: %q", dest)
 	}
-	// Also reject Windows-style and slash forms after Clean with ToSlash
 	slash := filepath.ToSlash(cleaned)
 	if slash == ".." || strings.HasPrefix(slash, "../") {
 		return fmt.Errorf("bundle dest escapes skill root: %q", dest)
