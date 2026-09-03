@@ -151,8 +151,31 @@ None. ユーザーより実装計画作成 → 実装実行 → ツール/コン
 - [x] **Branch skills O1** (directory copy)
 - [x] **Migrate record-far-knowledge**
 - [x] **Integration test** (`tt_prompt_bundle_test.go`)
-- [/] **Verification Plan 実行**
-- [ ] Far-knowledge / push / releases
+- [x] **Verification Plan 実行**
+- [/] Far-knowledge / push / releases
+
+### 総合判定結果
+
+**判定**: ✅ 動作確認完了
+
+#### テスト結果サマリ
+- Build `--backend-only`: 成功
+- 統合 `tt` (`CapabilityBundle|ReferencesOnlyNoBundle|Prompt|Tag`): 全成功（Bundle 2 + Tags 6）
+- 事実上スキップ: 0
+
+#### チェック項目の結果
+| # | チェック項目 | 結果 | 備考 |
+|---|------------|------|------|
+| 1 | スキップされたテスト | ✅ | なし |
+| 2 | 部分的なエラー | ✅ | FAIL/WARN なし |
+| 3 | 迂回処理による偽成功 | ✅ | Raw bundle 経路を直接 assert |
+| 4 | アダプタ・コンフィグ | ✅ | cursor deploy で companion 確認 |
+| 5 | テスト間依存 | ✅ | TempDir 独立 |
+| 6 | カバレッジ妥当性 | ✅ | 単体 + CLI 統合 |
+| 7 | 外部システム | ✅ | ローカル FS のみ |
+
+#### 判定理由
+ヘルパー単体、emitter、CLI deploy の3層で同梱・非同梱・パス書き換えを確認できたため。
 
 ## Verification Plan
 
