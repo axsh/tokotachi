@@ -164,6 +164,12 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 		body = strings.ReplaceAll(body, "\r\n", "\n")
 		body = ResolveTemplateVars(body, tmplCtx)
 
+		bundleEntries, err := ParseBundleEntries(skill.Raw["bundle"])
+		if err != nil {
+			return nil, fmt.Errorf("capability %s: %w", skill.ID, err)
+		}
+		body = RewriteBundlePaths(body, bundleEntries)
+
 		desc, _ := skill.Raw["description"].(string)
 		manualOnly, _ := skill.Raw["manual_only"].(bool)
 
@@ -203,11 +209,20 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 			}
 		}
 
-		outputPath := filepath.Join(skillsDir, skill.ID, "SKILL.md")
+		skillDir := filepath.Join(skillsDir, skill.ID)
+		outputPath := filepath.Join(skillDir, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
 			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
+
+		bundled, err := EmitBundledFiles(skillDir, a.RootDir, bundleEntries, opts)
+		if err != nil {
+			return nil, fmt.Errorf("capability %s: %w", skill.ID, err)
+		}
+		for k, v := range bundled {
+			emittedFiles[k] = v
+		}
 	}
 	} // end if inc.Capability
 
@@ -441,11 +456,6 @@ func (a *AntigravityEmitter) Check(resolved *manifest.ResolvedManifest, buildDir
 			if info.IsDir() {
 				return nil
 			}
-			// Only check markdown files (.md)
-			if !strings.HasSuffix(strings.ToLower(info.Name()), ".md") {
-				return nil
-			}
-			// Ignore standard non-generated files like .gitkeep or README.md if they exist, but generally markdown files are target rules/workflows/skills.
 			if info.Name() == "README.md" || info.Name() == ".gitkeep" {
 				return nil
 			}

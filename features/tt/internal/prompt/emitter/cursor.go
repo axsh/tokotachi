@@ -158,6 +158,12 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
 
+		bundleEntries, err := ParseBundleEntries(skill.Raw["bundle"])
+		if err != nil {
+			return nil, fmt.Errorf("capability %s: %w", skill.ID, err)
+		}
+		body = RewriteBundlePaths(body, bundleEntries)
+
 		desc, _ := skill.Raw["description"].(string)
 		manualOnly, _ := skill.Raw["manual_only"].(bool)
 
@@ -187,11 +193,20 @@ func (c *CursorEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir strin
 			}
 		}
 
-		outputPath := filepath.Join(skillsDir, skill.ID, "SKILL.md")
+		skillDir := filepath.Join(skillsDir, skill.ID)
+		outputPath := filepath.Join(skillDir, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
 			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
+
+		bundled, err := EmitBundledFiles(skillDir, c.RootDir, bundleEntries, opts)
+		if err != nil {
+			return nil, fmt.Errorf("capability %s: %w", skill.ID, err)
+		}
+		for k, v := range bundled {
+			emittedFiles[k] = v
+		}
 	}
 	} // end if inc.Capability
 
@@ -394,11 +409,7 @@ func (c *CursorEmitter) Check(resolved *manifest.ResolvedManifest, buildDir stri
 			if info.IsDir() {
 				return nil
 			}
-			// Check markdown (.md) and cursor rule (.mdc) files
-			lower := strings.ToLower(info.Name())
-			if !strings.HasSuffix(lower, ".md") && !strings.HasSuffix(lower, ".mdc") {
-				return nil
-			}
+			// Track all content files including skill companions (e.g. .json)
 			if info.Name() == "README.md" || info.Name() == ".gitkeep" {
 				return nil
 			}

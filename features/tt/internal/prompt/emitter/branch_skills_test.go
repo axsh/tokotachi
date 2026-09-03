@@ -93,31 +93,43 @@ func TestScanBranchSkills_SkipsDirWithoutSKILLMD(t *testing.T) {
 }
 
 func TestEmitBranchSkills(t *testing.T) {
+	srcRoot := t.TempDir()
 	targetDir := t.TempDir()
 	skillsDir := filepath.Join(targetDir, "skills")
 
+	makeSkill := func(id, body string, companions map[string]string) BranchSkill {
+		t.Helper()
+		dir := filepath.Join(srcRoot, id)
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "references"), 0o755))
+		skillPath := filepath.Join(dir, "SKILL.md")
+		require.NoError(t, os.WriteFile(skillPath, []byte(body), 0o644))
+		for rel, content := range companions {
+			p := filepath.Join(dir, filepath.FromSlash(rel))
+			require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+			require.NoError(t, os.WriteFile(p, []byte(content), 0o644))
+		}
+		return BranchSkill{ID: id, Path: skillPath, Content: body, BranchID: "BR-test"}
+	}
+
 	branchSkills := []BranchSkill{
-		{
-			ID:       "__far-knowledge-errors",
-			Content:  "---\nname: errors\n---\n\n# Error Patterns\n",
-			BranchID: "BR-test",
-		},
-		{
-			ID:       "__far-knowledge-logging",
-			Content:  "---\nname: logging\n---\n\n# Logging Patterns\n",
-			BranchID: "BR-test",
-		},
+		makeSkill("__far-knowledge-errors", "---\nname: errors\n---\n\n# Error Patterns\n", map[string]string{
+			"references/note.md": "# note\n",
+		}),
+		makeSkill("__far-knowledge-logging", "---\nname: logging\n---\n\n# Logging Patterns\n", nil),
 	}
 
 	emitted, err := EmitBranchSkills(branchSkills, skillsDir, EmitOptions{Mode: EmitModeOverwrite})
 	require.NoError(t, err)
-	assert.Len(t, emitted, 2)
+	assert.GreaterOrEqual(t, len(emitted), 3)
 
-	// Verify files exist
 	for _, skill := range branchSkills {
 		path := filepath.Join(skillsDir, skill.ID, "SKILL.md")
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
 		assert.Contains(t, string(data), "Patterns")
 	}
+	notePath := filepath.Join(skillsDir, "__far-knowledge-errors", "references", "note.md")
+	data, err := os.ReadFile(notePath)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "note")
 }

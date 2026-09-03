@@ -240,3 +240,78 @@ func TestEmit_Cursor(t *testing.T) {
 		t.Errorf("expected Check to detect untracked file drift, but it passed")
 	}
 }
+
+func TestEmit_Cursor_Bundle(t *testing.T) {
+	tempDir := t.TempDir()
+
+	fixtureDir := filepath.Join(tempDir, "fixtures")
+	if err := os.MkdirAll(fixtureDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	payload := []byte(`{"ok":true}`)
+	if err := os.WriteFile(filepath.Join(fixtureDir, "payload.json"), payload, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	resolved := &manifest.ResolvedManifest{
+		Version:   1,
+		ProjectID: "test-project",
+		Entities: map[string][]*manifest.Entity{
+			"target": {{
+				APIVersion: "agent.meta/v1",
+				Kind:       "target",
+				ID:         "cursor",
+				Raw: map[string]any{
+					"paths": map[string]any{
+						"rules":  ".cursor/rules/",
+						"skills": ".cursor/skills/",
+					},
+				},
+			}},
+			"capability": {{
+				APIVersion: "agent.meta/v1",
+				Kind:       "capability",
+				ID:         "bundled-skill",
+				Title:      "Bundled",
+				Raw: map[string]any{
+					"description": "bundled skill",
+					"body":        "See `fixtures/payload.json` for schema.\n",
+					"bundle": []any{
+						map[string]any{
+							"src":  "fixtures/payload.json",
+							"dest": "references/payload.json",
+						},
+					},
+				},
+			}},
+		},
+	}
+
+	emitter := NewCursorEmitter(tempDir, tempDir, "prompts")
+	selectAllForTest(resolved)
+	if _, err := emitter.Emit(resolved, filepath.Join(tempDir, "build"), true, EmitOptions{Mode: EmitModeOverwrite}); err != nil {
+		t.Fatalf("Emit failed: %v", err)
+	}
+
+	skillMD := filepath.Join(tempDir, ".cursor", "skills", "bundled-skill", "SKILL.md")
+	data, err := os.ReadFile(skillMD)
+	if err != nil {
+		t.Fatalf("read SKILL.md: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "`references/payload.json`") {
+		t.Errorf("expected rewritten path, got:\n%s", content)
+	}
+	if strings.Contains(content, "fixtures/payload.json") {
+		t.Errorf("workspace path should be rewritten away, got:\n%s", content)
+	}
+
+	companion := filepath.Join(tempDir, ".cursor", "skills", "bundled-skill", "references", "payload.json")
+	got, err := os.ReadFile(companion)
+	if err != nil {
+		t.Fatalf("companion missing: %v", err)
+	}
+	if string(got) != string(payload) {
+		t.Errorf("companion content mismatch: %s", got)
+	}
+}

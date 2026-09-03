@@ -8,8 +8,9 @@ description: >-
   discoverable from nearby code) into the project memory system using
   ./scripts/code/agent/record.sh.
   Referenced by far-knowledge-memory policy and pre-push-knowledge-check capability.
-references:
-  - "prompts/memory/schemas/agent-record-payload.schema.json"
+bundle:
+  - src: prompts/memory/schemas/agent-record-payload.schema.json
+    dest: references/agent-record-payload.schema.json
 scripts:
   - "scripts/code/agent/record.sh"
 manual_only: true
@@ -23,6 +24,8 @@ tags:
 
 This skill describes how to record far-knowledge into the project's
 memory system using `./scripts/code/agent/record.sh`.
+
+Payload schema: `references/agent-record-payload.schema.json`
 
 Far-knowledge is knowledge that cannot be discovered by searching nearby
 code (same package, imports, callers). It includes architecture decisions,

@@ -134,6 +134,12 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
 
+		bundleEntries, err := ParseBundleEntries(skill.Raw["bundle"])
+		if err != nil {
+			return nil, fmt.Errorf("capability %s: %w", skill.ID, err)
+		}
+		body = RewriteBundlePaths(body, bundleEntries)
+
 		desc, _ := skill.Raw["description"].(string)
 		manualOnly, _ := skill.Raw["manual_only"].(bool)
 
@@ -163,12 +169,21 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 			}
 		}
 
-		outputPath := filepath.Join(skillsDir, skill.ID, "SKILL.md")
+		skillDir := filepath.Join(skillsDir, skill.ID)
+		outputPath := filepath.Join(skillDir, "SKILL.md")
 		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
 			return nil, err
 		}
 		emittedFiles[filepath.Clean(outputPath)] = true
 		skillIDs = append(skillIDs, skill.ID)
+
+		bundled, err := EmitBundledFiles(skillDir, c.RootDir, bundleEntries, opts)
+		if err != nil {
+			return nil, fmt.Errorf("capability %s: %w", skill.ID, err)
+		}
+		for k, v := range bundled {
+			emittedFiles[k] = v
+		}
 	}
 	} // end if inc.Capability
 
@@ -447,10 +462,6 @@ func (c *CodexEmitter) Check(resolved *manifest.ResolvedManifest, buildDir strin
 				return err
 			}
 			if info.IsDir() {
-				return nil
-			}
-			lower := strings.ToLower(info.Name())
-			if !strings.HasSuffix(lower, ".md") {
 				return nil
 			}
 			if info.Name() == "README.md" || info.Name() == ".gitkeep" {

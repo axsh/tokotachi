@@ -146,21 +146,13 @@ None. ユーザーより実装計画作成 → 実装実行 → ツール/コン
 
 ## Step-by-Step Implementation Guide
 
-1. **TDD: bundle helpers**:
-    *   `bundle_test.go` を先に追加し、失敗することを確認（または実装と同時に Green）。
-    *   `bundle.go` を実装し単体テストを通す。
-2. **Wire emitters**:
-    *   cursor / claude_code / codex / antigravity の capability ループに Parse → Rewrite → EmitBundledFiles を挿入。
-    *   各 Check の untracked 拡張子フィルタを緩和。
-    *   cursor_test に bundle ケース追加。
-3. **Branch skills O1**:
-    *   `EmitBranchSkills` をディレクトリコピーに変更しテスト追加。
-4. **Migrate record-far-knowledge**:
-    *   prompts / catalog / testdata の3箇所を更新。
-5. **Integration test**:
-    *   `tests/tt/tt_prompt_bundle_test.go` を追加。
-6. **Verification Plan を実行**（下記）。
-7. **Far-knowledge record → push → tool release → content release**。
+- [x] **TDD: bundle helpers** (`bundle.go` / `bundle_test.go`)
+- [x] **Wire emitters** (cursor / claude / codex / antigravity + Check)
+- [x] **Branch skills O1** (directory copy)
+- [x] **Migrate record-far-knowledge**
+- [x] **Integration test** (`tt_prompt_bundle_test.go`)
+- [/] **Verification Plan 実行**
+- [ ] Far-knowledge / push / releases
 
 ## Verification Plan
 

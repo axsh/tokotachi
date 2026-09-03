@@ -78,19 +78,44 @@ func ScanBranchSkills(rootDir, promptsDir string) ([]BranchSkill, error) {
 }
 
 // EmitBranchSkills writes branch skills to the skills directory.
-// It writes each skill as skillsDir/<skill-id>/SKILL.md.
+// It copies every file under the source skill directory into skillsDir/<skill-id>/.
 func EmitBranchSkills(branchSkills []BranchSkill, skillsDir string, opts EmitOptions) (map[string]bool, error) {
 	emitted := make(map[string]bool)
 
 	for _, skill := range branchSkills {
-		// Normalize line endings
-		content := strings.ReplaceAll(skill.Content, "\r\n", "\n")
+		srcDir := filepath.Dir(skill.Path)
+		dstDir := filepath.Join(skillsDir, skill.ID)
 
-		outputPath := filepath.Join(skillsDir, skill.ID, "SKILL.md")
-		if err := writeFileWithMode(outputPath, content, opts.Mode); err != nil {
-			return nil, fmt.Errorf("failed to write branch skill %s: %w", skill.ID, err)
+		err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return nil
+			}
+			rel, err := filepath.Rel(srcDir, path)
+			if err != nil {
+				return err
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			// Normalize text line endings for SKILL.md; leave other files as-is
+			if strings.EqualFold(info.Name(), "SKILL.md") {
+				content := strings.ReplaceAll(string(data), "\r\n", "\n")
+				data = []byte(content)
+			}
+			outPath := filepath.Join(dstDir, rel)
+			if err := writeBytesWithMode(outPath, data, opts.Mode); err != nil {
+				return fmt.Errorf("failed to write branch skill file %s: %w", rel, err)
+			}
+			emitted[filepath.Clean(outPath)] = true
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to emit branch skill %s: %w", skill.ID, err)
 		}
-		emitted[filepath.Clean(outputPath)] = true
 	}
 
 	return emitted, nil
