@@ -111,15 +111,57 @@ EOF
 
 カテゴリの内容をスキル化する。各カテゴリについて:
 
-1. カテゴリの知識ファイルを確認
-2. capability スキーマに変換:
-   - id には `__far-knowledge-` プレフィックスを付与
-   - `user_visible: false` を設定
-   - `manual_only: false` を設定
-   - `status: current` を設定
-3. `prompts/memory/branches/<branch-package-id>/skills/<id>/SKILL.md` に配置
+1. **カテゴリの知識ファイルを確認**:
+   - 知識ファイルが 5 件以上ある場合、または複数の異なるサブトピックを含む場合は、Step 5 に戻りカテゴリを split（分割）するか、トピックごとに別々のスキルに分割する。
+2. **知識の蒸留と統合（必須ルール）**:
+   - **禁止: 知識ファイルの機械的な単純連結（cat）**:
+     - `## 知識ファイル: <id>` のような内部ファイル名見出しをそのまま並べてはならない。
+     - 各知識ファイルの個別 YAML フロントマター（`id`, `knowledge_id`, `category_path`, `source_event_ids`, `created_at`, `last_updated`, `status`）は**必ずすべて除去**すること。これらはナレッジストア管理用のメタデータであり、スキル本文に含めてはならない。
+     - 本文中に `---`（二重フロントマターや余計な区切り線）を残してはならない。
+   - **トピック別の再構成**:
+     - カテゴリ内の知識群から本質的なパターン・判断基準・注意点を抽出し、自然な章立て（`# スキル名`, `## トピックA`, `## トピックB`）で再構成・要約する。
+     - Coding Agent がタスク実行時に迷わず適用できるよう、具体的かつ簡潔な記述にする。
+3. **capability スキーマへの変換**:
+   - ファイル最上部に Capability フロントマターを **1つだけ** 定義する:
+     - `apiVersion: agent.meta/v1`
+     - `kind: capability`
+     - `id`: `__far-knowledge-` プレフィックスを付与
+     - `title`: 簡潔な英語/日本語タイトル
+     - `description`: どのような場面で参照・適用すべきかの簡潔な要約
+     - `user_visible: false`
+     - `manual_only: false`
+     - `status: current`
+     - `body: inline`
+4. **配置先**:
+   - `prompts/memory/branches/<branch-package-id>/skills/<id>/SKILL.md` に配置
    - 重要: `<id>/SKILL.md` のサブディレクトリ構造にすること (フラットファイル不可)
    - `ScanBranchSkills()` がこの構造を期待する
+
+フォーマット例:
+
+```markdown
+---
+apiVersion: agent.meta/v1
+kind: capability
+id: __far-knowledge-sample-topic
+title: "Far-Knowledge: Sample Topic"
+description: >-
+  Cross-cutting patterns and guidelines for Sample Topic.
+user_visible: false
+manual_only: false
+status: current
+body: inline
+---
+
+# Sample Topic
+
+## Core Guidelines
+- Guideline 1
+- Guideline 2
+
+## Specific Patterns
+Explanation of the pattern...
+```
 
 配置例:
 

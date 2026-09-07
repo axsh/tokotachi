@@ -26,6 +26,8 @@ if [ -z "$BRANCH_NAME" ]; then
     BRANCH_NAME="main"
 fi
 
+BRANCH_DIR="prompts/phases/${PHASE_NAME}/branches/${BRANCH_NAME}"
+
 # Helper function to get the next available ID
 get_next_id() {
   local target_dir="$1"
@@ -53,13 +55,21 @@ get_next_id() {
   fi
 }
 
-# 3. Get Next Idea ID
-IDEAS_DIR="prompts/phases/${PHASE_NAME}/branches/${BRANCH_NAME}/ideas"
-NEXT_IDEA_ID=$(get_next_id "$IDEAS_DIR")
+# 3. Legacy fields (backward compatibility for ideas / plans)
+NEXT_IDEA_ID=$(get_next_id "${BRANCH_DIR}/ideas")
+NEXT_PLAN_ID=$(get_next_id "${BRANCH_DIR}/plans")
 
-# 4. Get Next Plan ID
-PLANS_DIR="prompts/phases/${PHASE_NAME}/branches/${BRANCH_NAME}/plans"
-NEXT_PLAN_ID=$(get_next_id "$PLANS_DIR")
+# 4. Dynamic fields: one next_<dirname>_id per subdirectory under the branch
+DYNAMIC_FIELDS=""
+if [ -d "$BRANCH_DIR" ]; then
+  while IFS= read -r dir; do
+    [ -z "$dir" ] && continue
+    name=$(basename "$dir")
+    next_id=$(get_next_id "$dir")
+    DYNAMIC_FIELDS="${DYNAMIC_FIELDS},
+  \"next_${name}_id\": \"${next_id}\""
+  done < <(find "$BRANCH_DIR" -maxdepth 1 -mindepth 1 -type d | sort)
+fi
 
 # Output JSON
 cat <<EOF
@@ -67,6 +77,6 @@ cat <<EOF
   "phase": "${PHASE_NAME}",
   "branch": "${BRANCH_NAME}",
   "next_idea_id": "${NEXT_IDEA_ID}",
-  "next_plan_id": "${NEXT_PLAN_ID}"
+  "next_plan_id": "${NEXT_PLAN_ID}"${DYNAMIC_FIELDS}
 }
 EOF
