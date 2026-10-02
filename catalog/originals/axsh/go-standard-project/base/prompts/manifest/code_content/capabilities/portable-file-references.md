@@ -4,16 +4,13 @@ kind: capability
 id: portable-file-references
 title: Markdown 内ファイル参照のポータビリティ規約
 description: >-
-  Markdown ドキュメントを作成・編集する際に、ファイルへの参照を
-  ワークスペースルートからの相対パスで記述し、特定の開発者環境に
-  依存しないポータブルな形式にする規約。
+  Markdown ドキュメントおよびチャット提示で、ファイル参照を
+  ワークスペースルート（プロジェクトホーム）からの相対パスで記述し、
+  file:// の単純付与や環境依存の絶対パスを禁止する規約。
 paths:
   - "**/*.md"
 manual_only: false
 body: inline
-tags:
-  - baseline
-
 ---
 
 # Markdown 内ファイル参照のポータビリティ規約
@@ -22,38 +19,44 @@ tags:
 (Windows, macOS, Linux, CI)で共有される。ドキュメント内のファイル参照が特定の環境に
 依存していると、他の開発者がドキュメントを読む際にパスが無効になり、情報の追跡が困難になる。
 
-この capability は、Markdown ドキュメント内でリポジトリ内のファイルを参照する際に、
-ポータブルな形式を使用するための規約を定義する。
+この capability は、リポジトリ内 Markdown とエージェントのチャット提示の両方で、
+ポータブルなファイル参照形式を定義する。
 
 ## 規約
 
-### 禁止: 絶対パスおよび file:// スキームの使用
+### 禁止: 絶対パスおよび file:// スキーム
 
-以下の形式はリポジトリに記録される Markdown ドキュメントでは使用してはならない。
+以下は使用してはならない（リポジトリ内 Markdown・チャット応答の両方）。
 
 ```markdown
-<!-- 禁止: 絶対パス + file:// スキーム -->
-[仕様書](file:///c:/Users/yamya/myprog/vv5/work/feat-minimum-vv/prompts/phases/refs/drafts/014-agent_procedure_integration_spec.md)
+<!-- 禁止: 絶対パス + file:// -->
+[仕様書](file:///c:/Users/yamya/myprog/vv5/work/feat-minimum-vv/prompts/phases/refs/drafts/014-spec.md)
 
-<!-- 禁止: Windows 絶対パス -->
-[db.go](file:///c:/Users/yamya/myprog/vv5/work/feat-minimum-vv/features/chord/internal/store/db.go)
+<!-- 禁止: 相対パスの先頭に file:// を付けただけ（ホスト名誤解釈） -->
+[レポート](file://tmp/autoeval/card/analysis/analysis-report.md)
+[調査](file://prompts/phases/000-foundation/branches/x/investigations/012-Foo.md)
 
-<!-- 禁止: バックスラッシュのパス -->
+<!-- 禁止: OS 絶対パス -->
 `c:\Users\yamya\myprog\vv5\work\feat-minimum-vv\features\chord\internal\store\db.go`
 ```
 
-これらの形式は、ドキュメント作成者のローカル環境でしか通用しない。
-チェックアウト先ディレクトリが異なる開発者や、OS が異なる環境ではパスが無効になる。
+絶対パスや絶対 `file://` URL は作成者のローカル環境でしか通用しない。
+`file://相対パス` は URL 上「ホスト=先頭セグメント」となり、ユーザホーム配下などを誤参照する。
 
-### 推奨: ワークスペース相対パスをインラインコードで記述
+### 推奨: ワークスペース相対パス（プロジェクトホーム基準）
 
-リポジトリ内のファイルを参照する場合は、ワークスペースルート(リポジトリルート)からの
-相対パスを、バッククォートで囲んだインラインコードとして記述する。
+ワークスペースルート（リポジトリルート＝プロジェクトホーム）からの相対パスを使う。
+
+**開かせる・クリックさせる提示は Markdown 相対リンク一択**（`file://` なし）。
+バッククォートの相対パスはインラインコードであり、通常はリンクにならない。
 
 ```markdown
-詳細は `prompts/phases/refs/drafts/014-agent_procedure_integration_spec.md` を参照。
+<!-- 推奨（クリック可能）: Markdown 相対リンク -->
+[analysis-report.md](tmp/autoeval/<cardId>/analysis/analysis-report.md)
+[012-Foo.md](prompts/phases/000-foundation/branches/x/investigations/012-Foo.md)
 
-Go 側の実装は `features/chord/internal/store/db.go` を参照。
+<!-- 文書本文でパスを識別子として書くだけならバッククォート可（リンクにはならない） -->
+実装は `features/example/src/main/java/com/example/repository/UserRepository.java` を参照。
 ```
 
 ### 表や箇条書き内での記述
@@ -74,7 +77,7 @@ Go 側の実装は `features/chord/internal/store/db.go` を参照。
 特定の行範囲を示したい場合は、パスの後に行番号情報をテキストで付記する。
 
 ```markdown
-`features/chord/internal/runtime/quickjs.go` (L51-L154) の bridgeCode を参照。
+`features/auth/src/main/java/com/example/auth/controller/AuthController.java` (L10-L45) の認証処理を参照。
 ```
 
 ### パス区切り文字
@@ -87,18 +90,21 @@ Go 側の実装は `features/chord/internal/store/db.go` を参照。
 
 | 対象 | 形式 | 例 |
 | :--- | :--- | :--- |
-| リポジトリ内のファイル | バッククォートの相対パス | `` `prompts/phases/refs/drafts/014-spec.md` `` |
-| 外部 URL (HTTP/HTTPS) | Markdown リンク記法 | `[Go公式ドキュメント](https://go.dev/doc/)` |
+| リポジトリ内のファイルを**開かせる**（チャット・提示） | Markdown **相対**リンク（`file://` なし）一択 | `[014-spec.md](prompts/phases/refs/drafts/014-spec.md)` |
+| リポジトリ内のパスを**識別子として書くだけ**（表・箇条書き） | バッククォート可（リンクにはならない） | `` `prompts/phases/refs/drafts/014-spec.md` `` |
+| 外部 URL (HTTP/HTTPS) | Markdown リンク記法 | `[Spring Boot 公式ドキュメント](https://spring.io/projects/spring-boot)` |
 
-Markdown リンク記法 `[text](url)` は、リポジトリ外の URL に対してのみ使用する。
+リポジトリ内パスへの `[text](url)` では、`url` に必ずワークスペース相対パスを書く。`file://` は付けない。
+チャットでファイルを示すときはバッククォートだけにせず、必ず相対リンクにする。
 
 ## 適用範囲
 
-この規約は、Git リポジトリに記録される全てのマークダウンファイルに適用する。
+この規約は次に適用する。
+
+- Git リポジトリに記録される全てのマークダウンファイル
+- エージェントがチャット上でファイルを提示するとき
 
 以下はこの規約の適用外とする:
 
-- エージェントがチャット上で応答する際の一時的なリンク(IDE が解釈する `file://` リンク)
 - CI/CD スクリプト内のパス指定
 - コード内のファイルパス定数
-

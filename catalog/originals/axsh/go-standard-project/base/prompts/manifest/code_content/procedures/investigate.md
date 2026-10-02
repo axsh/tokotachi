@@ -163,7 +163,7 @@ description: Investigate a codebase, bug, or technical question and produce a st
 
 3. **レポートの提示**:
     * 作成したファイルへのリンクをユーザーに提示します。
-      * 「file://プロジェクトルートからの相対パス」を用いること
+      * ワークスペース相対の Markdown リンクを用いること（例: `[XXX-Name.md](prompts/phases/.../investigations/XXX-Name.md)`）。`file://` は付けないこと（`{{capability:portable-file-references}}`）
     * 重要な発見事項がある場合は、レポートとは別にチャットでもハイライトする。
 
 4. **フォローアップ**:

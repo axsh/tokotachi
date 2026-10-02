@@ -108,5 +108,5 @@ tags:
     ```
 3.  **ファイルパスの提示**:
     *   作成したファイルへのリンクをユーザーに提示します。
-        * 「file://プロジェクトルートからの相対パス」を用いること
+        * ワークスペース相対の Markdown リンクを用いること（例: `[XXX-Name.md](prompts/phases/.../ideas/XXX-Name.md)`）。`file://` は付けないこと（`{{capability:portable-file-references}}`）
     *   **フェーズ移行**: 次のステップ（実装計画の作成等）に進むのは、ユーザーが明示的に指示した場合のみです。勝手に `create-implementation-plan` に進まないでください。
