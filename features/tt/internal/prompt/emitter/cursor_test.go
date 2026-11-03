@@ -55,7 +55,7 @@ func TestEmit_Cursor(t *testing.T) {
 						"activation": map[string]any{
 							"mode": "manual",
 						},
-						"body": "Coding is fun.",
+						"body": "Coding is fun. See {{procedure:test-proc}} and {{capability:test-skill}} and {{policy:coding-rules}}.",
 						"paths": []any{
 							"features/**/*.go",
 							"shared/**/*.go",
@@ -85,7 +85,7 @@ func TestEmit_Cursor(t *testing.T) {
 					Title:      "Test Procedure",
 					FilePath:   filepath.Join(tempDir, "proc.yaml"),
 					Raw: map[string]any{
-						"body": "Procedure body.\n",
+						"body": "Procedure body. Read {{policy:testing-rules}}.\n",
 						"trigger": map[string]any{
 							"command":     "test-proc",
 							"manual_only": true,
@@ -128,8 +128,16 @@ func TestEmit_Cursor(t *testing.T) {
 			contain: []string{"alwaysApply: true", "description: Project Instructions", "Always follow rules."},
 		},
 		{
-			path:    filepath.Join(buildDir, "cursor", ".cursor", "rules", "coding-rules.mdc"),
-			contain: []string{"alwaysApply: false", "description: Coding Rules", "Coding is fun.", "globs:"},
+			path: filepath.Join(buildDir, "cursor", ".cursor", "rules", "coding-rules.mdc"),
+			contain: []string{
+				"alwaysApply: false",
+				"description: Coding Rules",
+				"Coding is fun.",
+				"globs:",
+				".cursor/skills/test-proc/SKILL.md",
+				".cursor/skills/test-skill/SKILL.md",
+				".cursor/rules/coding-rules.mdc",
+			},
 		},
 		{
 			path:    filepath.Join(buildDir, "cursor", ".cursor", "skills", "test-skill", "SKILL.md"),
@@ -142,6 +150,7 @@ func TestEmit_Cursor(t *testing.T) {
 				"description: Test Procedure",
 				"disable-model-invocation: true",
 				"Procedure body.",
+				".cursor/rules/testing-rules.mdc",
 			},
 		},
 		{

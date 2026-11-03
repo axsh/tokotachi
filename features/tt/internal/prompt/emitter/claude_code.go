@@ -73,6 +73,8 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 	// Track emitted files for immune mode orphan cleanup
 	emittedFiles := make(map[string]bool)
 
+	tmplCtx := BuildTemplateContext("claude-code", c.resolveTargetPaths(resolved))
+
 	// Extract size limits and includes from the claude-code target entity
 	claudeTarget := FindTarget(resolved, "claude-code")
 	limits := ExtractLimits(claudeTarget)
@@ -93,6 +95,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		// Extract paths for frontmatter
 		var paths []string
@@ -153,6 +156,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		bundleEntries, err := ParseBundleEntries(skill.Raw["bundle"])
 		if err != nil {
@@ -227,6 +231,7 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		manualOnly := false
 		if trigger, ok := proc.Raw["trigger"].(map[string]any); ok {
@@ -287,6 +292,28 @@ func (c *ClaudeCodeEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir s
 		EmittedFiles: emittedFiles,
 		TargetDirs:   []string{rulesDir, skillsDir},
 	}, nil
+}
+
+// resolveTargetPaths extracts relative target paths for template resolution.
+func (c *ClaudeCodeEmitter) resolveTargetPaths(resolved *manifest.ResolvedManifest) TargetPaths {
+	tp := TargetPaths{
+		Rules:  ".claude/rules/",
+		Skills: ".claude/skills/",
+	}
+	for _, target := range resolved.Entities["target"] {
+		if target.ID != "claude-code" {
+			continue
+		}
+		if paths, ok := target.Raw["paths"].(map[string]any); ok {
+			if r, ok := paths["rules"].(string); ok {
+				tp.Rules = ensureTrailingSlash(r)
+			}
+			if s, ok := paths["skills"].(string); ok {
+				tp.Skills = ensureTrailingSlash(s)
+			}
+		}
+	}
+	return tp
 }
 
 // Check verifies if generated files in project paths match the resolved manifest.

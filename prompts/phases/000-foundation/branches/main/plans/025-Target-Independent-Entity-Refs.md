@@ -204,15 +204,15 @@ For the full template reference manual, run:  tt prompt instruction`,
 
 ## Step-by-Step Implementation Guide
 
-1. **[ ] Red: template_test をターゲット別に更新/追加**
+1. **[/] Red: template_test をターゲット別に更新/追加**
    *   Edit `features/tt/internal/prompt/emitter/template_test.go`。
-2. **[ ] Green: TemplateContext / BuildTemplateContext / resolvePolicyPath / TemplateRefManual**
+2. **[/] Green: TemplateContext / BuildTemplateContext / resolvePolicyPath / TemplateRefManual**
    *   Edit `features/tt/internal/prompt/emitter/template.go`。
-3. **[ ] Red: cursor（代表）emitter テストにテンプレート解決ケース追加**
-4. **[ ] Green: 全 emitter に tmplCtx + ResolveTemplateVars（capability は RewriteBundlePaths の前）**
-5. **[ ] Red/Green: prompt_instruction_test + prompt.go Short/Long/instruction**
-6. **[ ] 統合テスト `tests/tt/tt_prompt_template_refs_test.go`**
-7. **[ ] prompt-manifest-update.md 更新（catalog + 必要なら prompts）**
+3. **[/] Red: cursor（代表）emitter テストにテンプレート解決ケース追加**
+4. **[/] Green: 全 emitter に tmplCtx + ResolveTemplateVars（capability は RewriteBundlePaths の前）**
+5. **[/] Red/Green: prompt_instruction_test + prompt.go Short/Long/instruction**
+6. **[/] 統合テスト `tests/tt/tt_prompt_template_refs_test.go`**
+7. **[/] prompt-manifest-update.md 更新（catalog + 必要なら prompts）**
 8. **[ ] Verification Plan を実行し、総合判定を記録**
 
 各ステップ完了ごとに `git add` → `git commit`。

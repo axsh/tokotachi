@@ -69,6 +69,8 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 	// Track emitted files for immune mode orphan cleanup
 	emittedFiles := make(map[string]bool)
 
+	tmplCtx := BuildTemplateContext("codex", c.resolveTargetPaths(resolved))
+
 	// Extract size limits and includes from the codex target entity
 	codexTarget := FindTarget(resolved, "codex")
 	limits := ExtractLimits(codexTarget)
@@ -93,6 +95,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		// Codex: emit without any frontmatter
 		content := body
@@ -133,6 +136,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		bundleEntries, err := ParseBundleEntries(skill.Raw["bundle"])
 		if err != nil {
@@ -208,6 +212,7 @@ func (c *CodexEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir string
 		}
 		body = stripFrontmatter(body)
 		body = strings.ReplaceAll(body, "\r\n", "\n")
+		body = ResolveTemplateVars(body, tmplCtx)
 
 		manualOnly := false
 		if trigger, ok := proc.Raw["trigger"].(map[string]any); ok {
@@ -343,6 +348,28 @@ func (c *CodexEmitter) resolveIndexFile(resolved *manifest.ResolvedManifest) str
 		return indexFile
 	}
 	return ""
+}
+
+// resolveTargetPaths extracts relative target paths for template resolution.
+func (c *CodexEmitter) resolveTargetPaths(resolved *manifest.ResolvedManifest) TargetPaths {
+	tp := TargetPaths{
+		Rules:  ".codex/rules/",
+		Skills: ".codex/skills/",
+	}
+	for _, target := range resolved.Entities["target"] {
+		if target.ID != "codex" {
+			continue
+		}
+		if paths, ok := target.Raw["paths"].(map[string]any); ok {
+			if r, ok := paths["rules"].(string); ok {
+				tp.Rules = ensureTrailingSlash(r)
+			}
+			if s, ok := paths["skills"].(string); ok {
+				tp.Skills = ensureTrailingSlash(s)
+			}
+		}
+	}
+	return tp
 }
 
 // Check verifies if generated files in project paths match the resolved manifest.

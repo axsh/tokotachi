@@ -31,7 +31,20 @@ See --help for defaults and TT_* env vars.`
 
 var promptCmd = &cobra.Command{
 	Use:   "prompt",
-	Short: "Manage prompt manifest compilation and deployment",
+	Short: "Manage prompt manifests; see 'tt prompt instruction' for {{kind:id}} template refs",
+	Long: `Manage prompt manifest compilation and deployment.
+
+Manifest bodies may use target-independent template references of the form {{kind:id}}
+(policy, procedure, capability, target). They are resolved to agent-specific paths at emit time.
+For the full template reference manual, run:  tt prompt instruction`,
+}
+
+var promptInstructionCmd = &cobra.Command{
+	Use:   "instruction",
+	Short: "Print the {{kind:id}} template reference manual",
+	Long:  "Print the target-independent {{kind:id}} template reference manual to stdout.",
+	Args:  cobra.NoArgs,
+	RunE:  runPromptInstruction,
 }
 
 var promptCompileCmd = &cobra.Command{
@@ -120,6 +133,12 @@ func init() {
 	promptCmd.AddCommand(promptCompileCmd)
 	promptCmd.AddCommand(promptDeployCmd)
 	promptCmd.AddCommand(promptUpdateCmd)
+	promptCmd.AddCommand(promptInstructionCmd)
+}
+
+func runPromptInstruction(cmd *cobra.Command, args []string) error {
+	_, err := fmt.Fprint(cmd.OutOrStdout(), emitter.TemplateRefManual())
+	return err
 }
 
 func addPromptPathFlags(cmd *cobra.Command) {

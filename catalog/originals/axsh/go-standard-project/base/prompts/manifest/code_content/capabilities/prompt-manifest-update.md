@@ -131,7 +131,10 @@ prompts/manifest/
   （「Cursor に反映する」「`.cursor/` に出力される」等）を書かない。
   出力先に言及する場合は「各エージェントの rules / skills」のように書く
 - **スキーマ準拠**: 新規追加時は該当 `schemas/*.schema.json` の `required` を満たす
-- **policy 間参照**: 本文中で `{{policy:coding-rules}}` 形式の参照が使える
+- **エンティティ参照 (`{{kind:id}}`)**: 本文中でターゲット非依存の参照が使える
+  - `{{policy:coding-rules}}` / `{{procedure:test-generator}}` / `{{capability:portable-file-references}}` / `{{target:name}}`
+  - emit（`tt prompt deploy` / `update`）時に各エージェントの rules / skills / workflows パスへ展開される
+  - 詳細マニュアル: `tt prompt instruction`
 - **言語**: `prompts/` 配下のテンプレート本文は **日本語**
 - **レガシースクリプト**: `./scripts/code/prompt/compile.sh` 等は **`tt prompt`** に統合済み。通常は `tt prompt update` を使う
 

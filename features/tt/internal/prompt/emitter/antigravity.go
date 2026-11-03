@@ -80,11 +80,7 @@ func (a *AntigravityEmitter) Emit(resolved *manifest.ResolvedManifest, buildDir 
 	emittedFiles := make(map[string]bool)
 
 	// Build template context for resolving {{kind:id}} variables in body text
-	tmplCtx := &TemplateContext{
-		Paths:      a.resolveTargetPaths(resolved),
-		MemBase:    resolveMemoryBase(),
-		TargetName: "antigravity",
-	}
+	tmplCtx := BuildTemplateContext("antigravity", a.resolveTargetPaths(resolved))
 
 	// Extract size limits and includes from the antigravity target entity
 	antigravityTarget := FindTarget(resolved, "antigravity")
