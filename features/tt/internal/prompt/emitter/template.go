@@ -52,23 +52,52 @@ func BuildTemplateContext(targetID string, paths TargetPaths) *TemplateContext {
 // ResolveTemplateVars replaces all {{kind:id}} occurrences in text
 // with the resolved target-specific path.
 // Unknown kind or id patterns are left as-is.
+//
+// Backslash rules (left-to-right scan):
+//   \\           -> one literal backslash
+//   \{{kind:id}} -> literal {{kind:id}} (not resolved; for documentation)
+//   {{kind:id}}  -> resolved path when kind is known
 func ResolveTemplateVars(text string, ctx *TemplateContext) string {
 	if ctx == nil {
 		return text
 	}
-	return templateVarRegex.ReplaceAllStringFunc(text, func(match string) string {
-		subs := templateVarRegex.FindStringSubmatch(match)
-		if len(subs) != 3 {
-			return match
+	var b strings.Builder
+	b.Grow(len(text))
+	i := 0
+	for i < len(text) {
+		// Escaped backslash: \\ -> emit one '\'
+		if text[i] == '\\' && i+1 < len(text) && text[i+1] == '\\' {
+			b.WriteByte('\\')
+			i += 2
+			continue
 		}
-		kind := subs[1]
-		id := subs[2]
-		resolved := resolveRef(kind, id, ctx)
-		if resolved == "" {
-			return match
+		// Escaped ref: \{{kind:id}} -> emit {{kind:id}}
+		if text[i] == '\\' {
+			if loc := templateVarRegex.FindStringSubmatchIndex(text[i+1:]); loc != nil && loc[0] == 0 {
+				b.WriteString(text[i+1 : i+1+loc[1]])
+				i += 1 + loc[1]
+				continue
+			}
 		}
-		return resolved
-	})
+		// Plain ref: {{kind:id}} -> resolve or leave
+		if loc := templateVarRegex.FindStringSubmatchIndex(text[i:]); loc != nil && loc[0] == 0 {
+			match := text[i : i+loc[1]]
+			subs := templateVarRegex.FindStringSubmatch(match)
+			if len(subs) == 3 {
+				if resolved := resolveRef(subs[1], subs[2], ctx); resolved != "" {
+					b.WriteString(resolved)
+					i += loc[1]
+					continue
+				}
+			}
+			b.WriteString(match)
+			i += loc[1]
+			continue
+		}
+		b.WriteByte(text[i])
+		i++
+	}
+	return b.String()
 }
 
 // resolveRef resolves a single template reference to a target-specific path.
@@ -137,6 +166,14 @@ Format
 Manifest body text may use these target-independent references. They are
 resolved to agent-specific paths at emit time (tt prompt deploy / update),
 not at compile time.
+
+Escape (documentation)
+----------------------
+  \{{kind:id}}     -> remains {{kind:id}} after emit (not resolved)
+  \\{{kind:id}}    -> one literal backslash + resolved path
+
+Use a single backslash before {{ when showing the template syntax
+itself in manifest bodies (e.g. prompt-manifest-update).
 
 Supported kinds
 ---------------

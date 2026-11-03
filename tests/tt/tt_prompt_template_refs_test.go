@@ -169,6 +169,42 @@ func TestPromptTemplateRefs_AntigravityDeployResolves(t *testing.T) {
 	assert.NotContains(t, content, "{{policy:")
 }
 
+func TestPromptTemplateRefs_EscapedRefRemainsLiteral(t *testing.T) {
+	tmp := t.TempDir()
+	writeTemplateRefFixture(t, tmp)
+
+	procPath := filepath.Join(tmp, "prompts", "manifest", "code_content", "procedures", "demo-proc.md")
+	proc := `---
+apiVersion: agent.meta/v1
+kind: procedure
+id: demo-proc
+title: Demo Proc
+trigger:
+  command: demo-proc
+description: demo procedure
+tags:
+  - baseline
+---
+
+# Demo Proc
+
+Escaped: \{{policy:coding-rules}}
+Live: {{policy:coding-rules}}
+`
+	require.NoError(t, os.WriteFile(procPath, []byte(proc), 0o644))
+
+	_, stderr, code := runTTInDir(t, tmp, "prompt", "deploy", "--target", "cursor", "--force")
+	require.Equal(t, 0, code, "stderr: %s", stderr)
+
+	skillMD := filepath.Join(tmp, ".cursor", "skills", "demo-proc", "SKILL.md")
+	data, err := os.ReadFile(skillMD)
+	require.NoError(t, err)
+	content := string(data)
+	assert.Contains(t, content, "Escaped: {{policy:coding-rules}}")
+	assert.Contains(t, content, "Live: .cursor/rules/coding-rules.mdc")
+	assert.NotContains(t, content, "Escaped: .cursor/rules/coding-rules.mdc")
+}
+
 func TestPromptInstruction_PrintsManual(t *testing.T) {
 	stdout, stderr, code := runTT(t, "prompt", "instruction")
 	require.Equal(t, 0, code, "stderr: %s", stderr)
@@ -177,6 +213,8 @@ func TestPromptInstruction_PrintsManual(t *testing.T) {
 	assert.Contains(t, stdout, "procedure")
 	assert.Contains(t, stdout, "capability")
 	assert.Contains(t, stdout, ".mdc")
+	assert.Contains(t, stdout, "Escape")
+	assert.Contains(t, stdout, `\{{kind:id}}`)
 }
 
 func TestPromptHelp_MentionsInstruction(t *testing.T) {

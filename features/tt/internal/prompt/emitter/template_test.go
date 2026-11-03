@@ -74,6 +74,31 @@ func TestResolveTemplateVars(t *testing.T) {
 			input: "",
 			want:  "",
 		},
+		{
+			name:  "backslash escape leaves literal mustache",
+			input: "Docs: \\{{policy:coding-rules}}.",
+			want:  "Docs: {{policy:coding-rules}}.",
+		},
+		{
+			name:  "backslash escape on unknown kind still strips slash",
+			input: "\\{{unknown:foo}}",
+			want:  "{{unknown:foo}}",
+		},
+		{
+			name:  "escaped and live refs in same text",
+			input: "Esc \\{{policy:coding-rules}} live {{procedure:arch-correct}}.",
+			want:  "Esc {{policy:coding-rules}} live .agents/skills/arch-correct/SKILL.md.",
+		},
+		{
+			name:  "double backslash yields literal slash plus resolved path",
+			input: "\\\\{{policy:coding-rules}}",
+			want:  "\\.agents/rules/coding-rules.md",
+		},
+		{
+			name:  "triple backslash yields slash plus literal mustache",
+			input: "\\\\\\{{policy:coding-rules}}",
+			want:  "\\{{policy:coding-rules}}",
+		},
 	}
 
 	for _, tt := range tests {
@@ -156,6 +181,16 @@ func TestResolveTemplateVars_CursorPolicyExt(t *testing.T) {
 			input: "{{capability:portable-file-references}}",
 			want:  ".cursor/skills/portable-file-references/SKILL.md",
 		},
+		{
+			name:  "backslash escape leaves literal mustache",
+			input: "\\{{policy:coding-rules}}",
+			want:  "{{policy:coding-rules}}",
+		},
+		{
+			name:  "double backslash yields slash plus mdc path",
+			input: "\\\\{{policy:coding-rules}}",
+			want:  "\\.cursor/rules/coding-rules.mdc",
+		},
 	}
 
 	for _, tt := range tests {
@@ -222,6 +257,8 @@ func TestTemplateRefManual_ContainsRequiredSections(t *testing.T) {
 		"instructions.md",
 		"unknown",
 		"memory",
+		"Escape",
+		"\\{{kind:id}}",
 	}
 	for _, s := range required {
 		if !strings.Contains(manual, s) {
