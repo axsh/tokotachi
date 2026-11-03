@@ -26,6 +26,8 @@ Emit 時にターゲット固有パスへ展開されることを期待して、
 
 ドキュメント側も `prompt-manifest-update` が「policy 間参照」のみ言及しており、procedure / capability の利用が公式に揃っていない。
 
+加えて、`{{kind:id}}` テンプレートの使い方は CLI ヘルプからは辿れない。`tt --help` / `tt prompt` でマニュアル表示コマンドへ誘導し、仕様そのものを CLI から出力できるようにする必要がある。
+
 ## 要件 (Requirements)
 
 ### 必須要件
@@ -81,6 +83,51 @@ rules / skills / workflows のベースパスは各 target YAML の `paths` を�
 
 `prompt-manifest-update`（カタログ原本および作業ツリー）の「policy 間参照」記述を拡張し、`{{policy:id}}` / `{{procedure:id}}` / `{{capability:id}}` / `{{target:...}}` がターゲット非依存参照であり、emit 時に各エージェントパスへ展開されることを明記する。
 
+#### R6: `tt` / `tt prompt` ヘルプにテンプレートマニュアルへの案内を加える
+
+`tt --help` および `tt prompt`（親コマンド）の説明文に、テンプレート参照仕様のマニュアルを表示する手段への案内を含めること。
+
+現状（抜粋）:
+
+```
+prompt              Manage prompt manifest compilation and deployment
+```
+
+期待する方向性:
+
+- `tt --help` の Available Commands における `prompt` の Short（または同等の一行説明）に、マニュアル表示への誘導が含まれる
+- `tt prompt` / `tt prompt --help` の Long（またはコマンド一覧の前後）に、`tt prompt instruction` でテンプレート仕様を表示できる旨が明記される
+
+文言は実装時に調整してよいが、次の情報は必ず含める:
+
+1. マニフェスト本文で `{{kind:id}}` 形式のターゲット非依存参照が使えること
+2. 詳細は `tt prompt instruction` で確認できること
+
+#### R7: `tt prompt instruction` サブコマンドを追加し、テンプレート仕様を出力する
+
+`tt prompt` 配下に新しいサブコマンド `instruction` を追加する。
+
+| 項目 | 内容 |
+| :--- | :--- |
+| コマンド | `tt prompt instruction` |
+| 役割 | `{{kind:id}}` テンプレート参照の仕様マニュアルを標準出力へ出力する |
+| 終了コード | 成功時 0 |
+
+出力内容に少なくとも含めること:
+
+1. 書式: `{{kind:id}}`
+2. 対応 kind と解決先の意味（R2 の表と同等: `policy` / `procedure` / `capability` / `target`）
+3. emit 時にターゲット固有パスへ展開されること（compile 時ではないこと）
+4. ターゲット別の解決例（R3 の表と同等の要点。Cursor の `.mdc`、Antigravity の `instructions.md` / workflows など）
+5. 未知 kind は置換せず残ること
+6. 対象外 kind（`skip` 等）と `memory` を再導入しないことへの短い注意
+
+実装上の制約:
+
+- マニュアル本文はコード内定数または専用ファイルいずれでもよいが、**R2/R3 の仕様と乖離しない単一の説明源**にすること（ヘルプ Short/Long の案内文と矛盾しないこと）
+- `instruction` はネットワークやワークスペース書き込みを行わない（読み取り・表示のみ）
+- `--target` 等の path/compile 系フラグは不要（マニュアル表示専用）。将来ターゲット別例を絞るオプションを足す場合は任意要件とする
+
 ### 任意要件
 
 #### O1: 未解決参照の検知（warn）
@@ -90,6 +137,10 @@ rules / skills / workflows のベースパスは各 target YAML の `paths` を�
 #### O2: 共通ヘルパーへの集約
 
 各 emitter が個別に `TemplateContext` を組み立てる重複を避け、`resolveTargetPaths` 相当を共通化する。可読性向上のためのリファクタであり、挙動変更を伴わない範囲で行う。
+
+#### O3: `instruction` のターゲット別例フィルタ
+
+`tt prompt instruction --target cursor` のように、特定ターゲットの解決例だけを詳しく出すオプション。必須ではない。
 
 ## 実現方針 (Implementation Approach)
 
@@ -101,11 +152,17 @@ rules / skills / workflows のベースパスは各 target YAML の `paths` を�
 2. **各 emitter (`cursor.go` / `codex.go` / `claude_code.go` / `antigravity.go`)**
    - Emit 開始時に当該ターゲット用 `TemplateContext` を構築。
    - policy / capability / procedure の body 処理パイプラインに `ResolveTemplateVars` を挿入。
-3. **テスト**
+3. **CLI (`features/tt/cmd/prompt.go` および関連)**
+   - `promptCmd` の Short / Long を更新し、`tt prompt instruction` への案内を入れる（R6）。
+   - `promptInstructionCmd`（`Use: instruction`）を追加し、テンプレート仕様テキストを stdout に書く（R7）。
+   - `promptCmd.AddCommand(promptInstructionCmd)` で `compile` / `deploy` / `update` と並列に登録する。
+4. **テスト**
    - `template_test.go`: ターゲット別の期待パス（特に Cursor の `.mdc` と AG の `instructions.md`）。
    - 各 emitter テスト: body に `{{policy:...}}` / `{{procedure:...}}` / `{{capability:...}}` を含むフィクスチャで、成果物に解決済みパスが含まれること・リテラルが残らないことを検証。
-4. **ドキュメント**
+   - CLI テスト: `tt prompt --help` / `tt prompt instruction` の出力に必須キーワード（`{{kind:id}}`, `policy`, `procedure`, `capability`, 案内文）が含まれること。
+5. **ドキュメント**
    - `capabilities/prompt-manifest-update.md`（catalog + prompts）を更新。
+   - CLI マニュアル本文は R7 の説明源と内容を揃える。
 
 ### 設計上の決定
 
@@ -144,6 +201,9 @@ flowchart LR
    - `{{policy:project-instructions}}` を使う場合 → `.agent/rules/instructions.md`
 5. `--target codex` および `--target claude-code` でも、各 `paths.rules` / `paths.skills` に沿った拡張子 `.md` のパスへ解決されることを確認する。
 6. 解決対象外の表記（例: `{{unknown:foo}}`）は置換されず残ることを確認する。
+7. `tt --help` を実行し、`prompt` の説明にテンプレートマニュアル（`instruction`）への案内が含まれることを確認する。
+8. `tt prompt` および `tt prompt --help` を実行し、Available Commands に `instruction` が表示され、親ヘルプ本文にも案内があることを確認する。
+9. `tt prompt instruction` を実行し、標準出力に R7 で列挙した項目（書式、対応 kind、ターゲット別例、未知 kind の扱い）が含まれることを確認する。書き込みやネットワークが発生しないこと。
 
 ## テスト項目 (Testing for the Requirements)
 
@@ -156,22 +216,32 @@ flowchart LR
 | R3 | ターゲット別コンテキストでの期待パス（`.mdc` / `instructions.md` / workflows）を単体テスト |
 | R4 | emitter フィクスチャに `{{procedure:...}}` を含め、成果物にリテラルが残らないこと |
 | R5 | ドキュメント更新の存在確認（レビュー）＋必要なら文字列アサーションは任意 |
+| R6 | `go test` またはコマンド実行テストで `tt --help` / `tt prompt --help` 出力に案内文と `instruction` が一覧されること |
+| R7 | `tt prompt instruction` の stdout に必須セクション（kind 一覧・解決例）が含まれる単体/CLI テスト |
 
 ### ビルド・全体検証
 
-1. ビルド＋単体テスト（emitter / template を含む）:
+1. ビルド＋単体テスト（emitter / template / cmd を含む）:
 
    ```
    scripts/process/build.sh
    ```
 
-2. prompt emitter 関連の絞り込み確認（開発中）:
+2. prompt emitter / CLI 関連の絞り込み確認（開発中）:
 
    ```
-   go test ./features/tt/internal/prompt/emitter/... -count=1
+   go test ./features/tt/internal/prompt/emitter/... ./features/tt/cmd/... -count=1
    ```
 
-3. 統合テストは本変更の主影響外のため必須カテゴリは設けない。リグレッションが疑われる場合のみ:
+3. 手動スモーク（任意だが検証シナリオ 7–9 と対応）:
+
+   ```
+   tt --help
+   tt prompt --help
+   tt prompt instruction
+   ```
+
+4. 統合テストは本変更の主影響外のため必須カテゴリは設けない。リグレッションが疑われる場合のみ:
 
    ```
    scripts/process/integration_test.sh --categories "common" --specify "Prompt|Manifest|tt"
