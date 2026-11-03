@@ -204,16 +204,39 @@ For the full template reference manual, run:  tt prompt instruction`,
 
 ## Step-by-Step Implementation Guide
 
-1. **[/] Red: template_test をターゲット別に更新/追加**
+1. **[x] Red: template_test をターゲット別に更新/追加**
    *   Edit `features/tt/internal/prompt/emitter/template_test.go`。
-2. **[/] Green: TemplateContext / BuildTemplateContext / resolvePolicyPath / TemplateRefManual**
+2. **[x] Green: TemplateContext / BuildTemplateContext / resolvePolicyPath / TemplateRefManual**
    *   Edit `features/tt/internal/prompt/emitter/template.go`。
-3. **[/] Red: cursor（代表）emitter テストにテンプレート解決ケース追加**
-4. **[/] Green: 全 emitter に tmplCtx + ResolveTemplateVars（capability は RewriteBundlePaths の前）**
-5. **[/] Red/Green: prompt_instruction_test + prompt.go Short/Long/instruction**
-6. **[/] 統合テスト `tests/tt/tt_prompt_template_refs_test.go`**
-7. **[/] prompt-manifest-update.md 更新（catalog + 必要なら prompts）**
-8. **[ ] Verification Plan を実行し、総合判定を記録**
+3. **[x] Red: cursor（代表）emitter テストにテンプレート解決ケース追加**
+4. **[x] Green: 全 emitter に tmplCtx + ResolveTemplateVars（capability は RewriteBundlePaths の前）**
+5. **[x] Red/Green: prompt_instruction_test + prompt.go Short/Long/instruction**
+6. **[x] 統合テスト `tests/tt/tt_prompt_template_refs_test.go`**
+7. **[x] prompt-manifest-update.md 更新（catalog + 必要なら prompts）**
+8. **[x] Verification Plan を実行し、総合判定を記録**
+
+### 総合判定結果
+
+**判定**: ✅ 動作確認完了
+
+#### テスト結果サマリ
+- `./scripts/process/build.sh`: PASS
+- 統合 `tt` (`PromptTemplate|PromptInstruction|PromptHelp|...`): PASS（新規 4 件含む）
+- 事実上スキップ: 0 件
+
+#### チェック項目の結果
+| # | チェック項目 | 結果 | 備考 |
+|---|------------|------|------|
+| 1 | スキップされたテスト | ✅ | なし |
+| 2 | 部分的なエラー | ✅ | ログに ERROR/WARN なし |
+| 3 | 迂回処理による偽成功 | ✅ | emitter 単体と tt バイナリ統合の二層 |
+| 4 | アダプタ・コンフィグの誤適用 | ✅ | Cursor `.mdc` / AG `instructions.md` / workflows を個別検証 |
+| 5 | テスト間依存 | ✅ | TempDir フィクスチャ独立 |
+| 6 | カバレッジの妥当性 | ✅ | R1–R7 を単体＋統合でカバー。O1/O3 は先送り |
+| 7 | 外部システム | ✅ | ローカル FS / tt バイナリのみ |
+
+#### 判定理由
+全 emitter でテンプレート解決が入り、CLI マニュアルとヘルプ案内も統合テストで確認済み。任意要件 O1/O3 は仕様どおり未実装。
 
 各ステップ完了ごとに `git add` → `git commit`。
 
