@@ -138,12 +138,22 @@ None.
 
 ## Step-by-Step Implementation Guide
 
-1. **Red — unit tests**: Edit `features/tt/internal/prompt/emitter/template_test.go` にエスケープ / 二重バックスラッシュ / 混在 / マニュアル断言を追加。`go test` で失敗を確認。
-2. **Green — ResolveTemplateVars**: Edit `template.go` にプレースホルダ3パス実装と新 regex を入れる。単体テストを通す。
-3. **Manual text**: `TemplateRefManual` に Escape 節を追加。マニュアル・テストを通す。
-4. **Docs**: `prompt-manifest-update.md` の例示をエスケープ対応に更新。
-5. **Integration test**: `tests/tt/tt_prompt_template_refs_test.go` にエスケープ用テストと instruction 断言を追加。
-6. **Verify**: Verification Plan を実行し、総合判定 (§12) を行う。
+1. **[x] Red — unit tests**: Edit `features/tt/internal/prompt/emitter/template_test.go` にエスケープ / 二重バックスラッシュ / 混在 / マニュアル断言を追加。`go test` で失敗を確認。
+2. **[x] Green — ResolveTemplateVars**: Edit `template.go` に左から右への走査実装を入れる。単体テストを通す。
+3. **[x] Manual text**: `TemplateRefManual` に Escape 節を追加。マニュアル・テストを通す。
+4. **[x] Docs**: `prompt-manifest-update.md` の例示をエスケープ対応に更新。
+5. **[x] Integration test**: `tests/tt/tt_prompt_template_refs_test.go` にエスケープ用テストと instruction 断言を追加。
+6. **[x] Verify**: Verification Plan を実行し、総合判定 (§12) を行う。
+
+### 総合判定結果
+
+**判定**: 動作確認完了
+
+#### テスト結果サマリ
+- `./scripts/process/build.sh`: PASS
+- emitter / cmd 単体: PASS（エスケープ・二重 `\`・混在・マニュアル）
+- `./scripts/process/integration_test.sh --categories "tt" --specify "TemplateRef|PromptInstruction"`: PASS（4 tests）
+- スキップ / WARN による偽成功なし。エスケープ成果物は `Escaped: {{policy:...}}` と Live パスを直接断言。
 
 ## Verification Plan
 
