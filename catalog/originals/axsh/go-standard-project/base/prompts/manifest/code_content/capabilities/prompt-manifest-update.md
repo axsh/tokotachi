@@ -131,12 +131,8 @@ prompts/manifest/
   （「Cursor に反映する」「`.cursor/` に出力される」等）を書かない。
   出力先に言及する場合は「各エージェントの rules / skills」のように書く
 - **スキーマ準拠**: 新規追加時は該当 `schemas/*.schema.json` の `required` を満たす
-- **エンティティ参照 (`\{{kind:id}}`)**: 本文中でターゲット非依存の参照が使える
-  - 記法の例示（emit 後もリテラルで残す）: `\{{policy:coding-rules}}` / `\{{procedure:test-generator}}` / `\{{capability:portable-file-references}}` / `\{{target:name}}`
-  - 実際にパスへ展開したい箇所はバックスラッシュ無しの `{{policy:...}}` 等を使う
-  - 記法そのものを本文に残すときは `\{{kind:id}}` とエスケープする
-  - emit（`tt prompt deploy` / `update`）時に各エージェントの rules / skills / workflows パスへ展開される
-  - 詳細マニュアル: `tt prompt instruction`
+- **テンプレート参照**: 本文中でターゲット非依存の `\{{policy:id}}` / `\{{procedure:id}}` / `\{{capability:id}}` 形式の参照が使える（emit 時にターゲット別パスへ展開）。パスへ展開したい箇所はバックスラッシュ無しで書く
+- **記法の例示**: テンプレート記法そのものを説明文に書くときは、`{{` の直前にバックスラッシュを付けて `\{{policy:coding-rules}}` のようにエスケープする（emit 後はリテラルの `{{policy:coding-rules}}` が残る）。詳細は `tt prompt instruction`
 - **言語**: `prompts/` 配下のテンプレート本文は **日本語**
 - **レガシースクリプト**: `./scripts/code/prompt/compile.sh` 等は **`tt prompt`** に統合済み。通常は `tt prompt update` を使う
 
