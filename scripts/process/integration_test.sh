@@ -65,6 +65,10 @@ Options:
   --resume                Resume from the last failed test category
   --help                  Show this help message
 
+Notes:
+  Categories with a .opt-in-only marker (e.g. live-gitlab) are skipped when
+  discovering all categories; pass them explicitly via --categories.
+
 Exit Codes:
   0 = All tests passed
   1 = One or more tests failed
@@ -182,6 +186,10 @@ discover_categories() {
     # Find subdirectories that contain Go or Python test files
     for dir in "$tests_dir"/*/; do
         if [[ -d "$dir" ]]; then
+            # Opt-in categories are only run when explicitly listed in --categories
+            if [[ -f "${dir}.opt-in-only" ]]; then
+                continue
+            fi
             local cat_name
             cat_name=$(basename "$dir")
             local lang
