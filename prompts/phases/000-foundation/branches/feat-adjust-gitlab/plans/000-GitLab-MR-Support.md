@@ -396,26 +396,26 @@ None.
 
 ## Step-by-Step Implementation Guide
 
-1. [/] **TDD: forge host**
+1. [x] **TDD: forge host**
     *   Add `internal/forge/host_test.go`（失敗確認）→ implement `host.go`（`DetectHost` / `ParseForgeOverride` / `ResolveHost` / `DetectHostFromRepo`）。
-2. [ ] **TDD: forge client**
+2. [x] **TDD: forge client**
     *   Add `client_test.go` → implement `client.go`（github/gitlab adapters）。
     *   Add `resolve_test.go` → implement `resolve.go`（`NewClientForRepo`、`TT_FORGE` 優先）。
-3. [ ] **codestatus**
+3. [x] **codestatus**
     *   Add `pkg/codestatus/codestatus_test.go` → modify `codestatus.go`（`Forge` / `Host` / `GlabCmd`、`findPR`）。
-4. [ ] **action / cmd pr**
+4. [x] **action / cmd pr**
     *   Add `pkg/action/pr_test.go` → modify `pkg/action/pr.go` シグネチャと forge 呼び出し。
     *   Modify `features/tt/cmd/pr.go`。
-5. [ ] **list / update_code_status**
+5. [x] **list / update_code_status**
     *   Modify `list.go` / `update_code_status.go` の Checker 初期化。
     *   Modify `common.go` に `TT_CMD_GLAB` / `TT_FORGE`。
-6. [ ] **doctor**
+6. [x] **doctor**
     *   Extend `checks_test.go` → modify `checks.go` / `doctor.go`。
-7. [ ] **統合テスト**
+7. [x] **統合テスト**
     *   Add `tests/tt/tt_forge_host_test.go`、必要なら `tt_doctor_test.go` を軽く更新。
-8. [ ] **ドキュメント**
+8. [x] **ドキュメント**
     *   Update `docs/manual/tt-user-manual.md` / `README.md`。
-9. [ ] **Verification Plan を実行**する。
+9. [x] **Verification Plan を実行**する。
 
 ## Verification Plan
 
