@@ -47,6 +47,8 @@ func init() {
 	rootCmd.AddCommand(scaffoldCmd)
 	rootCmd.AddCommand(updateCodeStatusCmd)
 	rootCmd.AddCommand(promptCmd)
+	rootCmd.AddCommand(kdbTrackCmd)
+	rootCmd.AddCommand(kdbCmd)
 }
 
 // Execute runs the root command.
