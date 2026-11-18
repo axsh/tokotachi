@@ -14,7 +14,7 @@ import (
 
 var prCmd = &cobra.Command{
 	Use:   "pr <branch> [feature]",
-	Short: "Create a GitHub Pull Request",
+	Short: "Create a Pull/Merge Request on the remote forge",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE:  runPR,
 }
@@ -31,7 +31,7 @@ func runPR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("worktree resolution failed: %w", err)
 	}
 
-	if err := ctx.ActionRunner.PR(worktreePath); err != nil {
+	if err := ctx.ActionRunner.PR(ctx.RepoRoot, worktreePath); err != nil {
 		ctx.Report.Steps = append(ctx.Report.Steps, report.StepEntry{Name: "PR create", Success: false})
 		ctx.Report.OverallResult = "FAILED"
 		return fmt.Errorf("pr failed: %w", err)

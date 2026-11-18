@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
+	"github.com/axsh/tokotachi/internal/forge"
 	"github.com/axsh/tokotachi/internal/listing"
 	"github.com/axsh/tokotachi/internal/log"
 	"github.com/axsh/tokotachi/internal/report"
@@ -73,10 +74,17 @@ func runListBranches() error {
 
 	// Handle --update: force foreground update
 	if flagListUpdate {
-		ghCmd := cmdexec.ResolveCommand("TT_CMD_GH", "gh")
+		client, host, err := forge.NewClientForRepo(repoRoot, runner)
+		if err != nil {
+			return fmt.Errorf("forge client creation failed: %w", err)
+		}
+		logger.Debug("list --update forge host=%s", host)
 		checker := &codestatus.Checker{
 			GitCmd:   gitCmd,
-			GhCmd:    ghCmd,
+			GhCmd:    cmdexec.ResolveCommand("TT_CMD_GH", "gh"),
+			GlabCmd:  cmdexec.ResolveCommand("TT_CMD_GLAB", "glab"),
+			Host:     host,
+			Forge:    client,
 			RepoRoot: repoRoot,
 			Timeout:  30 * time.Second,
 		}

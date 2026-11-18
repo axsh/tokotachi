@@ -88,11 +88,16 @@ tt shell <feature> [branch]
 tt exec <feature> [branch] -- <command> [args...]
 ```
 
-### 8. `pr` — Pull Request の作成
-GitHub CLI (`gh`) を使用して、対象フィーチャーの Pull Request を作成します。
+### 8. `pr` — Pull / Merge Request の作成
+リモートの forge 種別に応じて Pull Request（GitHub）または Merge Request（GitLab）を作成します。
+
+- GitHub: `gh pr create`
+- GitLab: `glab mr create`
+
+ホスト判定は `TT_FORGE`（明示）が最優先で、未設定時は `origin` URL から自動検出します。hostname に `gitlab` が無いセルフホストでも `TT_FORGE=gitlab` で GitLab 経路にできます。
 
 ```bash
-tt pr <feature> [branch]
+tt pr <branch> [feature]
 ```
 
 ### 9. `list` — ブランチ一覧の表示
@@ -229,3 +234,5 @@ tt prompt update [flags]
 | `TT_CMD_CLAUDE` | Claude Code CLI のパス | `claude` |
 | `TT_CMD_GIT` | Git CLI のパス | `git` |
 | `TT_CMD_GH` | GitHub CLI のパス | `gh` |
+| `TT_CMD_GLAB` | GitLab CLI (`glab`) のパス | `glab` |
+| `TT_FORGE` | forge 明示指定（`github` / `gitlab`）。空なら origin URL から自動検出 | （空） |

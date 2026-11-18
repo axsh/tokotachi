@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/axsh/tokotachi/internal/cmdexec"
+	"github.com/axsh/tokotachi/internal/forge"
 )
 
 // Options holds configuration for the doctor run.
@@ -19,8 +22,13 @@ type Options struct {
 func Run(opts Options) (*Report, error) {
 	report := &Report{}
 
-	// 1. External tools
-	report.Results = append(report.Results, checkExternalTools(opts.ToolChecker)...)
+	// 1. External tools (host-aware: gh vs glab)
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
+	host, _, hostErr := forge.DetectHostFromRepo(opts.RepoRoot, gitCmd)
+	if hostErr != nil {
+		host = forge.HostUnknown
+	}
+	report.Results = append(report.Results, checkExternalTools(opts.ToolChecker, host)...)
 
 	// 2. Repository structure
 	report.Results = append(report.Results, checkRepoStructure(opts.RepoRoot)...)

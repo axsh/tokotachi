@@ -155,6 +155,8 @@ var knownEnvVars = []envVarDef{
 	{"TT_CMD_CLAUDE", "claude"},
 	{"TT_CMD_GIT", "git"},
 	{"TT_CMD_GH", "gh"},
+	{"TT_CMD_GLAB", "glab"},
+	{"TT_FORGE", ""},
 	{"TT_LIST_WIDTH", "40"},
 	{"TT_LIST_PADDING", "2"},
 }

@@ -135,7 +135,7 @@ tt exec <branch> <feature> -- go test ./...  # Execute a command in the containe
 tt list                                      # List all worktree branches
 tt list [branch]                             # List features for a specific branch
 tt list --json --path --update --full        # Output options
-tt pr <branch> [feature]                     # Create a GitHub Pull Request
+tt pr <branch> [feature]                     # Create a Pull/Merge Request (gh or glab; TT_FORGE=gitlab to force)
 tt doctor                                    # Check repository health and config
 tt doctor --fix --json                       # Auto-fix with JSON output
 tt scaffold [category] [name]                # Generate project structure from templates

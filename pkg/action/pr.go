@@ -3,21 +3,22 @@ package action
 import (
 	"fmt"
 
-	"github.com/axsh/tokotachi/internal/github"
+	"github.com/axsh/tokotachi/internal/forge"
 )
 
-// PR creates a GitHub Pull Request using github.Client.
-// The underlying implementation uses gh CLI via the shared github package.
-func (r *Runner) PR(worktreePath string) error {
-	r.Logger.Info("Creating PR from %s...", worktreePath)
+// PR creates a Pull Request (GitHub) or Merge Request (GitLab).
+func (r *Runner) PR(repoRoot, worktreePath string) error {
+	r.Logger.Info("Creating change request from %s...", worktreePath)
 
-	client, err := github.NewClient("", github.WithCmdRunner(r.CmdRunner))
+	client, host, err := forge.NewClientForRepo(repoRoot, r.CmdRunner)
 	if err != nil {
-		return fmt.Errorf("github client creation failed: %w", err)
+		return fmt.Errorf("forge client creation failed: %w", err)
 	}
+	r.Logger.Info("Detected forge host: %s", host)
+	r.Logger.Debug("forge client ready host=%s worktree=%s", host, worktreePath)
 
-	if err := client.CreatePR(worktreePath); err != nil {
-		return fmt.Errorf("gh pr create failed: %w", err)
+	if err := client.CreateChangeRequest(worktreePath); err != nil {
+		return fmt.Errorf("change request create failed: %w", err)
 	}
 	return nil
 }
