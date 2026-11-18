@@ -23,7 +23,6 @@ const (
 	defaultHTTPURL  = "http://localhost:8929"
 	defaultProject  = "root/tokotachi-live"
 	tokenRelPath    = "tmp/gitlab-live/token"
-	readinessPath   = "/-/readiness"
 	featureDemoName = "demo"
 )
 
@@ -59,6 +58,7 @@ func ttBinary(t *testing.T) string {
 	return ""
 }
 
+// glabNIPath returns the TT_CMD_GLAB entrypoint (.cmd on Windows, .sh elsewhere).
 func glabNIPath(t *testing.T) string {
 	t.Helper()
 	name := "gitlab-glab-ni.sh"
@@ -66,6 +66,15 @@ func glabNIPath(t *testing.T) string {
 		name = "gitlab-glab-ni.cmd"
 	}
 	p := filepath.Join(projectRoot(), "scripts", "dev", name)
+	_, err := os.Stat(p)
+	require.NoError(t, err, "missing %s", p)
+	return p
+}
+
+// glabNIScriptPath is always the bash script (for helpers that invoke via bash).
+func glabNIScriptPath(t *testing.T) string {
+	t.Helper()
+	p := filepath.Join(projectRoot(), "scripts", "dev", "gitlab-glab-ni.sh")
 	_, err := os.Stat(p)
 	require.NoError(t, err, "missing %s", p)
 	return p
@@ -84,23 +93,26 @@ func requireLiveGitLab(t *testing.T) (baseURL, token, tokenFile string) {
 	}
 	token = strings.TrimSpace(string(raw))
 
+	// HTTP client / git clone need a scheme. glab's GITLAB_HOST is host:port without scheme.
 	baseURL = strings.TrimRight(os.Getenv("GITLAB_HTTP_URL"), "/")
-	if baseURL == "" {
-		baseURL = strings.TrimRight(os.Getenv("GITLAB_HOST"), "/")
-	}
 	if baseURL == "" {
 		baseURL = defaultHTTPURL
 	}
+	if !strings.Contains(baseURL, "://") {
+		baseURL = "http://" + baseURL
+	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(baseURL + readinessPath)
+	// Prefer /users/sign_in: /- /readiness often 404s when Host includes :port.
+	signIn := baseURL + "/users/sign_in"
+	resp, err := client.Get(signIn)
 	if err != nil {
-		t.Fatalf("GitLab readiness check failed for %s: %v (run gitlab-live.sh up && wait-ready)", baseURL, err)
+		t.Fatalf("GitLab readiness check failed for %s: %v (run gitlab-live.sh up && wait-ready)", signIn, err)
 	}
 	defer resp.Body.Close()
 	io.Copy(io.Discard, resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		t.Fatalf("GitLab readiness returned HTTP %d for %s", resp.StatusCode, baseURL+readinessPath)
+		t.Fatalf("GitLab sign-in returned HTTP %d for %s", resp.StatusCode, signIn)
 	}
 
 	realGlab := os.Getenv("TT_CMD_GLAB_REAL")
@@ -113,15 +125,31 @@ func requireLiveGitLab(t *testing.T) (baseURL, token, tokenFile string) {
 	return baseURL, token, tokenFile
 }
 
-func liveEnv(token, glabPath string) []string {
+func liveEnv(t *testing.T, token, glabPath string) []string {
+	t.Helper()
+	cfgDir := writeGlabHTTPConfig(t, token)
 	return []string{
 		"TT_FORGE=gitlab",
 		"GITLAB_TOKEN=" + token,
-		"GITLAB_HOST=" + defaultHTTPURL,
+		"GITLAB_HOST=localhost:8929",
 		"TT_CMD_GLAB=" + glabPath,
+		"GLAB_CONFIG_DIR=" + cfgDir,
 		"GIT_TERMINAL_PROMPT=0",
 		"GLAB_FORCE_TTY=0",
 	}
+}
+
+// writeGlabHTTPConfig forces glab to use HTTP against localhost:8929 (not HTTPS).
+func writeGlabHTTPConfig(t *testing.T, token string) string {
+	t.Helper()
+	dir := t.TempDir()
+	content := "hosts:\n" +
+		"  localhost:8929:\n" +
+		"    token: " + token + "\n" +
+		"    api_protocol: http\n" +
+		"    api_host: localhost:8929\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "config.yml"), []byte(content), 0o600))
+	return dir
 }
 
 func runTTInDirEnv(t *testing.T, dir string, extraEnv []string, args ...string) (stdout, stderr string, exitCode int) {
@@ -163,12 +191,14 @@ func runGitIn(t *testing.T, dir string, args ...string) string {
 func runGlabNI(t *testing.T, dir, token string, args ...string) string {
 	t.Helper()
 	bash := resolveBash(t)
-	ni := glabNIPath(t)
+	ni := glabNIScriptPath(t) // always .sh when invoked through bash
+	cfgDir := writeGlabHTTPConfig(t, token)
 	cmd := exec.Command(bash, append([]string{ni}, args...)...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(),
 		"GITLAB_TOKEN="+token,
-		"GITLAB_HOST="+defaultHTTPURL,
+		"GITLAB_HOST=localhost:8929",
+		"GLAB_CONFIG_DIR="+cfgDir,
 		"GIT_TERMINAL_PROMPT=0",
 	)
 	out, err := cmd.CombinedOutput()
@@ -209,6 +239,7 @@ func setupLiveRepo(t *testing.T, baseURL, token string) (repoDir, branch, worktr
 	runGitIn(t, repoDir, "config", "user.name", "tokotachi-live")
 	// Keep origin without embedding token in saved remote for logs; re-set with token for push.
 	runGitIn(t, repoDir, "remote", "set-url", "origin", authURL)
+	_ = strings.TrimSpace(runGitIn(t, repoDir, "rev-parse", "--abbrev-ref", "HEAD")) // ensure clone has a default branch
 
 	require.NoError(t, os.MkdirAll(filepath.Join(repoDir, "features", featureDemoName), 0o755))
 	require.NoError(t, os.WriteFile(

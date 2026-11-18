@@ -12,7 +12,7 @@ func TestLiveGitLab_PR_CreatesMR(t *testing.T) {
 
 	require.Equal(t, 0, mrIIDForBranch(t, repoDir, token, branch), "branch should not already have an MR")
 
-	stdout, stderr, code := runTTInDirEnv(t, repoDir, liveEnv(token, glabNIPath(t)), "pr", branch, featureDemoName)
+	stdout, stderr, code := runTTInDirEnv(t, repoDir, liveEnv(t, token, glabNIPath(t)), "pr", branch, featureDemoName)
 	require.Equal(t, 0, code, "tt pr failed: stdout=%s stderr=%s", stdout, stderr)
 
 	iid := mrIIDForBranch(t, repoDir, token, branch)

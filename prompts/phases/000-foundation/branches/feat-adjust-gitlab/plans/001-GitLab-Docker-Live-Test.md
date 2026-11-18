@@ -392,26 +392,26 @@ None.（ポート `8929`、イメージタグ、オプトイン発見除外、�
 
 ## Step-by-Step Implementation Guide
 
-1. [/] **TDD（常時成果物テストを先に書く）**:
+1. [x] **TDD（常時成果物テストを先に書く）**:
     *   Add `tests/tt/tt_gitlab_docker_artifacts_test.go`（当初は FAIL）。
-2. [/] **Compose / ignore / README**:
+2. [x] **Compose / ignore / README**:
     *   Add `docker/gitlab/docker-compose.yml`（image `gitlab/gitlab-ce:17.7.0-ce.0`）、`.env.example`、`.gitignore`、`README.md`。
     *   Modify root `.gitignore`。
-3. [/] **スクリプト**:
+3. [x] **スクリプト**:
     *   Add `scripts/dev/gitlab-live.sh`（up/wait-ready/seed/down/smoke + `--help`）。
     *   Add `scripts/dev/gitlab-glab-ni.sh`。
     *   `chmod +x`（Git 上で実行ビット）。
-4. [/] **discover 除外**:
+4. [x] **discover 除外**:
     *   Modify `scripts/process/integration_test.sh` の `discover_categories` で `.opt-in-only` をスキップ。
     *   Add `tests/live-gitlab/.opt-in-only`。
-5. [/] **常時テストを GREEN に**:
+5. [x] **常時テストを GREEN に**:
     *   Re-run artifacts/help テストが通ることを確認（`build.sh` + `integration_test.sh --categories tt --specify "GitLabDocker"`）。
-6. [/] **オプトイン live テスト（TDD）**:
+6. [x] **オプトイン live テスト（TDD）**:
     *   Add `tests/live-gitlab/go.mod`、`helpers_test.go`、`live_doctor_test.go`、`live_list_test.go`、`live_pr_test.go`。
     *   ローカルで `gitlab-live.sh up && wait-ready && seed` 後、`TT_LIVE_GITLAB=1 ./scripts/dev/gitlab-live.sh smoke` で RED→GREEN。
-7. [/] **ドキュメント最終確認**:
+7. [x] **ドキュメント最終確認**:
     *   `docker/gitlab/README.md` に R4 表・ポート・RAM・コマンド・001 境界を揃える。
-8. [ ] **Verification Plan を実行**する（下記）。総合判定（§12）まで実施する。
+8. [x] **Verification Plan を実行**する（下記）。総合判定（§12）まで実施する。
 
 ## Verification Plan
 

@@ -46,14 +46,15 @@ Seed writes a root PAT to `tmp/gitlab-live/token` (under gitignored `tmp/`).
 Smoke exports:
 
 - `GITLAB_TOKEN` from that file
-- `GITLAB_HOST=http://localhost:8929`
+- `GITLAB_HOST=localhost:8929` (no scheme; HTTPS is the glab default)
+- `GLAB_CONFIG_DIR` with `api_protocol: http` for this host
 - `TT_FORGE=gitlab`
-- `TT_CMD_GLAB` → `scripts/dev/gitlab-glab-ni.sh` (adds `--yes --fill` to `glab mr create`)
+- `TT_CMD_GLAB` → `scripts/dev/gitlab-glab-ni.sh` / `.cmd` (adds `--yes --fill` to `glab mr create`)
 
 Optional interactive login:
 
 ```bash
-glab auth login --hostname localhost --api-host localhost:8929 --api-protocol http --token "$(cat tmp/gitlab-live/token)"
+glab auth login --hostname localhost:8929 --api-host localhost:8929 --api-protocol http --token "$(cat tmp/gitlab-live/token)"
 ```
 
 ## What to store / not store

@@ -1,10 +1,17 @@
 package integration_test
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,12 +22,21 @@ func TestLiveGitLab_ListUpdate_DetectsOpenMR(t *testing.T) {
 	baseURL, token, _ := requireLiveGitLab(t)
 	repoDir, branch, _ := setupLiveRepo(t, baseURL, token)
 
-	// Create an open MR via non-interactive glab (not via tt pr).
-	runGlabNI(t, repoDir, token, "mr", "create", "--yes", "--fill", "--source-branch", branch, "--target-branch", "main")
+	defaultBranch := strings.TrimSpace(runGitIn(t, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD"))
+	defaultBranch = strings.TrimPrefix(defaultBranch, "refs/remotes/origin/")
+	if defaultBranch == "" {
+		defaultBranch = "main"
+	}
+
+	// Create MR via API (avoid glab --fill re-pushing from a dirty main worktree).
+	createMergeRequestAPI(t, baseURL, token, branch, defaultBranch)
 	iid := mrIIDForBranch(t, repoDir, token, branch)
 	require.Greater(t, iid, 0, "expected open MR for branch %s", branch)
 
-	stdout, stderr, code := runTTInDirEnv(t, repoDir, liveEnv(token, glabNIPath(t)), "list", "--update", "--json")
+	// tt list --update only updates branches that already have a state file.
+	seedMinimalStateFile(t, repoDir, branch)
+
+	stdout, stderr, code := runTTInDirEnv(t, repoDir, liveEnv(t, token, glabNIPath(t)), "list", "--update", "--json")
 	require.Equal(t, 0, code, "stdout=%s stderr=%s", stdout, stderr)
 
 	status := readCodeStatusFromState(t, repoDir, branch)
@@ -28,6 +44,45 @@ func TestLiveGitLab_ListUpdate_DetectsOpenMR(t *testing.T) {
 
 	// Cross-check JSON output mentions the branch.
 	assert.Contains(t, stdout, branch)
+}
+
+func createMergeRequestAPI(t *testing.T, baseURL, token, source, target string) {
+	t.Helper()
+	form := url.Values{}
+	form.Set("source_branch", source)
+	form.Set("target_branch", target)
+	form.Set("title", "live list "+source)
+	form.Set("remove_source_branch", "false")
+
+	api := fmt.Sprintf("%s/api/v4/projects/%s/merge_requests",
+		strings.TrimRight(baseURL, "/"),
+		url.PathEscape(defaultProject),
+	)
+	req, err := http.NewRequest(http.MethodPost, api, bytes.NewBufferString(form.Encode()))
+	require.NoError(t, err)
+	req.Header.Set("PRIVATE-TOKEN", token)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	require.True(t, resp.StatusCode == 201 || resp.StatusCode == 200,
+		"create MR HTTP %d: %s", resp.StatusCode, body)
+
+	var parsed struct {
+		IID int `json:"iid"`
+	}
+	require.NoError(t, json.Unmarshal(body, &parsed))
+	require.Greater(t, parsed.IID, 0)
+}
+
+func seedMinimalStateFile(t *testing.T, repoDir, branch string) {
+	t.Helper()
+	path := filepath.Join(repoDir, "work", branch+".state.yaml")
+	content := fmt.Sprintf("branch: %s\ncreated_at: %s\n", branch, time.Now().UTC().Format(time.RFC3339))
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
 }
 
 func readCodeStatusFromState(t *testing.T, repoDir, branch string) string {

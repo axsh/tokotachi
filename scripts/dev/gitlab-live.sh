@@ -95,22 +95,31 @@ cmd_up() {
 }
 
 cmd_wait_ready() {
-  local url ready_url start now elapsed
+  local url ready_url sign_in_url start now elapsed
   url="$(http_url)"
+  # /- /readiness often 404s when Host includes :port (external access via published port).
+  # Prefer sign-in page on the published URL; also try readiness with Host: localhost.
   ready_url="${url}/-/readiness"
+  sign_in_url="${url}/users/sign_in"
   start="$(date +%s)"
-  info "Waiting for readiness at ${ready_url} (timeout ${WAIT_TIMEOUT_SEC}s)"
+  info "Waiting for GitLab at ${sign_in_url} (timeout ${WAIT_TIMEOUT_SEC}s)"
   while true; do
-    if curl -fsS --max-time 5 "$ready_url" >/dev/null 2>&1; then
+    if curl -fsS --max-time 5 "$sign_in_url" >/dev/null 2>&1; then
       now="$(date +%s)"
       elapsed=$((now - start))
       pass "GitLab ready after ${elapsed}s"
       return 0
     fi
+    if curl -fsS --max-time 5 -H "Host: localhost" "$ready_url" >/dev/null 2>&1; then
+      now="$(date +%s)"
+      elapsed=$((now - start))
+      pass "GitLab ready after ${elapsed}s (readiness via Host: localhost)"
+      return 0
+    fi
     now="$(date +%s)"
     elapsed=$((now - start))
     if (( elapsed >= WAIT_TIMEOUT_SEC )); then
-      fail "Timed out after ${elapsed}s waiting for ${ready_url}"
+      fail "Timed out after ${elapsed}s waiting for ${sign_in_url}"
       exit 1
     fi
     sleep 5
@@ -249,19 +258,34 @@ cmd_smoke() {
 
   export GITLAB_TOKEN
   GITLAB_TOKEN="$(tr -d '\r\n' <"$TOKEN_FILE")"
-  export GITLAB_HOST
-  GITLAB_HOST="$(http_url)"
-  export TT_FORGE=gitlab
-  if [[ "$(detect_os)" == "windows" ]]; then
-    export TT_CMD_GLAB="${REPO_ROOT}/scripts/dev/gitlab-glab-ni.cmd"
-  else
-    export TT_CMD_GLAB="$GLAB_NI"
-  fi
+  # glab treats schemes in GITLAB_HOST poorly; host:port + api_protocol=http via GLAB_CONFIG_DIR.
+  export GITLAB_HOST="localhost:8929"
   export TT_LIVE_GITLAB=1
+
+  local glab_cfg
+  glab_cfg="$(mktemp -d "${TMPDIR:-/tmp}/glab-http.XXXXXX")"
+  cat >"${glab_cfg}/config.yml" <<EOF
+hosts:
+  localhost:8929:
+    token: ${GITLAB_TOKEN}
+    api_protocol: http
+    api_host: localhost:8929
+EOF
+  export GLAB_CONFIG_DIR="$glab_cfg"
+
+  # Do NOT export TT_CMD_GLAB / TT_FORGE during build.sh — unit tests assert default glab/gh paths.
+  local glab_cmd="$GLAB_NI"
+  if [[ "$(detect_os)" == "windows" ]]; then
+    glab_cmd="${REPO_ROOT}/scripts/dev/gitlab-glab-ni.cmd"
+  fi
 
   info "Building then running live-gitlab tests"
   "${REPO_ROOT}/scripts/process/build.sh"
-  "${REPO_ROOT}/scripts/process/integration_test.sh" --categories live-gitlab --specify "LiveGitLab"
+
+  info "Running opt-in live-gitlab integration tests"
+  env TT_FORGE=gitlab TT_CMD_GLAB="$glab_cmd" TT_LIVE_GITLAB=1 \
+    GITLAB_TOKEN="$GITLAB_TOKEN" GITLAB_HOST="$GITLAB_HOST" GLAB_CONFIG_DIR="$GLAB_CONFIG_DIR" \
+    "${REPO_ROOT}/scripts/process/integration_test.sh" --categories live-gitlab --specify "LiveGitLab"
 }
 
 main() {
