@@ -1,5 +1,5 @@
 
-# プロジェクト共通指示書 (`.agent/instructions.md`)
+# プロジェクト共通指示書
 
 ## 技術スタック (想定)
 - 言語: Go
@@ -22,13 +22,13 @@
 
 ## ワークフロー間の流れ
 
-`.agent/workflows/` 配下に定義されたワークフローは、以下の順序で連携して動作します:
+procedure（ワークフロー）は、以下の順序で連携して動作します:
 
 ### 1. 仕様書作成フェーズ
-**ワークフロー**: [`create-specification.md`](.agent/workflows/create-specification.md)
+**ワークフロー**: `.agent/workflows/create-specification.md`
 
 1. **人間**: 実装のアイディアを考える
-2. **AI**: `create-specification.md` を使って仕様のマークダウンファイルを生成
+2. **AI**: `.agent/workflows/create-specification.md` を使って仕様のマークダウンファイルを生成
    - 出力先: `prompts/phases/000-xxx/branches/[ブランチ名]/ideas/XXX-Name.md`
    - 内容: 背景、要件、実装計画の概要
 3. **人間**: 仕様書をレビュー
@@ -36,10 +36,10 @@
    - 問題なければ、**明示的に次のフェーズへ進むよう指示する**（勝手に進まないこと）
 
 ### 2. 実装計画作成フェーズ
-**ワークフロー**: [`create-implementation-plan.md`](.agent/workflows/create-implementation-plan.md)
+**ワークフロー**: `.agent/workflows/create-implementation-plan.md`
 
 1. **人間**: 仕様マークダウンファイルを指定
-2. **AI**: `create-implementation-plan.md` を使って詳細な実装計画を作成
+2. **AI**: `.agent/workflows/create-implementation-plan.md` を使って詳細な実装計画を作成
    - 入力: `prompts/phases/000-xxx/branches/[ブランチ名]/ideas/XXX-Name.md`
    - 出力: `prompts/phases/000-xxx/branches/[ブランチ名]/plans/YYY-Name.md`
    - 内容: 統合テスト計画、単体テスト計画、実装手順、検証計画
@@ -49,10 +49,10 @@
    - 問題なければ、**明示的に次のフェーズへ進むよう指示する**（勝手に進まないこと）
 
 ### 3. 実装実行フェーズ
-**ワークフロー**: [`execute-implementation-plan.md`](.agent/workflows/execute-implementation-plan.md)
+**ワークフロー**: `.agent/workflows/execute-implementation-plan.md`
 
 1. **人間**: 実装計画ファイルを指定
-2. **AI**: `execute-implementation-plan.md` に従って実装を実行
+2. **AI**: `.agent/workflows/execute-implementation-plan.md` に従って実装を実行
    - 入力: `prompts/phases/000-xxx/branches/[ブランチ名]/plans/YYY-Name.md`
    - プロセス:
      - コーディングルール (`.agent/rules/coding-rules.md`) を遵守してコード実装
@@ -61,27 +61,35 @@
      - 進行中項目は `[/]` でマーク
 
 ### 4. ビルド・検証フェーズ
-**ワークフロー**: [`build-pipeline.md`](.agent/workflows/build-pipeline.md)
+**ワークフロー**: `.agent/workflows/build-pipeline.md`
 
 実装実行フェーズ内で自動的に使用されます:
 
 1. **AI**: `scripts/process/build.sh` を実行
    - 全体ビルドと単体テストを実行
-   - **Linux**（ワークスペースの OS が Linux）および **Cursor / VS Code の Remote-SSH で接続先が Linux** の場合は、**必ず `--skip-etc` を付けて** `./scripts/process/build.sh --skip-etc` とすること（`etc` 配下の `mcp-command-runner` / `image-inspector` 等が当該環境で失敗しやすいため）
    - 失敗時は即座に修正して再実行
 2. **AI**: `scripts/process/integration_test.sh` を実行
    - 統合テストを実行
-   - **Linux** および **Remote-SSH の接続先が Linux** のときは **headless 前提**とする: **`--headed` と `--ui` を付けない**（Playwright の headless 既定のまま）。`integration_test.sh` は **`xvfb-run -a` で必ずラップ**して実行する（`./scripts/process/integration_test.sh` を直接叩かない。`--resume` や `--specify` を付けるときも同様）。根拠は `features/frontend/scripts/integration_test.sh` 冒頭コメント。**`xvfb-run` が無いホストでは先に Xvfb 系パッケージを入れてから実行**する。
+   - **Linux** および **Remote-SSH の接続先が Linux** のときは **headless 前提**とする: E2E テストに **`--headed` と `--ui` を付けない**（Playwright の headless 既定のまま）。
    - 失敗時は修正して該当テストのみ再実行 (`--specify` オプション使用)
 3. **AI**: 必要に応じて全テストを再実行してリグレッション確認
 
+### 5. 確かめと次の仕様のフェーズ
+**ワークフロー**: `.agent/workflows/verify-and-specify-next.md`
+
+1. **人間**: 実装の確認の報告（`.agent/workflows/create-reproducible-report.md` の再現手順の報告、E2E の記録、調査の報告など）を指定
+2. **AI**: `.agent/workflows/verify-and-specify-next.md` に従って、元の仕様と報告を熟読し、自分で確かめる
+   - 問題があれば、直しの仕様を `.agent/workflows/create-specification.md` で作成
+   - 問題が無ければ、次に実装すべきものを提案し、その仕様を `.agent/workflows/create-specification.md` で作成
+3. **人間**: 仕様書をレビュー（以降は仕様書作成フェーズと同じ）
+
 ### 調査ワークフロー（開発フローとは独立）
-**ワークフロー**: [`investigate.md`](.agent/workflows/investigate.md)
+**ワークフロー**: `.agent/workflows/investigate.md`
 
 開発フロー（仕様 → 計画 → 実装）とは独立した、**読み取り専用**の調査ワークフローです。
 
 1. **人間**: 調査内容を依頼（バグ調査、設計理解、依存関係の把握など）
-2. **AI**: `investigate.md` に従って調査を実施
+2. **AI**: `.agent/workflows/investigate.md` に従って調査を実施
    - コードの閲覧・検索、ログ分析、Gitの履歴追跡など
    - 必要に応じて既存コマンドの実行による現状把握
    - **コードの変更は一切行わない**
@@ -96,26 +104,32 @@
 
 [人間: アイディア]
        ↓
-[AI: create-specification.md] → 仕様書生成
+[AI: .agent/workflows/create-specification.md] → 仕様書生成
        ↓
 [人間: レビュー・修正・進行指示]
        ↓
-[AI: create-implementation-plan.md] → 実装計画生成
+[AI: .agent/workflows/create-implementation-plan.md] → 実装計画生成
        ↓
 [人間: レビュー・修正・進行指示]
        ↓
-[AI: execute-implementation-plan.md]
+[AI: .agent/workflows/execute-implementation-plan.md]
        ├→ コーディング
        ├→ テスト作成
-       └→ [AI: build-pipeline.md]
+       └→ [AI: .agent/workflows/build-pipeline.md]
               ├→ scripts/process/build.sh (全体ビルド・単体テスト)
               └→ scripts/process/integration_test.sh (統合テスト)
+       ↓
+[AI: .agent/workflows/create-reproducible-report.md] → 再現手順の報告
+       ↓
+[AI: .agent/workflows/verify-and-specify-next.md] → 確かめて、直しの仕様か次の仕様を生成
+       ↓
+[人間: レビュー・修正・進行指示] → 実装計画生成へ
 
 === 調査フロー（独立・読み取り専用）===
 
 [人間: 調査依頼]
        ↓
-[AI: investigate.md] → コード解析・ログ分析・コマンド実行
+[AI: .agent/workflows/investigate.md] → コード解析・ログ分析・コマンド実行
        ↓
 [AI: レポート作成] → Artifact として報告
        ↓
@@ -153,9 +167,7 @@
 ### Mac / Linux環境
 
 - 標準のbashシェルを使用してください
-- **Linux**（ローカル Linux および **Remote-SSH のリモートが Linux**）: `scripts/process/build.sh` を叩くときは **`--skip-etc`** を付与すること（例: `./scripts/process/build.sh --skip-etc`）
-- **Linux / Remote-SSH（Linux）**: `scripts/process/integration_test.sh` は **`--headed` / `--ui` を付けず**、かつ **`xvfb-run -a` で必ずラップ**して実行する（スクリプトを直接実行しない）
-- **macOS**: 上記 `--skip-etc` は Linux / Remote-SSH（Linux）専用の補足であり、macOS では従来どおりプロジェクトの期待に合わせて実行すればよい
+- **Linux / Remote-SSH（Linux）**: E2E テストに **`--headed` / `--ui` を付けない**（headless で実行する）
 
 ## Git 操作ルール
 
@@ -199,7 +211,7 @@ git push
 ## ファイル管理規則
 - **中間生成ファイル**: タスク進行中に生成される中間ファイル（ビルドエラーログ、デバッグ出力、一時的なドキュメントなど）は、必ず `tmp/` ディレクトリ以下に作成してください。
     - 例: `build_error.txt`, `doc_delta.txt`, `doc_resp.txt` などは `tmp/build_error.txt`, `tmp/doc_delta.txt`, `tmp/doc_resp.txt` として作成
-    - ログファイル、PIDファイルなども同様に `tmp/` 以下に配置すること（例: `tmp/vscode_launch.log`, `tmp/.vscode_cdp.pid`）。
+    - ログファイル、PIDファイルなども同様に `tmp/` 以下に配置すること（例: `tmp/e2e_run.log`, `tmp/server.pid`）。
     - これらのファイルはプロセスでは必要ですが、タスク完了後はゴミとなり、誤ってコミットされるリスクがあります。
     - `tmp/` ディレクトリは `.gitignore` で除外されているため、コミットされません。
-- **ファイルパスの表示**: できるだけ「file://プロジェクトルートからの相対パス」を表示するようにしてください。
+- **ファイルパスの表示**: ファイルを開かせる・クリックさせる提示では、ワークスペース相対の Markdown リンクを使うこと（例: `[path/to/file.md](path/to/file.md)`）。`file://` や絶対パスは付けないこと（`.agent/skills/portable-file-references/SKILL.md`）。

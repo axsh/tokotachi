@@ -10,6 +10,8 @@ disable-model-invocation: true
 This skill describes how to record far-knowledge into the project's
 memory system using `./scripts/code/agent/record.sh`.
 
+Payload schema: `references/agent-record-payload.schema.json`
+
 Far-knowledge is knowledge that cannot be discovered by searching nearby
 code (same package, imports, callers). It includes architecture decisions,
 cross-cutting design patterns, conventions, lessons learned, and engineer
@@ -126,6 +128,8 @@ When writing notes, prioritize these types of knowledge:
 | **Convention** | Naming, formatting, or structural rules |
 | **Lesson learned** | Past mistakes or review feedback |
 | **Risk / temporary** | Provisional implementations or tech debt |
+
+Do not restate full knowledge-database (KDB) architecture in far-knowledge notes; point to the knowledge-database skill and record only project-specific bindings. 知識DBの立て付け全文を遠方知識ノートに書かない。`knowledge-database` を指せ。
 
 ## Dry-Run for Uncertain Cases
 

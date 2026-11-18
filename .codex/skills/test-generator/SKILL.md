@@ -16,7 +16,7 @@ disable-model-invocation: false
 1.  **入力ファイルの特定**:
     *   ユーザーが指定したファイル、または現在エディタで開いているファイルを「仕様書」として扱う。
 2.  **ルールの読み込み**:
-    *   `{{policy:testing-rules}}` を読み込む。
+    *   `.codex/rules/testing-rules.md` を読み込む。
 3.  **ステータスの取得**:
     *   `scripts/utils/show_current_status.sh` を実行し、`phase`, `branch`, `next_plan_id` を取得する。
 
@@ -67,7 +67,7 @@ disable-model-invocation: false
 ## 8. テストシナリオへの変換
 
 確認手順をテスト種別に分類し、実装計画としてまとめる。
-テスト種別の配置先やファイル命名規則は `{{policy:testing-rules}}` Section 4 を参照。
+テスト種別の配置先やファイル命名規則は `.codex/rules/testing-rules.md` Section 4 を参照。
 
 テストケースの記述形式:
 
@@ -176,7 +176,7 @@ disable-model-invocation: false
 ## 5. Verification Plan
 
 ビルドとテスト実行の手順。
-テスト実行コマンドの詳細は `{{policy:testing-rules}}` Section 1 を参照。
+テスト実行コマンドの詳細は `.codex/rules/testing-rules.md` Section 1 を参照。
 
 1.  **Build & Unit Tests**: `./scripts/process/build.sh`
 2.  **統合テスト**: `./scripts/process/integration_test.sh --categories "[category]" --specify "[対象]"`

@@ -144,6 +144,8 @@ When writing notes, prioritize these types of knowledge:
 | **Lesson learned** | Past mistakes or review feedback |
 | **Risk / temporary** | Provisional implementations or tech debt |
 
+Do not restate full knowledge-database (KDB) architecture in far-knowledge notes; point to the knowledge-database skill and record only project-specific bindings. 知識DBの立て付け全文を遠方知識ノートに書かない。`knowledge-database` を指せ。
+
 ## Dry-Run for Uncertain Cases
 
 If you are unsure whether the change qualifies, run a dry-run first:

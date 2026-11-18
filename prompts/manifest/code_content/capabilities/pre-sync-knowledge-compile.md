@@ -12,9 +12,13 @@ paths:
   - ".agents/skills/**"
 references:
   - "prompts/manifest/code_content/procedures/systematize-far-knowledge.md"
+  - "prompts/manifest/code_content/procedures/systematize-knowledge-database.md"
   - "prompts/manifest/code_content/capabilities/pre-push-knowledge-check.md"
 scripts:
   - "scripts/code/agent/intake.sh"
+  - "scripts/design/status.sh"
+  - "scripts/design/distill.sh"
+  - "scripts/design/dump.sh"
 body: inline
 tags:
   - baseline
@@ -42,13 +46,11 @@ This capability is triggered when the agent is about to perform any of:
 ./scripts/code/agent/intake.sh list --status pending
 ```
 
-pending events が **0 件** の場合、以下を報告してそのまま sync 操作に進む:
+pending events が **0 件** の場合、以下を報告する:
 
 ```text
-Knowledge compile: no pending events. Proceeding with sync.
+Knowledge compile: no pending events.
 ```
-
-## Step 2: systematize-far-knowledge の実行
 
 pending events が **1 件以上** ある場合、sync 操作の **前に** 以下を実行する:
 
@@ -59,9 +61,28 @@ pending events が **1 件以上** ある場合、sync 操作の **前に** 以�
    - `prompt compile --apply` によるデプロイ
 2. 生成されたファイルをコミットする
 
-## Step 3: Sync 操作の続行
+## Step 1b: 知識DB（追跡一覧）の未退避確認
 
-systematize-far-knowledge が完了したら、元の sync 操作を続行する:
+遠方知識に加え、`features/kdb/registry.yaml` に載っている知識DBキャッシュに未退避（dirty）が無いかを確認する。一括なら:
+
+```bash
+./scripts/kdb/status-all.sh
+```
+
+または一覧の各 `status_cmd` を実行する（designdb の例: `./scripts/design/status.sh`）。
+
+- いずれかの Entry で `dirty` が true の場合、sync の **前に** `systematize-knowledge-database`（実体は `./scripts/kdb/systematize.sh`）を実行し、当該 `corpus_path`（例: `features/designdb/corpus/`）を更新してコミットする。
+- ある知識DBに接続できない場合は、その旨を報告する。作業ツリーに当該 corpus の未コミット差分があればコミットを促し、接続不能を理由に dirty チェックを黙殺して PR しない。
+- 未登録の `features/*/corpus/` があれば WARN を報告する（新規KDBの登録漏れの気づき）。
+- 全 Entry で `dirty` が false で corpus 差分も無ければ、次へ進む。
+
+```text
+Knowledge DB: tracked kdbs not dirty (or systematized).
+```
+
+## Step 2: Sync 操作の続行
+
+遠方知識の pending と知識DBの未退避が片付いたら、元の sync 操作を続行する:
 
 - **PR 作成の場合**: コミット・push 後に PR を作成
 - **Pull の場合**: pull/fetch を実行

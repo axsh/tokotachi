@@ -6,8 +6,9 @@ paths:
     - pkg/**
     - cmd/**
     - scripts/**
-    - .agents/**
     - prompts/manifest/**
+    - shared/libs/**
+    - features/**
 disable-model-invocation: false
 ---
 

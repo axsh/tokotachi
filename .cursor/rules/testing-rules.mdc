@@ -14,23 +14,17 @@ alwaysApply: false
 
 | Component          | Test Level      | Command                                                | Purpose                      |
 | ------------------ | --------------- | ------------------------------------------------------ | ---------------------------- |
-| **Backend (Go)**   | **Unit**        | `scripts/process/build.sh --skip-frontend --skip-etc`  | ロジックの正当性確認。Fail Fast。        |
+| **Backend (Go)**   | **Unit**        | `scripts/process/build.sh --skip-frontend`  | ロジックの正当性確認。Fail Fast。DB に触れない。 |
+| **Backend (Go)**   | **DB**          | `scripts/process/integration_test.sh --categories db`  | 一時 PostgreSQL コンテナで DB の決まりを確認。 |
 | **Backend (Go)**   | **Integration** | `scripts/process/integration_test.sh`                  | コンテナやAPIとの連携確認。              |
-| **Frontend (GUI)** | **Unit**        | `scripts/process/build.sh`                             | Webviewコンポーネント等の単体テスト。       |
-| **Frontend (GUI)** | **E2E**         | `scripts/process/integration_test.sh --categories gui` | VSCode上での挙動検証 (Test Driver)。 |
-| **Full Stack**     | **Pipeline**    | `.agent/workflows/build-pipeline.md`                   | PR/コミット前の全体健全性確認。            |
+| **Frontend (Web)** | **Unit**        | `scripts/process/build.sh`                             | 画面のコンポーネント等の単体テスト。         |
+| **Frontend (Web)** | **E2E**         | `scripts/process/integration_test.sh --categories e2e` | 画面の E2E（§10）。Playwright コンテナ。 |
+| **Full Stack**     | **Pipeline**    | `.cursor/skills/build-pipeline/SKILL.md`                         | PR/コミット前の全体健全性確認。            |
 
 
-### Linux / Remote-SSH での全体ビルド (`build.sh`)
+### Linux / Remote-SSH での E2E テスト — headless
 
-ワークスペースの OS が **Linux** のとき、および **Cursor / VS Code の Remote-SSH でリモートが Linux** のとき、`scripts/process/build.sh` を実行する場合は **`--skip-etc`** を付けること（例: `./scripts/process/build.sh --skip-etc`）。`etc` 配下（`mcp-command-runner` / `image-inspector` 等）は Windows 向け前提やサンドボックス制約で失敗しやすいため。
-
-### Linux / Remote-SSH での統合テスト (`integration_test.sh`) — headless
-
-同じく **Linux** または **Remote-SSH のリモートが Linux** のとき:
-
-1. **`--headed` と `--ui` を付けない**（拡張 GUI E2E は Playwright の **headless 既定**のままにする）。
-2. **`xvfb-run -a` で必ずラップ**してから `integration_test.sh` を実行する（**`./scripts/process/integration_test.sh` を直接実行しない**。`--categories` の有無や `--resume` / `--specify` の有無にかかわらず同様）。例: `xvfb-run -a ./scripts/process/integration_test.sh`、`xvfb-run -a ./scripts/process/integration_test.sh --categories llm`。根拠は `features/frontend/scripts/integration_test.sh` 先頭コメント。**`xvfb-run` が無い場合は Xvfb 系パッケージを導入してから実行**する。
+同じく **Linux** または **Remote-SSH のリモートが Linux** のときは、E2E テストに **`--headed` と `--ui` を付けない**でください（Playwright の **headless 既定**のままにする）。
 
 ## 2. 実行順序のルール (Execution Order Rule)
 
@@ -39,61 +33,41 @@ alwaysApply: false
 >
 > 統合テスト (`scripts/process/integration_test.sh`) を実行する前には、**必ず** ビルド (`scripts/process/build.sh`) を成功させてください。
 >
-> - 理由: 統合テストはビルド済みのバイナリ（拡張機能 `*.vsix` やサーバーバイナリ）や、コンパイル済みのWebviewアセットを使用します。ビルドをスキップしてソースコードだけ修正しても、テスト対象のバイナリは古いままとなり、修正が反映されません。
+> - 理由: 統合テストはビルド済みのバイナリや、コンパイル済みの画面のアセットを使用します。ビルドをスキップしてソースコードだけ修正しても、テスト対象のバイナリは古いままとなり、修正が反映されません。
 > - 手順（ビルド成功後に統合テスト）:
 >   ```bash
->   # Linux、または Remote-SSH のリモートが Linux のとき
->   # build: --skip-etc。integration: --headed / --ui 禁止。xvfb-run -a は常に付ける（直接 integration_test.sh を叩かない）。xvfb-run が無い場合は Xvfb 系パッケージを導入する。
->   ./scripts/process/build.sh --skip-etc && xvfb-run -a ./scripts/process/integration_test.sh ...
->   ./scripts/process/build.sh --skip-etc && xvfb-run -a ./scripts/process/integration_test.sh --categories llm ...
->   # それ以外（例: macOS）— 検証方針に合わせてフラグを選ぶ
->   ./scripts/process/build.sh && ./scripts/process/integration_test.sh ...
+>   # E2E on Linux / Remote-SSH: do not pass --headed / --ui
+>   ./scripts/process/build.sh && ./scripts/process/integration_test.sh --categories repo,db,env,e2e
 >   ```
 
 ## 3. エラー修正フロー
 
 テストエラーが発生した場合、以下のフローで修正を行ってください。
 
-**Linux** または **Remote-SSH のリモートが Linux** のときは、この節および直下の **Tips** にある **`./scripts/process/integration_test.sh` を必ず `xvfb-run -a` でラップ**すること（直接実行しない）。
+> [!NOTE]
+> TDD のレッドの確認（実装の前に、新しく書いたテストが失敗することを確かめる実行）で出る失敗は、このフローの対象外です。失敗の理由が想定どおり（対象の画面や機能がまだ無い）であれば、そのまま実装に進んでください。想定と違う理由（環境の不調、テストコードの誤り）で失敗した場合は、このフローで直してください。
 
 1. **Fail Fast**: `scripts/process/build.sh` が失敗した場合、直ちに修正し再実行する。
-2. **Log Analysis**: バックエンドサーバー（Go）の問題解決には、`syslogd` コンテナのログを確認することが重要です。
-  - `scripts/setup/setup_containers.sh` により準備された環境で、以下のツールを使用してログを確認します。
-  - フィードバックを得る手段として積極的に活用してください。
+2. **Log Analysis**: サービスのログは `env.sh logs` で確認する。
   ```bash
-  # 直近のログを確認
-  ./scripts/utils/view-syslog.sh --tail 100
-
-  # ログを監視しながらテスト実行（別ターミナルで実行推奨）
-  ./scripts/utils/view-syslog.sh -f
+  ./scripts/env/env.sh logs gui
+  ./scripts/env/env.sh logs backend
   ```
 3. **Filter Execution**: 特定の統合テストのみ失敗した場合、`--specify` オプションを使用して**該当テストのみ**を再実行する。
   ```bash
-  # Linux / Remote-SSH（リモートが Linux）
-  xvfb-run -a ./scripts/process/integration_test.sh --specify "TestAuthentication"
-  # それ以外（例: macOS）
   ./scripts/process/integration_test.sh --specify "TestAuthentication"
   ```
   これにより、全テスト実行（数分）を待つことなく高速にデバッグが可能。
-4. **Full Verification**: 修正後の確認ができたら、最後にオプションなしでスクリプトを実行し、リグレッションがないか確認する（**Linux / Remote-SSH** では `xvfb-run -a ./scripts/process/integration_test.sh`）。
+4. **Full Verification**: 修正後の確認ができたら、最後にオプションなしでスクリプトを実行し、リグレッションがないか確認する。
 
 ### 効率的なテスト実行 (Tips)
 
-**Linux / Remote-SSH（リモートが Linux）** のときは、下記の `./scripts/process/integration_test.sh` を **`xvfb-run -a` でラップ**してから実行すること（§1 および上記セクション 3 と同じ）。
-
-- **GUIテストのみ実行**: VSCode拡張機能E2Eテストのみを行う場合。
+- **カテゴリを絞って実行**:
   ```bash
-  # Linux / Remote-SSH
-  xvfb-run -a ./scripts/process/integration_test.sh --categories gui
-  # それ以外（例: macOS）
-  ./scripts/process/integration_test.sh --categories gui
-  ```
-- **バックエンド統合テストのみ実行**: 特定のカテゴリ（例: llm）を指定する場合。
-  ```bash
-  # Linux / Remote-SSH
-  xvfb-run -a ./scripts/process/integration_test.sh --categories llm
-  # それ以外（例: macOS）
-  ./scripts/process/integration_test.sh --categories llm
+  ./scripts/process/integration_test.sh --categories repo
+  ./scripts/process/integration_test.sh --categories db
+  ./scripts/process/integration_test.sh --categories env
+  ./scripts/process/integration_test.sh --categories e2e
   ```
 
 ## 4. 統合テストの構成と命名
@@ -103,16 +77,63 @@ alwaysApply: false
 > `go test`, `npm test` コマンドを直接実行しないでください（特定ディレクトリでの開発作業を除く）。
 > 検証やPR前の確認では、必ず `scripts/process/integration_test.sh` または `scripts/process/build.sh` を使用してください。
 
-統合テストは `tests/integration/` (または `tests/`) 配下に配置し、ファイル名でカテゴリを識別します。
+Go の統合テストは `tests/integration/<category>/` 配下に配置する（`repo`・`env` など）。
+Go の DB テストは `internal/` 配下の `*_db_test.go` に配置し、`//go:build db` タグを付ける（`internal` パッケージを `tests/` から参照できないため）。
+Web 画面の E2E は `tests/e2e/`（カテゴリ名 `e2e`）に置く。
 
-- **命名規則**: `{カテゴリ}_{機能名}_test.go`
-  - 例: `llm_adapter_test.go`, `server_huma_test.go`
-- **タグ**: ファイル先頭に `// +build integration` (または `//go:build integration`) を記述し、単体テストから除外すること。
+### 4.1 アーカイブ Driver / BlobStore の契約試験
+
+- アーカイブの各ドライバは `archive.RunDriverContract(t, factory)` を通し、put/get・上書き・List・NotFound・Delete no-op を共通で確かめる。ドライバ固有の失敗（Reader 失敗時の前内容保持、symlink escape など）は個別の `TestArchive*` に書く。
+- BlobStore（例: pg）は Write→Open の往復と欠落 Delete の冪等を `TestFilesBlobStoreContract*`（`//go:build db`）で確かめる。アプリロールに `DELETE` が無い置き場は、物理削除を保持期間の関数に任せ、契約の Delete は no-op でよい。
 
 ## 5. 環境依存性
 
-統合テストは `scripts/setup/setup_containers.sh` によってセットアップされる環境（Dockerコンテナ等）を前提として動作します。
-テスト実行前に環境が立ち上がっていない場合、テストが失敗する可能性があります。その場合は `setup_containers.sh` を再実行してください。
+`env` と `e2e` カテゴリは `./scripts/env/env.sh up` で立ち上がったローカル Docker 環境を前提とする。
+環境が無いときは `integration_test.sh` が試験を始めずに失敗する（環境不調と試験失敗を取り違えないため）。
+環境の試験と E2E の前には、今の HEAD でイメージを作り直す（`env.sh up`）。前に残ったイメージで済ませない（Dockerfile の写し漏れが隠れる）。
+
+#### 起動確認の版の比べ方（E2E）
+
+`env.sh up` は、作ったイメージのコミット（`build_info.sh` の表示。dirty 付き）を `.local/env/built_commit` に、**イメージの元の道**の中身の指紋を `.local/env/built_inputs` に記録する（どちらも git 追跡外）。指紋は、イメージの元の道の下で git が見るファイル（コミット済み・未コミット・未追跡で git が無視しないもの）の、道と中身のハッシュを道で並べた一覧である。`env.sh up` は始めに前の記録を消し、`compose build` の直前（版と同じ時点）に指紋を取り、種のデータを入れた後に版と指紋をまとめて書く。途中で落ちたら記録は残らない。
+
+`e2e` カテゴリは、起動確認の E2E を流す前に、今の指紋を同じ方法で取り直して記録と比べる。
+
+- 記録が無ければ、`./scripts/env/env.sh up` を流すよう知らせて止める。
+- 指紋が違えば「環境が古い」と知らせて止め、環境を作った後に**足した・消した・変えた**道を挙げる（多いときは先頭 20 件＋件数）。
+- 指紋が同じなら、作業ツリーが dirty でも、同じ中身をコミットして HEAD が進んでいても通す。
+- 起動確認へ渡す期待コミット（`E2E_EXPECTED_COMMIT`）は、**記録ファイルの値**であって、その時点の HEAD ではない。環境を作ったあとに文書だけのコミットをしても起動確認は通る。
+
+**イメージの元の道**は、イメージの元（Dockerfile の COPY の元、compose の定め、環境の台本）に絞る。一覧は `scripts/utils/env_image_input_paths.txt` を正本（1 行 1 道）とし、ガード・`integration_test.sh --help`・repo 試験がこれを読む。今の道は `features/legalchk/`・`companies/`・`settings/envs/`・`features/access-emulator/`・`deploy/local/`・`tests/e2e/package.json`・`tests/e2e/package-lock.json`・`scripts/env/` である。別の道具（`features/designdb/`・`features/progress-report/`）・Go の統合試験（`tests/integration/`）・E2E の試験の本体（`tests/e2e/` の上記 2 ファイル以外。compose の volumes でその場で読む）・文書（`prompts/` など）は比べない。手元の `.env`（git が無視する設定）も比べない。ポートなどを変えたら `env.sh up` を流す。
+
+判定は `scripts/utils/env_built_commit_guard.sh`（指紋は `scripts/utils/env_image_inputs.sh`）に切り出し、一時 git リポジトリの repo 試験（`TestEnvBuiltCommitGuard`）で §4.2.1 の (a)〜(h)（記録無しで止める／クリーンで通す／元が dirty のまま作って通す／作成後に元を変える・未追跡を足す・消すで止め分類する／別の道具・統合試験・E2E 本体・文書だけ変えて通す／同じ中身をコミットして HEAD が進んでも通す）を確かめる。道の一覧が `deploy/local/Dockerfile.*` の COPY の元をすべて含むことは `TestEnvImageInputPathsCoverDockerfileCOPY` が見張る。
+
+`db` カテゴリは Docker だけを使い、`env.sh up` の環境は不要。1 回の実行に 1 つの一時的な PostgreSQL 17 コンテナを立て、試験ごとにデータベースを作り、実行のあとにコンテナを消す。
+
+`repo` カテゴリの `TestDockerBuildContext*` は、`deploy/local/Dockerfile.*` が写す `go.mod` の local `replace` 先（たどった先も含む）が同じ Dockerfile で写されていることを確かめる。写し漏れのある写しでは落ちることも確かめる。
+
+### 5.0 企業モジュール（ext / companies）
+
+- `features/legalchk/ext` と `companies/` の単体試験は `./scripts/process/build.sh` が毎回流す（legalchk より先）。
+- 企業の画面部品の単体試験は `companies/*/web/` に置く（共通 SPA の vitest から流す）。
+- 配り分けは環境の試験で、ホストごとに配られた JS の中身で確かめる（他社の文が混ざらないこと、他社 asset が HTML に落ちること）。
+- 再現手順の表の見張り（`TestProcedureTableHeaders*`）がある。feat-first-draft は番号 023 以上、他ブランチはすべての procedures が対象。
+- 実装計画のレッド記録の見張り（`TestPlanRedRecordWatchdog*`）がある。feat-first-draft は計画番号 042 以上、他ブランチはすべての plans が対象。いずれも総合判定結果に判定が書かれた計画だけを見る。「先に書く試験」表の試験名がすべてレッド記録にあり、落ちた理由が空や「想定」「前提」を含まないことを確かめる。
+- 運営の新規顧客登録などの動的企業は、流すたびに違う企業コード（`e2e` 接頭）と検査 OK の法人番号を使う（`tests/e2e/support/tenantCode.ts`・`corporateNumber.ts`、環境試験の同趣旨ヘルパ）。固定の demo/e2ea/e2eb の種は残し、登録試験はそれらと衝突しない値にする。
+- **試験で足した業種の後始末**: 環境試験は `t.Cleanup`、E2E は `addIndustry` の追跡と fixture 後始末で、未使用業種は論理削除し、ワークスペースに結んだ業種は無効にする。名前には実行固有の接尾を付ける。企業が試験で増えること自体は監査参照のため消せないが、`./scripts/env/env.sh destroy` で環境を作り直すと消える。
+- 企業のスキーマ試験は `//go:build db`（名前は `TestCompanyMigrate*` など）で、空からの構築と既存からの更新の両方を確かめる。
+- import 境界試験（`TestCompaniesImportsOnlyExtAndStd`）と `companies/all` 一覧一致試験を落とさない。
+- 落ちる側の試験は形ごとに別の作り物・別の一時フォルダで確かめる（複数形をまとめてつなぎ文だけ見る形にしない）。
+- 見張りの試験を強めたあとの「落ちる証拠」は、判定を止めた写し（一時的な作業ツリー）で流して取る。本体の正しい判定だけでは落ちない。
+- 企業の試験ファイル（`companies/*/web/**` の `*.test.*`・`*.spec.*`）は SPA import 境界の試験の対象外とする（試験の道具を import するため。本番の JS には入らない）。
+
+### 5.1 メール（Mailpit）
+
+- ローカルの SMTP は compose の Mailpit（SMTP 1025、UI/API はホストの `MAILPIT_UI_PORT`、既定 8025）へ向ける。本物の宛先へ送らない。
+- 環境試験は `legalchk mail send-test --to <unique>@example.test` を worker コンテナ内で実行し、Mailpit の API（`/api/v1/search` など）と DB の `core.mail_messages.state` で届いたことを確かめる。
+- 送らない一覧の試験は、先に `core.mail_suppressions` へ入れてから send-test し、Mailpit に届かないことと `state=suppressed` を確かめる。
+- ワーカーログに宛先・件名・本文が出ないことを確かめる。
+- 本文の透過性は、送り手と同じ書き方の偽物では見つからない。単体試験の偽 SMTP は `net/textproto` のドットの読み手で本文を読み、base64 を解いて比べる。環境試験は Mailpit が解いた本文と生 MIME（base64）で確かめる。
+
 
 ## 6. テストスキップの禁止
 
@@ -175,142 +196,24 @@ if !found {
 - **ケース B（長時間／不安定になり得るテスト）**
 延長してよいのは、ログ・スタックトレース等から「処理が終わる前にタイムアウトで打ち切られた」ことが合理的に推測できる場合だけです。
 単に「時々失敗する」「CIで不安定」という理由だけでの延長は禁止します。まずは原因調査を優先してください。
+共有の一時 PostgreSQL の上で事象（DB の待ちの状態、処理の完了）を待つ DB の試験は、ケース B に当たります。DB の試験はパッケージを並べて流し、1 つの一時 PostgreSQL をほかのパッケージの試験が同時に使うので、負荷で止まると、処理が終わる前に打ち切られて落ちることがあります。この種の待ちを延ばすときは、試験ごとに別の秒数を決めず、`dbtest.ContendedWait`（`internal/db/dbtest` の 60 秒）を使います。待ちは時間ではなく事象で進めるので、延ばしても成功するときは遅くなりません。延ばす根拠は、打ち切られた証拠（失敗のログと、そのときの `pg_stat_activity` の様子）で、実装計画書のレッド記録または総合判定結果に書きます。証拠の無い延長は上の禁止に当たります。
+`dbtest` の待ち（`WaitForWaiters`・`AwaitDone`）は、上限を超えると、そのときの `pg_stat_activity`（止まっていない接続の、待ちの種類・状態・文の先頭・経った時間）と経過時間を試験のログに出してから落ちます。次に落ちたときは、そのログを証拠にします。「ロック中に終わってはいけない」ことを確かめる短い待ち（ケース A）は、`dbtest.ContendedWait` にしません。
 - **ケース C（それ以外）**
 特段の理由がない限り、処理は3秒以内に完了する前提でテストを設計してください。
 3秒を超えて完了しない場合は、テスト対象の設計を見直すか、ケース A / B のどちらに該当するかを再評価してください。
 
-## 8. プロセスのクリーンアップ（VSCode E2Eテスト）
-
-VSCode拡張機能のE2Eテスト (`scripts/process/integration_test.sh --categories gui`) が中断された場合、ElectronやPlaywrightのプロセスがバックグラウンドに残存し、次回のテスト実行やVSCodeの挙動に悪影響を与えることがあります。
-テストが正常に終了しなかった場合は、以下のコマンドで残存プロセスを強制終了してください。
-
-```bash
-pkill -f "integration_test.sh" && pkill -f playwright && pkill -f "Code Helper"
-```
-
-## 9. VSCode E2Eテスト実装ルール
-
-VSCode拡張機能のE2Eテストは、以下の設計書及びルールに従って実装してください。
-
-**詳細設計・実装ガイドライン**: `[prompts/specifications/gui-e2e-testing-design.md](../specifications/gui-e2e-testing-design.md)`
-
-### 9.1 基本原則
-
-1. **Test Driver Patternの強制**:
-  - プラットフォーム間の差異（macOS/Linux/Windows）を吸収するため、必ず `TestDriver` インターフェースを使用してください。
-  - シナリオ内に `process.platform` 分岐や、Playwright/Electron の生API (`page`, `_electron`) を記述することを禁止します。
-2. **API First原則**:
-  - 不安定なGUI操作（メニュークリックやショートカットキーによる操作）よりも、VSCode API (`vscode.commands.executeCommand` 等) の実行を優先してください。
-  - これにより、外部要因によるテストのFlakinessを排除します。
-3. **Structured Test Procedure (`runTest`)の強制**:
-  - 従来の `Action-Verification` パターンをコードレベルで強制するため、必ず `await driver.runTest(...)` を使用してください。
-  - `action` コールバックで操作を行い、その結果を受け取って `verifyLogic` コールバックで検証を行います。
-  - `driver.runCommand` などを直接トップレベルで呼び出して、「検証なし」で済ませることを禁止します。
-4. **Verification Helperの使用**:
-  - `shouldBeVisible`, `shouldHaveText` などの再利用可能な検証ロジックは `ide/extension/e2e/helpers/verifications.ts` からインポートして使用してください。
-  - これらは `runTest` の `verifyLogic` ブロック内で使用することを想定しています。
-5. **Log Verification**:
-  - `runTest` の `verifyLog` は**必須**です。
-  - **必須**: `ide/extension/e2e/helpers/log-verification.ts` から `expectLog`, `expectNoLog`, または `ignoreLog` をインポートして使用してください。
-  - ログ検証をスキップする場合でも、明示的に `ignoreLog` を渡すことで、「ログを確認しない」という意思をコードに明示します。
-
-## 10. プロパティパネル開閉 + FitView の事前条件ルール
-
-Blue Print エディタ（`TaskEditor`）の E2E シナリオでは、操作対象の領域に応じて、
-事前にプロパティパネルの開閉状態を整え、併せてキャンバスの `fitView()` を実行する
-ことを必須とします。
-
-### 10.1 ルール
-
-
-| 操作対象                                                                                             | 事前条件                                  | 呼び出す API                                                  |
-| ------------------------------------------------------------------------------------------------ | ------------------------------------- | --------------------------------------------------------- |
-| プロパティパネル（右ペイン）内の要素                                                                               | パネルが **展開** されている + キャンバス fitView 済み  | `await driver.ensurePropertiesPanelOpenAndFitView()`      |
-| タスクエディタ（ReactFlow キャンバス）で**座標ベース** のマウス操作（`driver.click(x,y)` / `mouseMove` / `dblClick(x,y)` 等） | パネルが **折り畳まれて** いる + キャンバス fitView 済み | `await driver.ensurePropertiesPanelCollapsedAndFitView()` |
-
-
-> 注: セレクタベースの `locator.dragAndDrop(src, tgt, { force: true })` のように
-> DOM 解決のみで動く操作は、キャンバス幅に依存しないため、本ルールの対象外。
-> 不必要に `ensurePropertiesPanel*AndFitView` を呼び出すと、パネル開閉による
-> レイアウト再計算と auto-save / React Flow 内部状態の race を引き起こすことがある。
-
-### 10.2 理由
-
-- プロパティパネル展開時、タスクエディタの横幅が圧迫され、ReactFlow 内部の
-DPI / zoom 計算と Playwright のグローバル座標計算にズレが生じ、
-クリック・ドラッグの判定が不安定になる。
-- 逆にパネル折り畳み時は、右ペイン内の入力要素が `display: none` になり
-操作不能となる。
-- パネル幅の変化によりキャンバス上のノードがビューポート外へはみ出す場合がある。
-`fitView()` をパネル整備後に **常に** 実行することで、全ノードを表示範囲に
-収め、後続の座標ベース操作やノードクリックの安定性を高める。
-
-### 10.3 実装位置
-
-- `runTest` の `action` コールバック **先頭** で呼び出す。
-- 1 つのテストで両領域を跨ぐ場合は、各操作の直前に該当 API を挿入してよい。
-- パネル状態が既に目的と一致する場合、トグルクリックは **no-op**（副作用なし）。
-ただし `fitView()` はその場合でも **常に実行** され、キャンバスのビューポートを
-全ノードに合わせ直す。
-
-### 10.4 例外
-
-折り畳みトグル自身の挙動を検証するテスト（例: `UI: Properties Panel Collapse Toggle`,
-`UI: Blue Print Resizable Layout`）では、**意図的に `ensurePropertiesPanel*AndFitView`
-を呼ばない**。初期状態（パネル初期幅・初期ビューポート）を壊すと検証不能になるため。
-コードにはその旨をコメントで明示すること。
-
-### 10.5 実装例
-
-```ts
-// Canvas operation (drag/click nodes)
-await driver.runTest(
-    'Drag node on canvas',
-    async () => {
-        await driver.ensurePropertiesPanelCollapsedAndFitView();
-        await driver.dragAndDrop('[data-id="node-1"]', '[data-id="zone-a"]');
-    },
-    // ...
-);
-
-// PropertiesPanel operation (edit property fields)
-await driver.runTest(
-    'Edit property alias',
-    async () => {
-        await driver.ensurePropertiesPanelOpenAndFitView();
-        const root = await driver.getAppRoot();
-        await root.locator('[data-testid="property-alias-input"]').fill('NewName');
-    },
-    // ...
-);
-
-// Mixed: canvas operation, then property editing
-await driver.runTest(
-    'Select node and edit',
-    async () => {
-        await driver.ensurePropertiesPanelCollapsedAndFitView();
-        const root = await driver.getAppRoot();
-        await root.locator('[data-id="node-1"]').click({ force: true });
-
-        await driver.ensurePropertiesPanelOpenAndFitView();
-        await root.locator('[data-testid="property-alias-input"]').fill('X');
-    },
-    // ...
-);
-```
-
-## 11. テスト項目の設計と検証観点 (Test Item Design & Verification Perspective)
+## 8. テスト項目の設計と検証観点 (Test Item Design & Verification Perspective)
 
 テストを実装する前に、**テスト項目の設計**を明確なタスクとして実施してください。
 「全テストが成功した」ことが「システムが実際に正しく動作している」と同義であるために、以下のプロセスに従ってテスト項目を設計・検証します。
 
-### 11.1 設計の目的
+### 8.1 設計の目的
 
 テスト項目設計の目的は、**「このテスト群が全て成功すれば、システムが実際に完全に動作していると言い切れる」**ことを論理的に示せる確認項目一覧を作ることです。
 
 単に「関数を呼んで例外が出ない」「HTTP 200 が返る」だけでは不十分です。**システムがどう動作し、どんな応答をしていれば、本当に動いていると言い切れるか**を、複数の観点から検討してください。
 
-### 11.2 ボトムアップの確認順序 (Bottom-Up Verification Order)
+### 8.2 ボトムアップの確認順序 (Bottom-Up Verification Order)
 
 > [!IMPORTANT]
 > **モックの使用を避け、末端の小さな機能から実際の動作を確認し、少しずつ大きな機能へと「実際に動作している」という確認を積み上げてください。**
@@ -332,7 +235,7 @@ await driver.runTest(
   Step 3: A のテスト → A + B + C（全体）が動作していることを確認
 ```
 
-### 11.3 テスト項目の観点チェックリスト
+### 8.3 テスト項目の観点チェックリスト
 
 テスト項目を設計する際、以下の観点を網羅しているかを確認してください：
 
@@ -346,7 +249,7 @@ await driver.runTest(
 | 6 | **設定・構成の反映** | コンフィグやアダプタの選択が、意図したとおりに適用されているか |
 | 7 | **副作用の確認** | 処理の結果、意図しない副作用（ファイル残存、リソースリーク等）が発生していないか |
 
-### 11.4 テスト項目のセルフレビュー (Mandatory Self-Review)
+### 8.4 テスト項目のセルフレビュー (Mandatory Self-Review)
 
 > [!CAUTION]
 > テスト項目を確定する前に、**必ず以下のセルフレビューを実施してください。** セルフレビューなしでテスト実装に進むことは禁止します。
@@ -363,17 +266,17 @@ await driver.runTest(
 
 セルフレビューの結果、十分であると判断した理由を、実装計画書のテスト項目セクションに簡潔に記載してください。
 
-## 12. 全テスト完了後の総合判定プロセス (Post-Test Comprehensive Verdict)
+## 9. 全テスト完了後の総合判定プロセス (Post-Test Comprehensive Verdict)
 
 全テストが成功した後、**それだけでは「システムが正しく動作している」と結論づけない**でください。
 以下の総合判定プロセスを実施し、最終的な判断を行ってください。
 
-### 12.1 目的
+### 9.1 目的
 
 テストの実行結果を鵜呑みにせず、**テストでは想定しきれなかった問題**がないかを再検証します。
 「全テスト成功」という事実と、「システムが実際に動作している」という結論の間のギャップを埋めるためのプロセスです。
 
-### 12.2 チェック項目
+### 9.2 チェック項目
 
 全テスト完了後、以下の項目を一つずつ確認してください：
 
@@ -387,7 +290,7 @@ await driver.runTest(
 | 6 | **カバレッジの妥当性** | 新規・変更した機能に対して、テスト項目が設計されているか。「既存テストが通ったから大丈夫」で新機能のテストが欠落していないか。 |
 | 7 | **外部システムの状態** | テスト実行時の外部システム（DB, コンテナ, API）が正常な状態であったか。テスト前にセットアップが正しく完了していたか。 |
 
-### 12.3 総合判定の実施
+### 9.3 総合判定の実施
 
 上記チェック項目の結果を踏まえ、以下のフォーマットで**正直に**総合判定を記述してください：
 
@@ -420,8 +323,121 @@ await driver.runTest(
 > 各チェック項目を実際に確認し、問題がないことを根拠として示した上で、判定を下してください。
 > 懸念事項がある場合は ⚠️（条件付き確認完了）として正直に記載し、追加で必要な確認事項を明示してください。
 
-### 12.4 判定結果の記録
+### 9.4 判定結果の記録
 
 総合判定の結果は、実装計画書の検証セクション、またはウォークスルー（walkthrough）に記載してください。
 この判定結果が、その実装が「実際に動作している」ことの最終的な論拠となります。
+
+## 10. Web 画面の E2E テストの構成（3 つの層とペルソナ）
+
+Web 画面（SPA）の E2E テストは、次の 3 つの層とペルソナで書いてください。シナリオを画面の細部から切り離すための決まりです。
+
+残す E2E の実行（再現手順が流すときと、`record-e2e-results` を明示したとき）は、.cursor/skills/record-e2e-results/SKILL.md に従い、シナリオごとに結果を 1 ファイルへ残し、画面が要る操作へ連番のスクリーンショットを添えてください。残すモードでは、画面を確かめた `expect` の直後に `captureScreen` へそのページを渡してください。ページはフィクスチャから開きます。`developerPage` は開発者、`personaSessions` はペルソナの表示名、`freshPages` は表示名の配列です。シナリオからページを直接開かないでください。
+
+### 10.1 3 つの層
+
+| 層 | 持つもの | 決まり |
+| --- | --- | --- |
+| **画面オブジェクト** | 1 つの画面（仕様書の WF の画面 ID）に 1 つ。その画面の機能を使う口（押す・入れる・読む）と、要素の探し方 | Playwright などの生の API（`page.locator` 等）は、この層の中だけで使う。操作のあとは、次の状態になるまで待つ（`.cursor/rules/coding-rules.mdc` §4.3 の Action-Verification）。WF の画面 ID と部品の番号をたどれるようにする |
+| **目的別操作オブジェクト** | 画面オブジェクトを組み合わせて、1 つの目的（例: 利用者を招待する）を果たす一連の操作。画面をまたいでよい | 名前は目的で付け、シナリオどうしで使い回す。途中の状態は確かめてよいが、業務の結果の判定はシナリオに任せる |
+| **シナリオ** | スタートからゴールまで、複数の画面をウォークスルーする一連の挙動 | 前提にペルソナを置き、「ペルソナ 1 が何をし、そのあとペルソナ 2 が何をする」の形で書く。画面の要素を自分で探さず、目的別操作オブジェクトと、画面オブジェクトの読む口だけを使う。結果の判定（expect）はこの層で行う |
+
+依存の向きは「シナリオ → 目的別操作オブジェクト → 画面オブジェクト」の一方向とし、逆向きに参照しないでください。
+
+### 10.2 ペルソナと成り済まし
+
+- **ペルソナ**: 試験の利用者を人に見立てたものです。名前・企業（テナント）・ロール・チームに加え、**登録の状態**（有効・招待中・登録なし）と、**メールのドメイン部をその企業に許可するか**を持たせ、1 か所の一覧で管理してください。メールアドレス・企業コード・ドメインは、シナリオの用意のときに決まる値（毎回違う）なので、一覧には固定で持たず、`prepare` が返す値を使ってください。
+- **前提での用意（`prepare`）と成り済まし（`signIn`）**: シナリオの前提で、使うペルソナを用意してから成り済ましてください。
+  - **用意（`prepare`）**: そのシナリオだけの企業（テナント）と、ペルソナの状態に合わせたドメイン部の許可・利用者の登録をデータに入れます。E2E のコンテナから、**持ち主のロールで DB に直に入れます**（Node の `pg`）。持ち主のロールのパスワードは compose の secrets で E2E のサービスにだけ渡し、ファイルから読みます。
+  - **成り済まし（`signIn`）**: 試験の環境の認証の代役（ローカルの Cloudflare Access の代役）の `/cdn-cgi/access/login` を、そのペルソナのメールアドレス付きで開きます。以後、そのブラウザのコンテキストのリクエストは、そのペルソナとして届きます。
+- **ペルソナごとのセッション**: ペルソナごとにブラウザのセッションを分けてください（Playwright なら、ペルソナ 1 人にブラウザのコンテキストを 1 つ）。複数のペルソナを並走させ、順に、または同時に操作できるようにします。ある人の操作が、開いたままの別の人の画面に push で届くことも、この形で確かめます。
+- **本番に裏口を作らない**: 成り済ましは試験の環境の認証の代役だけが持ち、アプリのバイナリには入れないでください。アプリは本番と同じ認証の検証を通します。ペルソナの用意のために、アプリへ試験専用の API を足すことも禁止します（DB に直に入れる）。
+- **製品の代理ログインと混ぜない**: 試験の成り済ましは、製品の機能としての代理ログインとは別物です。名前でも混ぜないでください。
+- **push を待つ**: 画面への出来事（WebSocket）で表示が変わることを確かめるときは、ページを読み込み直さない。開いたままの画面の文言が、期待する文に変わるまで待つ（例: `await expect(status).toHaveText(/実行中/)` → `await expect(status).toHaveText(/^完了/)`）。別のペルソナの画面が変わらないことも、同じ待ち方で確かめる。
+
+### 10.3 データと要素の探し方
+
+- **シナリオごとのデータ**: E2E が使う企業と利用者は、仕様 011 の初期値である。各試験の開始時に、企業 `e2ea` と `e2eb` だけをその初期値へ戻す。試験の終了後は削除しない。過去の行も残る。捨てるのは `env.sh destroy` である。試験は、データベースに初期値以外の行が無いことを前提にしない。
+- **要素の探し方**: 画面オブジェクトは、WF の文言と要素の役割（ボタン・見出し・表など）で要素を探してください。`data-testid` を使うのは、文言で探せない要素と、企業ごとのカスタマイズで文言が変わりうる要素だけです（例: SYS-01 の `sys-01-user`・`sys-01-tenant`）。骨組み（ヘッダー・メニュー）の部品の `data-testid` は `shell-` で始めます（例: `shell-tenant`・`shell-user`）。
+
+
+### 10.4 書き方の例
+
+形を示すための例です。名前と API は、E2E の土台を作るときに決めます。
+
+```ts
+test('招待した人がチームに加わる', async ({ personas }) => {
+  // Preconditions: each persona is provisioned, impersonated, and has its own browser session.
+  const admin = await personas.signIn('企業A・テナント管理者');
+  const newcomer = await personas.prepare('企業A・招待先');
+
+  // Persona 1 invites persona 2, then persona 2 accepts the invitation.
+  await inviteUser(admin, { email: newcomer.email, role: '一般利用者' });
+  await acceptInvitation(newcomer);
+
+  // The user list that persona 1 keeps open is updated by push.
+  await expect(admin.on(UserListPage).statusOf(newcomer.name)).toHaveText('有効');
+});
+```
+
+`inviteUser` と `acceptInvitation` が目的別操作オブジェクト、`UserListPage` が画面オブジェクトです。
+
+### 10.5 置き場所・名前・実行
+
+| 層 | 置き場所 | 名前の例 |
+| --- | --- | --- |
+| 画面オブジェクト | `tests/e2e/pages/` | `SYS01StartupPage.ts`・`AppShell.ts`（骨組み。骨組みを持つ画面オブジェクトはこれを持って使う）・`SYS02HomePage.ts` |
+| 目的別操作 | `tests/e2e/flows/` | `openStartupPage.ts`・`signIn.ts` |
+| シナリオ | `tests/e2e/scenarios/` | `000-startup.spec.ts` |
+| ペルソナ | `tests/e2e/personas/` | TypeScript 一覧（id/displayName/company/status/domainAllowed。メール・企業コード・ドメインは `prepare` が解決） |
+| ペルソナの用意 | `tests/e2e/support/` | `db.ts`（持ち主ロールの `pg` で企業・許可・利用者を入れる） |
+| 土台試験 | `tests/e2e/framework/` | セッション分離・Secure Cookie |
+
+実行: `./scripts/process/integration_test.sh --categories e2e`（Playwright Docker。ホストにブラウザ導入は不要）。
+
+### 10.6 運営コンソールの人物と運営のホストの試験の書き方
+
+運営コンソール（運営のホスト `ops.chkai.localhost`）の試験は、企業の人物とは別の一覧と別の道具で書いてください。
+
+- **運営の人物は別の一覧**: `tests/e2e/personas/index.ts` の `opsPersonas`（`opsOkada`・`opsTanaka`・`opsNakamura`・`nobody`）に、id・表示名・メール・ロール・登録の状態（`active` / `none`）を固定で持つ。メールは `@ops.example.test` とし、企業の人物の id・メールと**衝突させない**（企業の田中は `tanaka@a.example.test`、運営の田中は `tanaka@ops.example.test`）。運営社員でない人（`nobody`）と、企業の利用者（`sato` など企業の人物）は、運営のホストで入れないことの確認に使う。
+- **用意**: `support/opsPrep.ts` の `prepareOpsStaff()` が、持ち主のロールの `pg` で、登録済みの運営社員（岡田 01・田中 02）を有効・ロールどおりに戻し、まだ登録していない人（中村）の生きている行を論理削除する。ローカルの種のデータ（`deploy/local/seed.sql`）の開発者・岡田・田中は残す。運営社員を足す試験専用の API は作らない。
+- **成り済ましとセッション**: 運営の人物は `flows/opsConsole.ts` の `signInAsOps` で、運営のホストの `/cdn-cgi/access/login` を開いて成り済ます。ログインの印は運営のホストだけのクッキー（企業のホストとは別の Access のアプリケーション）なので、ペルソナ 1 人につきブラウザのコンテキストを 1 つにする（フィクスチャ `opsSessions`）。企業の利用者として運営のホストへ入る確認は、企業の人物のフィクスチャ（`freshPages`）のページで `signInAsOps` を使う。
+- **画面の確かめ**: 運営の骨組みのヘッダーは `shell-user`（「氏名（ロール・ロール）」）、メニューは「メニュー」のナビゲーション。入れないときの案内（SYS-04）は静的 HTML で、見出し「運営コンソールを使えません」で確かめる。権限の無い画面の案内は骨組みの中の文言「この画面を使う権限がありません。」。
+- **誤りの文と印**: 運営の欄ごとの誤りは、業務バックエンドが欄と誤りの種類（決まったコード）を返し、SPA の一覧（`opsFieldErrors`）が日本語の決まった文に写す。英語のバックエンド文を画面に出さない試験を書く。状態の印は `.ops-badge` で確かめ、WF のかぎかっこ記号を文字どおり出さない。運営の画面の日付は `YYYY/MM/DD`（`formatOpsDate`）。
+- **メール**: 招待メールは Mailpit の API で確かめる（`support/mailpit.ts` の `waitForMail`。件名・宛先・本文の URL）。E2E のコンテナからは `http://mailpit:8025`。
+- **環境の試験（運営のホスト）**: 企業・入口・システムのホストでは運営の audience の JWT が 401 になることは、前のドアが「ホストに合う audience」を出すため、前のドアを通しては作れない。保管庫の署名鍵で JWT を作り（`mintAccessJWT`）、GUI サーバへコンテナの中から直に当てる（`guiStatus`）。運営社員は試験ごとに一意なメールで招待し、終わりに論理削除する（`uniqueOpsEmail`）。権限の試験は、画面で隠すだけでなく API が 403 を返すことを確かめる。
+- **実行**: `./scripts/process/integration_test.sh --categories e2e --specify "運営コンソール"`（環境の試験は `--categories env --specify "Ops|Operator"`）。
+
+### 10.7 画面の一覧 E2E と原案見比べ
+
+画面レイアウトを直したあとは、E2E シナリオ「画面の一覧」（`tests/e2e/scenarios/028-screen-gallery.spec.ts`、`--specify "画面の一覧"`）で写しを揃える。写しのファイル名には画面 ID を含める（例: `ops-02-list.png`）。記録モード（`CHKAI_E2E_RECORD=1`）で撮った写しを、`.cursor/skills/blueprint-screen-layout/SKILL.md` に従い原案の頁の絵と並べ、部品の順番・置き場・形を見比べる。中身の業務確かめはほかのシナリオに任せ、このシナリオは見比べの材料をそろえる。
+
+### 10.8 初期データの人物を変えない（状態を変える試験は試験内の人物を使う）
+
+初期データの人物（§10.3 の `e2ea`・`e2eb` の固定の利用者。佐藤・鈴木・高橋・山田・伊藤・山本など）の登録の状態を、試験で変えないでください。人物の状態（有効・招待中・招待した日時）を変える試験は、初期データの人物を使わず、**その試験で作る人物**を使ってください。
+
+- **試験内の人物**: 状態を変える試験は、毎回違うアドレスの招待中の人を試験の中で作って使う（`support/db.ts` の `createEphemeralInvitee` など。企業 `e2ea` の許可ドメインのアドレス）。期限切れを確かめるときは、招待した日時を 7 日より前に遡らせた人をその試験で作る（初期データの鈴木の招待日時を書き換えない）。
+- **なぜ固定の人物を書き換えないか**: GUI の利用者の文脈は **(利用者, テナント) の組ごとに 30 秒キャッシュ**されます。固定の人物の行を DB で直に書き換えても、その 30 秒の間は古い状態（例: 直前の試験で有効にした状態）が画面に出ます。試験の並びと時間でキャッシュが残り、試験が不安定に落ちます。試験内の人物を毎回違うアドレスで作れば、前の流しの値がキャッシュに残りません。
+- **初期データの見張り**: フィクスチャ（`support/fixtures.ts` の `beforeEach`/`afterEach`）が、各試験の始めに初期データの人物の `status` と招待中の `invited_at` を控え、終わりに同じかを確かめます（戻した値から変わっていなければ通る）。初期値へ戻す処理（`ensureInitialData`）は控えを取り直すので、戻すこと自体では落ちません。固定の人物を書き換えた試験は、終わりに食い違いが出て落ちます（`initial-data personas changed during the test`）。
+- **配布**: この規約（testing-rules）を変えるときは、prompt-manifest-update の手順に従い `prompts/manifest/code_content/policies/testing-rules.md` を直し、`tt prompt update --target all` で各コーディングエージェントの設定へ配ってください。
+
+### 10.9 一覧の読み込みを待ってから一括で読む
+
+一覧の画面（検索・絞り込み・並べ替え・ページ送りのある画面）を変える操作のあとは、表の読み込み中の印（`aria-busy="true"`）が外れるのを待ってから行を読んでください。枠のある表の部品（`FramedTable`）が、読み込み中は表に `aria-busy="true"` を付け、読み終えたら外します。
+
+- **印が外れるのを待つ**: 画面オブジェクトの、一覧を変える口（検索・絞り込み・並べ替え・ページ送り）の終わりで、表の `aria-busy` が `"true"` でなくなるまで待つ手立て（例: `await expect(this.table).not.toHaveAttribute("aria-busy", "true")`）を呼ぶ。待ちの上限は §7 のとおり延ばさない（時間ではなく印で進める）。
+- **数えてから 1 行ずつ読まない**: 行の文字は、待ったあとに、列の文字を一度に読む口（例: `locator('tbody tr td:nth-child(...)').allInnerTexts()`）で読む。行の数を数えてから 1 行ずつ読むと、数えたあとに検索の結果へ描き直されて行が減ったとき、無い行を待ち続けて時間切れになる。
+- **絞り込みの結果を確かめてから並びを比べる**: 並べ替えの確認は、検索・絞り込みに合う行だけが表に出たことを確かめてから、並びを比べる。
+
+## 11. SPA（React）単体試験の待ち方
+
+SPA（React）の単体試験（vitest + Testing Library）で、画面が後から読み込む要素を操作するときは、次の決まりに従ってください。問題は、選択肢や行が届く前に操作すると、操作が入らず、下流の待ちが時間切れで落ちることです。原因から遠い場所で落ちるので、競り合いの原因が分かりません。
+
+- **共通の準備が偽の API をいつも遅らせる**: 試験の共通の準備（`features/legalchk/web/src/test/setup.ts`）が `vi.spyOn` を包み、偽物が返す約束を少し遅らせて（約 30 ms）落ち着かせる。対象は `mockResolvedValue`・`mockResolvedValueOnce`・`mockRejectedValue`・`mockRejectedValueOnce` と、約束を返す `mockImplementation`・`mockImplementationOnce`。拒否は受け手をすぐに付けてから遅らせる（受け手のいない拒否にしない）。約束でない戻り値はそのまま返す。偽の時計（`vi.useFakeTimers`）を使う試験は、時計を進めれば落ち着くので遅らせない。この遅れにより、後から読み込むデータを待たない試験は毎回落ちる。
+- **共通の準備が試験の終わりに遅らせを片づける**: 試験の共通の準備（`features/legalchk/web/src/test/setup.ts`）は、遅らせた偽の API の時計を集まりに覚えておき（鳴ったら外す）、`afterEach` で、まだ鳴っていない時計を全部止め（`clearTimeout`）、集まりを空にする。止めた約束は落ち着かないまま捨てる。これにより、ファイルの最後の試験が残した遅らせが、試験の環境の片づけの後に鳴って、画面の部品が `window` を触り `window is not defined` で異常終了する（試験は全部通っても vitest が「Errors」で落ちる）のを防ぐ。残っている遅らせの数を読む関数（`pendingDelayCountForTests`。製品のコードには置かない）を共通の準備に置き、遅らせを残して終わる試験の次で残が 0 であることを単体試験で見張る。偽の時計の試験は遅らせないので集まりに入らない。
+- **読み込み中から出ている枠ではなく、中身か `aria-busy` の解消を待つ**: 表などの枠は読み込み中から出ている（`aria-busy="true"`）。枠（`findByRole("table", …)`）が出ただけで中の行・件数・見出しの文字を読まない。中身そのものを `await screen.findByText(…)`／`findByRole(…)` で待つか、枠の `aria-busy` が外れるのを待ってから読む。見出しが出るのを待つだけでは足りない（見出しは中身より先に出る）。
+- **押した後に呼ばれる API は、呼ばれるのを待ってから確かめる**: 押したあとに走る API（保存・削除・再読み込みなど）は、`await waitFor(() => expect(spy).toHaveBeenCalledWith(…))` で呼ばれるのを待ってから確かめる。続けて別の操作をするときは、再読み込み中は操作の口が使えなくなる（`disabled`）ことがあるので、次の口が押せるようになる（`toBeEnabled`）か、再読み込み後の中身が出るのを待ってから押す。
+- **後から読み込む選択肢・行は、出るのを待ってから選ぶ・押す**: 画面が出た後に読み込む `<option>` や表の行は、`await screen.findByRole("option", { name: "…" })` などで出るのを待ってから、`fireEvent.change` で選ぶ・`fireEvent.click` で押す。見出しが出るのを待つだけでは足りない（見出しは選択肢より先に出る）。待ちの上限は §7 のとおり延ばさない（時間ではなく要素の出現で進める）。
+- **選択の欄は、選択肢に無い値をその場で落とす**: 試験の共通の準備（`features/legalchk/web/src/test/setup.ts`）が、`HTMLSelectElement` の値の書き込みを包み、選択肢に無い空でない値を入れたら、その場で例外を投げる。落ちの文には、欄の名前（`aria-label` か結び付いたラベル）・入れた値・今ある選択肢を出す。これにより、選択肢を待たずに選んだ競り合いが、後の待ちの時間切れではなく、選んだ行で分かる。空の値（「選択してください」に戻す）は許す。
+- **遅れて届く版で待ちを証明する**: 後から読み込む要素の待ちを足したときは、その読み込みを少し遅らせた版（例: モックが 30 ms 後に返す）の試験でも通ることを確かめ、確かに待っていることの証拠にする。
 

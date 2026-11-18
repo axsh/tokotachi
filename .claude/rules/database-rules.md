@@ -1,0 +1,162 @@
+# データベース規範 (Database Rules)
+
+本規範は、PostgreSQL データベースの設計・実装・テストに関する決まりを定める。本規範は、本システムのデータベース（legalchk）にだけ適用する。知識データベースは、スキル knowledge-database に従って別に設計する。その一例である designdb に、この規範の RLS と保持期間は適用しない。
+
+## 1. 接続のロール
+
+| ロール | 用途 | 権限 |
+| --- | --- | --- |
+| 管理者（`POSTGRES_USER` / RDS 管理者） | `db setup` のロールの用意のみ | ロール作成・DB 権限付与 |
+| `legalchk_owner` | `db setup`・`db migrate` | スキーマ・表・関数の持ち主。マイグレーションを流す |
+| `legalchk_app` | backend / worker | マイグレーションで許された操作のみ。superuser・持ち主・BYPASSRLS なし |
+| `legalchk_ops` | backend の運営の API・`legalchk operator add` | 運営社員の表・テナントのない監査ログ・招待メールに要る表（テナントのないメールとジョブ）だけ。業務データの表と企業のスキーマには権限なし。superuser・持ち主・BYPASSRLS なし（§3.6） |
+
+- アプリは `legalchk_app` でのみ接続する。superuser・持ち主・BYPASSRLS のいずれかであれば ready にならない
+- 運営の処理は `legalchk_ops` でのみ接続する。パスワードは秘密情報の置き場（`postgres/ops-password`）から読み、`db setup` がロールを用意する
+- 拡張（extension）と superuser の機能に頼らない。UUID は `gen_random_uuid()`、言語は `sql`・`plpgsql` のみ
+- ロールの名前は決まった値（上表）にする。マイグレーションの GRANT はこの名前を直書きする
+
+## 2. マイグレーション
+
+- **ファイル形式**: `NNNN_<名前>.sql`（4 桁の版。例: `0001_core_schema.sql`）
+- **変更禁止**: main に取り込んだ（適用済みの）ファイルは変更してはならない。SHA-256 の変化と欠けを実行器が検出して失敗する
+- **1 ファイル 1 トランザクション**: 1 つのファイルを 1 つのトランザクションで流す
+- **上げる方向だけ**: 戻すためのファイルは作らない。新旧バイナリが両立する形（追加してから削除）で進める
+- **持ち主のロールで流す**: マイグレーションは `legalchk_owner` で実行する
+- **アドバイザリーロック**: 同時に流しても 1 つずつ実行されるよう、ロックで囲む
+- **企業の流れ**: `companies/{code}/db/migrations/*.sql` を企業コードと同名のスキーマへ流す。`legalchk db migrate` は core のあと企業コードの辞書順で流す。`db status` も企業ごとの版を出す。企業の表もテナント ID・RLS・保持区分の宣言（`company.yaml` の `tables` → `retention.SetCompanyTables`）に従う。企業の表の区分は `contract_period` と `indefinite` だけを使える（時間で消す区分は、企業の表で使う仕様が出たときに時刻の列と消す関数の書き方と一緒に足す）
+
+## 3. テナントの分離
+
+- **`tenant_id` 列**: テナントで分ける表はすべて `tenant_id uuid NOT NULL REFERENCES core.tenants (id)` を持つ
+- **RLS**: テナントで分ける表は RLS を有効にし、`core.current_tenant_id()` を使う方針を持つ
+- **テナントを決める口を 1 つ**: `InTenantTx(ctx, db, tenantID, fn)` だけを使い、トランザクションの中だけで効く `set_config('app.tenant_id', $1, true)` を流す。セッション全体に効く `SET` は使わない
+- **失敗は閉じる側**: テナントを設定していないときは 1 行も見えず、書けない（`NULLIF(..., '')::uuid` が NULL を返すため RLS が全行を拒否する）
+- **リポジトリの層でも絞る**: 書くときの `tenant_id` はトランザクションのテナントから取る。RLS は 2 段目の守り
+
+### 3.1 一覧の表（RLS をかけない表 / directory table）
+
+- テナントを決める**前**に引く表は、RLS をかけない「一覧の表（directory table）」にする。`tenant_id` 列を外部キーの整合性のために持っていても、RLS は求めない（例: `core.tenant_domains` は、どのメールのドメイン部がどのテナントに入れるかを、テナントの文脈が決まる前に引く）。
+- 一覧の表は、アプリのロールに**読み取り（`SELECT`）だけ**を許す。書き込みの口は、必要になった仕様で足す。
+- 一覧の表は、決まりの確かめ（`dbtest.CheckInvariants`）の「RLS をかけない表」の許可一覧（`isNonRLSAllowed`）に足し、理由を本規範に書く。**今の一覧**: `core.tenants`・`core.tenant_domains`・`core.job_outbox`（ジョブ ID と件名だけ）・`core.job_schedules`（全体の定期台帳）・`core.mail_suppressions`（送信評価を守るための企業横断の送らない宛先。`tenant_id` を持たない）・`core.operators`・`core.operator_roles`（運営社員。テナントを持たず、運営のロールだけが触れる。アプリのロールに権限なし。§3.6）・`core.industries`（業種マスター。テナントに属さず、運営が管理しアプリは読むだけ。§3.7）・`core.role_templates`・`core.role_template_permissions`・`core.role_template_set`（ロールの標準の一式。テナントを持たず、運営のロールだけが触れる。アプリのロールに権限なし。§3.9）・各スキーマの版の表（`schema_migrations`）。
+- 許可一覧にある表は、`tenant_id` 列があっても RLS の確かめから外れる。それ以外の表は、`tenant_id` を持つなら RLS と方針が必須、持たないなら許可一覧に無い限り RLS が必須。
+
+### 3.2 テナントをまたぐ読み取り（`SECURITY DEFINER` の関数）
+
+- テナントを決める**前**に、テナントをまたいで読む必要があるとき（候補のテナントの判定など）は、決まった `SECURITY DEFINER` の関数**1 つ**だけで行う。アプリのコードから直接 RLS を外して読まない。
+- 関数は**持ち主のロール**（`legalchk_owner`）が持つ（マイグレーションで作るので、そうなる）。アプリのロールが持ち主の関数を作らない。
+- `search_path` を**固定する**（例: `SET search_path = pg_catalog, core`）。固定しないと、呼び出し側が参照先の表や関数を差し替えて乗っ取るおそれがある。
+- 返す列を**最小限に絞る**。外に出す必要のない値（テナントの内部 ID など）は返さない。
+- `PUBLIC` から `EXECUTE` を外し（`REVOKE ALL ... FROM PUBLIC`）、アプリのロール（`legalchk_app`）にだけ `EXECUTE` を許す。
+- 決まりの確かめ（`dbtest.CheckInvariants`）が、アプリのロールが関数の持ち主でないことと、`SECURITY DEFINER` の関数が `search_path`（`proconfig`）を決めていることを確かめる。
+- **今の `SECURITY DEFINER` の関数**:
+  - `core.candidate_tenants(text)` — 入口のテナントの選択の候補を引く
+  - `core.jobs_due_for_requeue(timestamptz)` — 見回りの処理が止まったジョブの ID を引く（返すのはジョブ ID・テナント ID・種類など最小限）
+  - `core.jobs_mark_published(uuid, timestamptz)` — 企業をまたいでジョブの「送った時刻」（`published_at`）だけを書く
+  - `core.purge_soft_deleted_users(timestamptz)` — 今のテナント文脈の、論理削除から 30 日を過ぎた利用者を物理削除する。アプリのロールには `EXECUTE` だけを渡し、`core.users` への `DELETE` は渡さない
+  - `core.purge_soft_deleted_files(timestamptz)` — 今のテナント文脈で、論理削除から 30 日を過ぎたファイル目録を消し、参照の無い・外した実体（および chunk）を 24 時間後に消す。アプリのロールには `EXECUTE` だけを渡し、表への `DELETE` は渡さない
+  - `core.purge_mail_bodies(timestamptz)` — 今のテナント文脈（または文脈無し＝企業を持たない行）で、作ってから 14 日を過ぎたメール本文を消す。アプリのロールには `EXECUTE` だけを渡し、表への `DELETE` は渡さない
+
+### 3.3 非同期ジョブの表
+
+- ジョブの正（状態・進捗・試行・冪等キー・trace_id）は `core.jobs` に持つ。NATS JetStream は配る経路だけにする。
+- 起票は `core.jobs` と `core.job_outbox` を同じトランザクションで書く。送ったらアウトボックスの行を消す。
+- `core.jobs` は RLS を掛ける（テナントのジョブはその文脈だけ、全体のジョブは文脈が無いときだけ）。`core.job_outbox` はジョブ ID と件名などの最小限だけなので RLS を掛けない。
+- `core.job_schedules` は全体の定期ジョブの台帳（RLS なし）。保持期間台帳に載せる。
+
+### 3.4 ファイルの目録と実体
+
+- 業務の表はファイルを指すとき **目録**（`core.files`）だけを指す。実体（`core.file_blobs` / `core.file_blob_chunks`）を直接外部キーにしない。
+- 実体の中身は不変とする。`ready` になった実体の `scheme`・`size_bytes`・`sha256`・`state` は変えない（トリガで拒む）。付け替えは目録の `blob_id` を差し替える。
+- 企業をまたいで実体を共有しない。複合外部キー `(blob_id, tenant_id)` で同一テナントに閉じる。
+- **1 つの実体を指す目録は高々 1 つ**（`files_blob_id_unique`）。論理削除済みの目録が指す実体も、付け・付け替えの先に使わない。
+- アプリのロールに `core.files` / `core.file_blobs` / `core.file_blob_chunks` への `DELETE` は渡さない。片付けは `core.purge_soft_deleted_files` に任せる。
+- 保持期間台帳: `core.files` は `soft_deleted_30d`（`purge_soft_deleted_files`）。`core.file_blobs` と `core.file_blob_chunks` は同関数が片付けるため台帳上は `indefinite`。
+
+### 3.5 メールの記録・本文・送らない一覧
+
+- `core.mail_messages` / `core.mail_bodies` は `core.jobs` と同じ 2 つの RLS 方針（企業文脈 / 企業無し文脈）にする。企業を持たないメール（CLI の送信確認など）は `tenant_id` が NULL。
+- アプリのロール: 記録は `SELECT`・`INSERT`・`UPDATE`、本文と送らない一覧は `SELECT`・`INSERT` のみ。本文の物理削除は `core.purge_mail_bodies` に任せる。
+- `core.mail_suppressions` は企業横断の一覧のため RLS を掛けない（§3.1）。宛先は小文字で一意にする。`mail_id` の外部キーは `ON DELETE SET NULL`（記録を消しても送らない一覧の行は残る）。
+- 保持期間台帳: `mail_messages` は `contract_period`、`mail_bodies` は `generated_copy_14d`（`purge_mail_bodies`）、`mail_suppressions` は `indefinite`（仮）。
+- 保持期間の削除は、企業ごとの段のあとで、台帳の `PurgeGlobal` が真の表の消す関数だけを企業無し文脈で呼ぶ（今は `mail_bodies` のみ）。企業無しの削除件数は監査ログではなく INFO ログに出す（監査ログは企業必須のため）。
+
+### 3.6 運営社員の表と運営のロール
+
+- `core.operators`・`core.operator_roles` はテナントを持たず、RLS を掛けない（§3.1）。`legalchk_ops` に `SELECT`・`INSERT`・`UPDATE`（`operator_roles` は `DELETE` も。ロールは消して入れ直す）だけを渡し、`legalchk_app` には何も渡さない。運営社員を物理削除する権限は誰にも渡さない（論理削除）。
+- 運営社員は論理削除するが、テナントを持たず、消す関数も無いため、保持期間の区分は `indefinite`（仮）にする（監査ログの操作者を後から人に結べるようにする）。§6 の「論理削除の表は `soft_deleted_30d`」の例外である。
+- `legalchk_ops` が使える表は次だけ（`dbtest.CheckInvariants` の `opsAllowedTables`。これ以外に権限があれば決まりの確かめが落ちる）: `core.operators`・`core.operator_roles`・`core.audit_logs`（`INSERT`・`SELECT`。テナント付きの行は `ops.` 操作の `INSERT` のみで、`SELECT` はテナント無し行だけ）・`core.mail_messages`（`SELECT`・`INSERT`・`UPDATE`）・`core.mail_bodies`（`SELECT`・`INSERT`）・`core.jobs`（`SELECT`・`INSERT`）・`core.job_outbox`（`INSERT`）・`core.tenants`（`SELECT`・`INSERT`・`UPDATE`）・`core.industries`（`SELECT`・`INSERT`・`UPDATE`）・`core.workspaces`（`SELECT`・`INSERT`・`UPDATE`）・`core.tenant_domains`（`SELECT`・`INSERT`・`DELETE`。アクセスを許すドメイン）・`core.tenant_plan_changes`（`SELECT`・`INSERT` のみ。プラン変更の履歴。追記だけ）・`core.role_templates`・`core.role_template_set`・`core.tenant_roles`（`SELECT`・`INSERT`・`UPDATE`。ロールの標準の一式と配布。§3.9）・`core.role_template_permissions`・`core.tenant_role_permissions`（`SELECT`・`INSERT`・`UPDATE`・`DELETE`。保存と配布で権限の行を入れ替える。§3.9）。`core.role_assignments` には権限を渡さない。スキーマは `core` の `USAGE` だけで、企業のスキーマには権限が無い。
+- 運営のロールは、メールの表と `core.jobs` の RLS 方針のうち「企業無し文脈」（`tenant_id IS NULL` かつ `core.current_tenant_id() IS NULL`）の行だけを読み書きできる。企業のメールとジョブは見えない。
+- 運営のロールで流す処理が、運営社員を変える・運営社員の数を数えるときは、アドバイザリーロック（`pg_advisory_xact_lock`）で 1 つずつ流す。
+
+### 3.7 業種とワークスペース
+
+- `core.industries` はテナントに属さない一覧の表（§3.1）。RLS を掛けない。アプリのロールは `SELECT` のみ、運営のロールは `SELECT`・`INSERT`・`UPDATE`（論理削除。物理削除の権限は渡さない）。
+- `core.workspaces` はテナントで分ける表で RLS を掛ける。アプリのロールは自テナントの `SELECT` のみ。運営のロールは全テナントの `SELECT`・`INSERT`・`UPDATE`（方針 `workspaces_ops_all`）。
+
+### 3.8 テナントの表の列の権限と自分の契約
+
+- `core.tenants` は一覧の表（§3.1）だが、アプリのロールが読める列は **`id`・`code`・`name`・`created_at` だけ**にする（列単位の `GRANT`）。住所・法人番号・プラン・契約の状態などは運営のロールだけが読む。
+- 自分のテナントのプランと契約の状態は、テナントの文脈の中で `core.current_tenant_contract()` が返す行だけを読む。文脈が無ければ 0 行。アプリのロールにこの関数の `EXECUTE` を渡す。
+- `core.tenant_plan_changes` は追記だけの履歴（§5）。運営のロールは `SELECT`・`INSERT` のみ。アプリのロールには権限を渡さない。RLS は掛けない（運営がテナント横断で履歴を書くため。`isNonRLSAllowed` に載せる）。
+
+### 3.9 ロールの標準の一式・テナントの複製・割り当て
+
+- **標準の一式**: `core.role_templates`・`core.role_template_permissions`・`core.role_template_set` はテナントを持たず、RLS を掛けない（§3.1）。`legalchk_ops` に `SELECT`・`INSERT`・`UPDATE`（権限の行は `DELETE` も）だけを渡し、`legalchk_app` には何も渡さない。ロールの行（10・11・12・13）と版の行は消さない。ロールの番号は CHECK で 4 つに固定し、版の行は 1 行だけ（`id boolean`）。権限コードは、表の側では「小文字とドットの形」と「`ops.` で始まらない」ことだけを CHECK し、権限カタログに載っていることはコード（`internal/permission`）で確かめる。
+- **テナントの複製**: `core.tenant_roles`・`core.tenant_role_permissions` は RLS を掛ける。アプリのロールは自テナントの `SELECT` のみ。運営のロールは全テナントの `SELECT`・`INSERT`・`UPDATE`（権限の行は `DELETE` も）で、ワークスペースの表（`workspaces_ops_all`）と同じ形のポリシー（`*_ops_all`）を持つ。複製の行は削除しない。配布（`permission.Distribute`）は `(tenant_id, role_code)` で上書きし、`tenant_roles.id` を変えない（割り当てが指すため）。`tenant_role_permissions` は `tenant_id` を持たないので、持ち主の複製を `EXISTS` で引くポリシーにする。
+- **割り当て**: `core.role_assignments` は RLS を掛ける。アプリのロールは自テナントの `SELECT`・`INSERT`・`DELETE` だけ（編集はしない）。運営のロールには権限を渡さない。利用者・ロールの複製・範囲は割り当てと同じテナントのものに限り、複合外部キー（`(user_id, tenant_id)`・`(tenant_role_id, tenant_id)`）、テナントの範囲の CHECK、ワークスペースの範囲のトリガー（`core.role_assignments_check_scope`）で守る。同じ割り当ては重ねられない（`UNIQUE (user_id, scope_type, scope_id, tenant_role_id)`）。利用者を物理削除すると割り当ても消える（`ON DELETE CASCADE`。保持期間の削除が割り当てで止まらないため）。割り当ての追加と削除は `authz.Service`（`Assign`・`Unassign`）だけが書き、委任の確かめと監査ログ（`role.assigned`・`role.unassigned`。そのテナントの行、分類 `org.roles`）を同じトランザクションで書く。論理削除した利用者の割り当ての行は物理削除まで残るが、判定（`authz.Evaluate`）は数えない。
+- **今あるテナントと新規のテナント**: マイグレーションは、そのとき存在するテナントすべてに v1 の複製を配る。マイグレーションのあとに作るテナントは、新規顧客登録が同じトランザクションで配り、種のデータ（`deploy/local/seed.sql` の demo）は種が配る。
+- **保持期間**: 標準の一式の 3 表は `indefinite`、テナントの複製・複製の権限・割り当ては `contract_period`。
+
+## 4. ビュー
+
+すべてのビュー（core・企業スキーマ）に `security_invoker = true` を付ける。付けないと持ち主の権限で読むので RLS が効かない。
+
+```sql
+CREATE VIEW core.my_view WITH (security_invoker = true) AS ...;
+```
+
+## 5. 追記だけの表
+
+監査ログ（`core.audit_logs`）・課金メーター（`core.billing_meter`）など追記専用の表は:
+
+- アプリのロールには `INSERT`・`SELECT` のみ許す（監査ログは運営のロールにも `INSERT`・`SELECT` のみ。決まりの確かめが両方を見る）
+- `UPDATE`・`DELETE` を拒む行レベルトリガーを付ける（持ち主にも効く）
+- `TRUNCATE` を拒むステートメントレベルトリガーを付ける（持ち主にも効く）
+- **直しは行を足す**: 誤記があっても既存行を書き換えずに補正行を追加する
+
+## 6. 保持期間
+
+- **すべての表で区分を宣言**: `retention` パッケージの `defaultTables` に登録する。宣言のない表が存在すると DB 試験が落ちる
+- **5 つの区分**: `generated_copy_14d`・`soft_deleted_30d`・`ai_record_90d`・`contract_period`・`indefinite`
+- **論理削除の列**: 論理削除する表は `deleted_at timestamptz`・`deleted_by uuid`（どちらも nullable）を持ち、区分を `soft_deleted_30d` にする
+
+## 7. 時刻の扱い
+
+- **期限の判定**: 呼び出す側が `asOf time.Time` で渡す。DB の `now()` を期限の基準にしない
+- **記録の時刻**: `occurred_at`・`recorded_at` など記録の時刻は DB の `now()` にする（アプリが決めると証跡が弱くなる）
+
+## 8. 記録（監査ログ・課金メーター）
+
+- **trace_id が必須**: context に trace_id が無ければ書かずに失敗する
+- **実行者は context から**: `audit.WithActor(ctx, actor)` で context に入れる。呼び出し側の引数では渡さない
+- **成功の記録は同じトランザクション**: 業務の変更と同じテナントのトランザクションで書く。ロールバックすれば記録も消える
+- **失敗の記録は別のトランザクション**: `RecordFailure` を使い、業務のトランザクションを取り消しても記録が残るようにする
+- **操作のコードは catalog に登録**: 未登録のコードでは書けない
+- **テナントのない監査ログ（運営の操作）**: `core.audit_logs.tenant_id` は NULL を許す。NULL にできるのは、実行者が `operator` か `system` で、操作のコードが `ops.` で始まる（`audit.IsOpsOperation`）ときだけで、形の制約（CHECK `audit_logs_tenantless_ops_only`）が持ち主にも効く。`audit.Record` はテナントを決めていない（`app.tenant_id` が空の）トランザクションで、この条件のときだけ NULL で書く（それ以外は誤り）。`RecordFailure` に空のテナント ID を渡したときも同じ。
+- **テナントのない監査ログの RLS**: アプリのロールは自分のテナントの行だけ（テナントが NULL の行は、テナントの文脈の有無にかかわらず見えず、書けない）。運営のロールはテナントが NULL の行だけを、テナントの文脈が無いときに限って読み書きできる。加えて、実行者が `operator`/`system` で操作が `ops.` で始まるときだけ、テナント付きの行を `INSERT` できる（`SELECT` はできない。顧客登録などのテナント監査を書くため。仕様 026）。
+
+## 9. 企業コード
+
+企業コードの検証（形・予約語）は `tenantcode.Validate()` 1 箇所にまとめる。テナントの登録と企業のスキーマ名の両方でこの関数を使う。
+
+## 10. DB の試験
+
+- **ファイル**: `*_db_test.go` に配置し、先頭に `//go:build db` タグを付ける
+- **実行**: `./scripts/process/integration_test.sh --categories db` で流す。`--specify` で絞れる
+- **環境**: 1 回の実行に 1 つの一時的な PostgreSQL 17 コンテナを使う。`env.sh up` の環境は不要。実行のあとにコンテナを消す
+- **試験ごとに新しい DB**: `dbtest.MustOpen(t)` を使い、試験ごとにマイグレーション済みの新しいデータベースを作る。終わったあとに消す。返る `Conns` は `OwnerURL`・`AppURL`・`OpsURL`（運営のロール）・`AdminURL` を持ち、運営の処理の試験は `OpsURL` で接続する（持ち主で代用しない。権限と RLS の試験にならない）
+- **空の DB（マイグレーションなし）**: `dbtest.OpenEmpty(t)` を使う。ロールだけ用意した DB が要る試験（同時の実行、1 つずつ上げる、改ざん検出など）向け
+- **スキーマの写し**: `dbtest.SchemaSnapshot(ctx, conn, schema)` で、対象スキーマの形をカタログから集める（表・列・制約・索引・RLS・トリガー・関数・権限・ビュー）。時刻の値（`applied_at` など）は入れない。1 つずつ上げた DB と一度に流した DB の比較に使う
+- **決まりの確かめ**: `dbtest.CheckInvariants(ctx, conn, registry)` が破った箇所の一覧を返す。core と、版の表を持つすべての企業のスキーマを対象にする。確かめる決まりには、RLS・`security_invoker`・保持期間の宣言に加え、アプリのロールが関数の持ち主でないことと、`SECURITY DEFINER` の関数が `search_path` を決めていること（§3.2）、運営のロールの権限が許可一覧の表だけであること、アプリと運営のロールが追記だけの表を書き換えられないこと（§3.6）も含む。決まりの試験は破った箇所が 0 件であることを確かめ、破った DB の試験は挙がることを確かめる
+- **単体試験**: DB に触れない。`build.sh` の単体試験で通す。DB の試験コードは `go vet -tags db` でコンパイルが通ることだけを確認する

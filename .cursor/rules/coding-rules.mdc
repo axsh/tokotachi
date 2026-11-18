@@ -10,18 +10,20 @@ alwaysApply: false
 ## 1. 使用する技術
 
 ### 1.1 Backend (Go)
-- **言語**: Go (v1.21+)
+- **言語**: Go (v1.24+)
 - **ライブラリ** (推奨):
   - Web API: `huma` (OpenAPI v3.1対応)
-  - Database: `sqlite3` (開発/単体テスト用, 排他ロックモード推奨), `postgres` (本番想定)
+  - Database: PostgreSQL 17（ドライバ: `pgx v5`）。DB の決まりは `.cursor/rules/database-rules.mdc` を参照
   - Testing: 標準 `testing` パッケージ + `testify`
 
-### 1.2 Frontend (VSCode/TypeScript)
+### 1.2 Frontend (Web 画面 / TypeScript)
 - **言語**: TypeScript (v5.x+)
-- **フレームワーク**: React (Webview), VSCode API (Extension)
+- **フレームワーク**: React（SPA）
+- **見た目の値**: 色・余白・角・書体・文字の大きさは `features/legalchk/web/src/styles/tokens.css` の CSS 変数に置く。部品はこれらの変数を使う。**16 進数の色は `tokens.css` の中だけに書く**（ほかの CSS や TSX に直書きしない）。GUI が配る静的な画面の CSS（`shell-out.css` など）も hex を持たず `var(--…)` だけを使い、GUI は `tokens.css` を `/static/tokens.css` として配る。道具が製品の SPA とは別に自分の画面（例: 報告の道具の HTML）を持つときは、道具ごとの `tokens.css` を 1 つ置いて 16 進数の色をそこだけに書き、ほかの CSS は `var(--…)` だけを使う。その道を色の見張りの許す道（repo 試験の `hexColorAllowedPaths`・`specTokensPaths`）に足す。
+- **インラインのスタイル禁止**: 部品の見た目は CSS のクラスで付ける。`style` 属性（インラインのスタイル）は使わない。CSP の `style-src 'self'` に引っかかるためである。
 - **Testing**:
-  - Unit: Jest / Vitest (Webview components)
-  - E2E: Playwright (VSCode Extension Testing)
+  - Unit: Jest / Vitest（画面のコンポーネント）
+  - E2E: Playwright など（Web 画面。構成は `.cursor/rules/testing-rules.mdc` §10）
 
 ## 2. ワークフローと開発プロセス
 
@@ -33,14 +35,17 @@ alwaysApply: false
    > `npm run build`, `go build`, `go test` などの直接実行は、環境間の差異や成果物の配置不整合を招くため **禁止** します。必ず対応する `scripts/process/` 配下のスクリプトを使用してください。
 
 2. **ワークフローによるオーケストレーション**:
-   一連の作業手順（例: 修正→テスト→再テスト）は `.agent/workflows/` に定義し、定型化する。
+   一連の作業手順（例: 修正→テスト→再テスト）は procedure（ワークフロー）として定義し、定型化する。
 
 3. **TDD (テスト駆動開発) の徹底**:
    開発は必ず以下のサイクルで進めること。
-   1. **レッド**: 実装の前に、その機能の要件を満たすテストコード（Unit Test）を先に書く。この時点でテストは失敗する。
+   1. **レッド**: 実装の前に、その機能の要件を満たすテストコードを先に書く。この時点でテストは失敗する。
+      - **画面（GUI）を作る・変えるとき**: まず E2E テストを書き、失敗することを確かめてから、画面と、画面が使う API の実装に入る。API やロジックは、それぞれ単体テストを先に書く（外側の E2E と、内側の単体テストの二重のループで進める）。
+      - **画面を含まない変更**: 単体テスト（必要に応じて統合テスト）を先に書く。
+      - 失敗の理由が「機能がまだ無い」ことであり、環境の不調やテストコードの誤りではないことを確かめる。
    2. **グリーン**: テストを通過させるための最小限の実装を行う。
    3. **リファクタリング**: テスト通過後、コードの品質を高めるためにリファクタリングを行う。
-   *テストのない実装は原則として認めない。*
+   *テストのない実装は原則として認めない。* 先に書いたテストは、失敗したままコミットせず、グリーンにしてから実装と一緒にコミットする（§4.2）。
 
 ## 3. 実装上の共通ルール
 
@@ -51,6 +56,8 @@ alwaysApply: false
 *   **KISS 原則 (Keep It Simple, Stupid)**: 実装は常にシンプルに保つこと。複雑な抽象化や過剰な設計は可読性を損なう。問題を解決する最もシンプルな方法を選択し、不必要な複雑さを持ち込まないこと。
 *   **YAGNI 原則 (You Aren't Gonna Need It)**: 現時点で必要のない機能を先読みして実装しないこと。「将来必要になるかもしれない」という理由だけで機能を追加することは禁止する。実際に要件として確定した時点で実装する。
 *   **利用していないコードの削除**: どこからも参照されず、利用されない変数、関数、コードは可能な限り削除してください。
+*   **プランの機能は一覧から引く**: プランごとの機能の有効・無効と上限は `internal/entitlements` の決まった一覧に持ち、`entitlements.For(plan)` から引く。業務コードでプラン名（`STANDARD` / `ENTERPRISE` など）を直接分岐して MultiWorkspace 等を決めない。
+*   **権限の判定は 1 か所**: 契約企業の利用者が「できるか」の判定は `internal/authz` の `Evaluate` だけで行い（割り当てを作る人の確かめは `CanAssign`）、業務コードでロールの番号（10・11・12・13）や名前、ロールの複製の中身を直接見て分岐しない。権限コードは `internal/permission` のカタログにあるものだけを使う。カタログに無いコードを渡すのはプログラムの誤りで、`Evaluate` は拒否ではなくエラーを返す。運営社員（01〜07）の判定は、今のまま `internal/operators` の決まった一覧で行う。ロールの割り当ての追加と削除は `authz.Service` だけが行い、委任の確かめと監査（`role.assigned`・`role.unassigned`）を同じトランザクションで流す。
 
 ### 3.2 コメントと言語設定
 
@@ -64,36 +71,37 @@ alwaysApply: false
 #### Backend (Go)
 *   **単体テスト (Unit Test)**:
     *   対象: `cmd/`, `internal/`, `pkg/` 内の各パッケージ。
-    *   実行: `go test ./...` または `scripts/process/build.sh --skip-frontend --skip-etc`。
-    *   制約: **Fail Fast**。外部通信を行わず、モックを使用すること。
+    *   実行: `go test ./...` または `scripts/process/build.sh --skip-frontend`。
+    *   制約: **Fail Fast**。外部通信を行わず、モックを使用すること。**DB に触れない**（DB の試験は `db` カテゴリで行う）。
+*   **DB テスト (Database Integration Test)**:
+    *   対象: `internal/` 配下の `*_db_test.go`（`//go:build db` タグ付き）。
+    *   実行: `scripts/process/integration_test.sh --categories db`。
+    *   制約: 1 回の実行に 1 つの一時的な PostgreSQL 17 コンテナを使う。`env.sh up` の環境は不要。詳細は `.cursor/rules/database-rules.mdc` §10。
 *   **統合テスト (Integration Test)**:
     *   対象: `tests/` ディレクトリ配下。
-    *   実行: `scripts/process/integration_test.sh` (カテゴリ指定なし、または `llm` 等のバックエンドカテゴリ指定)。
+    *   実行: `scripts/process/integration_test.sh`（カテゴリ指定なし、または `--categories repo` / `db` / `env` 等）。
     *   制約: 実際のコンテナやAPIと通信を行う。
 
-#### Frontend (VSCode/TypeScript)
+#### Frontend (Web 画面 / TypeScript)
 *   **単体テスト (Unit Test)**:
-    *   対象: Webview (React) コンポーネント等。
-    *   実行: `npm test` (Webviewディレクトリ内) は開発時のみ許容。CI/Verificationでは `scripts/process/build.sh` を使用すること。
+    *   対象: 画面（React）のコンポーネント等。
+    *   実行: `npm test`（画面のディレクトリ内）は開発時のみ許容。CI/Verificationでは `scripts/process/build.sh` を使用すること。
 *   **E2Eテスト (Integration Test)**:
-    *   対象: VSCode拡張機能の挙動検証。
-    *   実行: `scripts/process/integration_test.sh --categories gui`。
-    *   制約: Test Driver Patternを使用し、VSCodeのインスタンスを起動して検証する。
+    *   対象: Web 画面の挙動検証。
+    *   構成と実行: `.cursor/rules/testing-rules.mdc` §10 に従う。実行は `./scripts/process/integration_test.sh --categories e2e`。
 
 ### 4.2 テスト自動化
 
-*   PR作成前やコミット前には必ず `.agent/workflows/build-pipeline.md` に相当するフロー（Unit Test -> Build -> Integration Test）を実行し、品質を担保すること。
+*   PR作成前やコミット前には必ず `.cursor/skills/build-pipeline/SKILL.md` に相当するフロー（Unit Test -> Build -> Integration Test）を実行し、品質を担保すること。
 
 ### 4.3 E2Eテストの堅牢性 (E2E Test Robustness)
 
 *   **Action-Verification パターン**:
     *   アクション（クリック、入力など）を行う際は、必ずその直後に期待する結果（要素の表示、状態変化など）を検証すること。
     *   非推奨: `await click(...)` -> `await timeout(...)`
-    *   必須: `await driver.runAction(..., verification)` または `await click(...)` -> `await expect(...).toBeVisible()`
+    *   必須: `await click(...)` -> `await expect(...).toBeVisible()`（画面オブジェクトの操作の中で行う。`.cursor/rules/testing-rules.mdc` §10.1）
 *   **Fail Fast**:
-    *   アクション実行中にブラウザコンソールのエラーや例外が発生した場合は、即座にテストを失敗させること（`runAction` ヘルパーの使用を推奨）。
-*   **Editor Cleanup**:
-    *   テスト終了時や開始時のエディタ終了処理には、必ず `driver.closeAllEditors()` を使用し、保存ダイアログ等のハンドリングをドライバに委譲すること。生の `View: Close All Editors` コマンドの使用は禁止する。
+    *   アクション実行中にブラウザコンソールのエラーや例外が発生した場合は、即座にテストを失敗させること。
 
 ## 5. ロギングと通信処理
 
@@ -102,16 +110,42 @@ alwaysApply: false
 
 ### 5.2 Web Frontend API Request
 
-*   **標準Utilsの使用**: Webview内でのAPIリクエストには、必ず `ide/webview/src/utils/api.ts` の `fetchWithRetry` と `ide/webview/src/utils/config.ts` の `getApiBaseUrl` を使用すること。
+*   **標準Utilsの使用**: 画面（SPA）からの API リクエストには、必ずプロジェクト共通の API 呼び出しの部品（リトライとエラー処理をそろえたもの）と、接続先を決める部品を使用すること。部品の置き場所は、画面の土台を作るときに決めてここに書き足す。
 *   **禁止事項**:
     *   `fetch` の直接使用 (リトライやエラーハンドリングが統一されないため)
     *   `http://localhost` やポート番号のハードコード (環境依存を避けるため)
+
+### 5.3 Web 画面の共通部品と運営の決まり
+
+*   **共通の画面部品**: 運営と顧客の画面は `features/legalchk/web/src/ui/` の共通部品（`PageHeader`・`Card`・`FramedTable`・`TableFooter`・`FilterBar`・`FormRow`・`Banner`・`Badge`・`LinkAction`・`FormDialog`）で組む。画面ごとに同じ見た目の部品を新しく作らない。
+*   **ドメインを外したあとの案内**: 運営がテナントの許可ドメインを外したあと、GUI の企業コンテキストの正のキャッシュ（`cache_ttl`）により、入れないときの案内（AUTH-09）が出るまで最大約 30 秒かかることがある。確認文と試験の待ちはこの保持時間を踏まえる。
 
 
 ## 6. ファイル操作とパス
 
 *   **設定ファイルの分離**: 機密情報や環境依存の設定は `settings/` 配下のYAMLファイルで管理し、コード内にハードコードしないこと。
 *   **パス指定の標準**: 内部的なファイルパス操作には `path/filepath` を適切に使用し、OS間の差異（セパレータ等）を吸収すること。
+
+## 6.1 企業ごとのカスタマイズ（companies / ext）
+
+*   **境界**: `companies/` のコードが import してよいのは `features/legalchk/ext` と標準ライブラリだけである。`features/legalchk/internal` やその他の legalchk 公開パッケージは import しない。
+*   **依存の向き**: `legalchk` → `companies` → `ext`。循環させない。バイナリは 1 本（`companies/all` を import）。
+*   **拡張点の足し方**: 使う仕様で足す。先に `company.yaml` の設定で済まないか見る。共通側に小さなインターフェース（メソッド 1 つ）と埋め込める既定実装を置き、今の動きを既定にする。企業は実装だけを登録する。
+*   **拡張点の育て方**: 既存インターフェースにメソッドを足さない。新しい能力は新しい拡張点にする。広げるときは既定実装にも同じメソッドを足し、埋め込んだ企業実装がそのまま通るようにする。既存メソッドの意味は変えない。
+*   **呼び出しの守り**: 業務側は `ext.Call*` 経由で呼ぶ。panic 回収・時間制限（既定 2 秒）・失敗時は既定へ戻し、WARN に企業コード・拡張点名・理由だけを出す（返した本文などはログに出さない）。
+*   **画面の部品（slots）**: `companies/{code}/web/slots/` に置き、入口 `slots/index.tsx` が差し込み口名と部品の対応を返す。共通側の公開口は `@legalchk/ext`（`features/legalchk/web/src/ext/`）。差し込み口は使う企業が出た仕様で足し、名前は `画面.位置`（例: `home.main`）。`SlotProps` の項目は足すだけで減らさない。差し込み口が受け止めた例外は、コンソールに差し込み口の名前だけを出し、例外本文は出さない。`createRoot` の `onCaughtError` でも `SlotBoundary` の例外を外す（ほかの boundary の出し方は変えない）。
+*   **SPA の境界**: 企業の `web/` が import してよいのは `react`・`@legalchk/ext`・同じ企業の `web/` 内の相対パスだけ。共通画面は企業フォルダを import しない。`@company/slots` を import するのは `src/slots/Slot.tsx` だけ。
+*   **文言の鍵**: 鍵と既定文は `features/legalchk/web/src/wording/defaults.json` の 1 ファイルだけ。Go は `features/legalchk/web` パッケージで同じファイルを embed し、企業設定の鍵確かめに使う。鍵は「画面の場所.意味」で、その画面を作る・直す仕様で足す。一度使った鍵の意味は変えない。
+*   **同じパスの差し替え**: まだ無い。差し込み口で済まない企業が出たら、先に差し替えの仕組みを作る仕様を書く。
+
+## 6.2 運営コンソール（ops）の境界
+
+*   **接続のロール**: 運営コンソールの処理（運営社員の入場判定・運営社員の管理・テナントのない監査ログ・運営のメール）は、運営の接続ロール `legalchk_ops` だけを使う。業務データの表（`core.users`・`core.files`・`core.tenants`・企業のスキーマなど）に触れない。権限は DB の GRANT で構造として守り、`dbtest.CheckInvariants` が許可一覧（`opsAllowedTables`）以外への権限を見つける。
+*   **置き場所**: 運営の処理は `features/legalchk/internal/operators`（入場の判定 `Service.Enter`・運営社員の操作・`legalchk operator add`）に置き、業務バックエンドの `/internal/v1/ops/*` から呼ぶ。バックエンドは運営の接続の池をアプリのロールの池とは別に持ち、混ぜない。GUI サーバは DB に触れず、入場の判定をバックエンドに尋ね、`/api/ops/*` を中継するだけにする。
+*   **audience**: 運営のホストは `access.ops_audience`、ほかのホストは `access.audience` で JWT を確かめる（`AccessConfig.AudienceFor`）。バックエンドも自分で同じ選び方をする。どちらかが空、または同じ値なら `AccessConfig.Validate` が起動を失敗させる。
+*   **入場の判定は 1 か所**: `operators.Service.Enter`（有効・期限内の招待中だけ入れる。招待中の初来訪は有効にして監査に残す）。GUI は拒否の理由を問わず同じ SYS-04（静的 HTML・403）を返し、理由はバックエンドのログにだけ出す。入場の結果は GUI でも保存（キャッシュ）しない。無効にした人は次のリクエストから入れなくする。
+*   **サーバで守る**: 自分の行・最後の有効な 01 の決まりと、01 だけが操作できる決まりは、画面で隠すだけにせず、サーバ（`operators.GuardMutation` と `operators.Service`）で守る。運営社員を変える処理は、アドバイザリーロックで 1 つずつ流し、操作者を同じトランザクションの中で読み直す。
+*   **運営の操作は監査ログに残す**: 操作コードは `ops.` で始め（`audit.IsOpsOperation`）、同じトランザクションの中でテナントなしで書く。差分にはロール・状態の前と後だけを入れ、メールの本文は入れない。
 
 ## 7. Go言語のモダンな記述 (Modern Go Language Practices)
 

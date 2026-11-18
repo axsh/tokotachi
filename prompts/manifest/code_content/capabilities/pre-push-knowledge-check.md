@@ -11,8 +11,9 @@ paths:
   - "pkg/**"
   - "cmd/**"
   - "scripts/**"
-  - ".agents/**"
   - "prompts/manifest/**"
+  - "shared/libs/**"
+  - "features/**"
 references:
   - "prompts/manifest/code_content/capabilities/record-far-knowledge.md"
 scripts:
