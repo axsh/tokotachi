@@ -14,8 +14,9 @@ The scripts are divided into tool-specific release scripts, future content-speci
 scripts/dist/
 ├── README.md                  # This file
 ├── tool/                      # Tool (tt) release pipeline scripts
-│   ├── release.sh             # [Public] All-in-one: build + package + publish
+│   ├── release.sh             # [Public] All-in-one: embed version + build + package + publish
 │   └── internal/              # Internal step scripts (called by release.sh)
+│       ├── set_embedded_version.sh  # Rewrites features/tt/internal/version/version.go
 │       ├── build.sh           # Compiles Go binaries for target platforms
 │       ├── package.sh         # Archives binaries and packages installers
 │       ├── publish.sh         # Publishes to GitHub Releases and package managers
@@ -32,6 +33,14 @@ scripts/dist/
 ```
 
 ## Release Workflow (Tool)
+
+### Embedded product version
+
+`tt` embeds its product version in `features/tt/internal/version/version.go` (`const Version`).
+`tt version` / `tt --version` / `tt -V` print that string.
+
+`release.sh tt <version>` rewrites that constant to `NEW_VERSION`, rebuilds, packages,
+**commits** `version.go` so the GitHub Release tag points at the matching source, then publishes.
 
 ### Quick Release (All-in-one)
 

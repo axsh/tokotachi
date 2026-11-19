@@ -92,7 +92,7 @@ func writeRootHelp(w io.Writer) {
 	b.WriteString("\n## Exit codes\n\n")
 	b.WriteString("0 success\n1 failure\n\n")
 	b.WriteString("## Read next\n\n")
-	b.WriteString("`tt help up`\n`tt help prompt`\n`tt help agent`\n")
+	b.WriteString("`tt help version`\n`tt help up`\n`tt help prompt`\n`tt help agent`\n")
 	fmt.Fprint(w, b.String())
 }
 

@@ -196,14 +196,25 @@ info "Current: ${CURRENT_VERSION}"
 info "New:     ${NEW_VERSION}"
 echo ""
 
+# ─── Step 0: Embed version into tt source (tt only) ─────────────────
+
+VERSION_GO="${REPO_ROOT}/features/tt/internal/version/version.go"
+if [[ "$TOOL_ID" == "tt" ]]; then
+  info "=== Step 0/5: Embed version ==="
+  "${SCRIPT_DIR}/internal/set_embedded_version.sh" "$VERSION_GO" "$NEW_VERSION"
+  pass "Embedded version ${NEW_VERSION} into ${VERSION_GO}"
+else
+  warn "Skipping embedded version rewrite for tool '${TOOL_ID}' (only tt is supported)."
+fi
+
 # ─── Step 1: Build ──────────────────────────────────────────────────
 
-info "=== Step 1/4: Build ==="
+info "=== Step 1/5: Build ==="
 "${SCRIPT_DIR}/internal/build.sh" "$TOOL_ID"
 
 # ─── Step 2: Generate Release Notes ────────────────────────────────
 
-info "=== Step 2/4: Generate Release Notes ==="
+info "=== Step 2/5: Generate Release Notes ==="
 RELEASE_NOTE_DIR="${REPO_ROOT}/features/release-note"
 if [[ -f "${RELEASE_NOTE_DIR}/go.mod" ]]; then
   if (cd "$RELEASE_NOTE_DIR" && go run . \
@@ -220,12 +231,25 @@ fi
 
 # ─── Step 3: Release ───────────────────────────────────────────────
 
-info "=== Step 3/4: Release ==="
+info "=== Step 3/5: Package ==="
 "${SCRIPT_DIR}/internal/package.sh" "$TOOL_ID" "$NEW_VERSION"
 
-# ─── Step 4: Publish ───────────────────────────────────────────────
+# ─── Step 3.5: Commit embedded version before tagging Publish ───────
 
-info "=== Step 4/4: Publish ==="
+if [[ "$TOOL_ID" == "tt" ]]; then
+  info "=== Step 4/5: Commit embedded version ==="
+  git -C "$REPO_ROOT" add -- "features/tt/internal/version/version.go"
+  if git -C "$REPO_ROOT" diff --cached --quiet -- "features/tt/internal/version/version.go"; then
+    info "No version.go changes to commit (already at ${NEW_VERSION})."
+  else
+    git -C "$REPO_ROOT" commit -m "chore(tt): bump embedded version to ${NEW_VERSION}"
+    pass "Committed embedded version ${NEW_VERSION}"
+  fi
+fi
+
+# ─── Step 5: Publish ───────────────────────────────────────────────
+
+info "=== Step 5/5: Publish ==="
 "${SCRIPT_DIR}/internal/publish.sh" "$TOOL_ID" "$NEW_VERSION"
 
 # ─── Done ───────────────────────────────────────────────────────────

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/axsh/tokotachi/features/tt/internal/version"
 )
 
 var (
@@ -25,11 +27,19 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.Version = version.Version
+	rootCmd.SetVersionTemplate("tt {{.Version}}\n")
+	rootCmd.InitDefaultVersionFlag()
+	if f := rootCmd.Flags().Lookup("version"); f != nil {
+		f.Shorthand = "V"
+	}
+
 	rootCmd.PersistentFlags().BoolVar(&flagVerbose, "verbose", false, "Show debug logs")
 	rootCmd.PersistentFlags().BoolVar(&flagDryRun, "dry-run", false, "Show planned actions without executing")
 	rootCmd.PersistentFlags().StringVar(&flagReport, "report", "", "Write execution report to Markdown file")
 	rootCmd.PersistentFlags().BoolVar(&flagEnv, "env", false, "Show environment variables in report")
 
+	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(downCmd)
 	rootCmd.AddCommand(openCmd)

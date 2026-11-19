@@ -335,6 +335,16 @@ func registerAgentHelp() {
 
 func registerMiscHelp() {
 	ex := "0 success\n1 failure"
+	clihelp.Register("version", page(
+		"tt version",
+		"Print the embedded tt product version string.",
+		"When confirming which release binary or local build is running.",
+		"Do not use to bump the release; use the tool release procedure.",
+		"None (no network, no workspace writes).",
+		"`tt version`\nAlso: `tt --version` or `tt -V`\nSuccess prints `tt vN.N.N` on stdout.",
+		"0 success",
+		"`tt help`\n`tt help doctor`",
+	))
 	clihelp.Register("merge", page(
 		"tt merge",
 		"Local git merge of the specified branch into its base branch.",

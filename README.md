@@ -345,9 +345,10 @@ For any code changes (features, tools) or catalog updates (content), create a ne
 Once verification is complete, release changes depending on the component type:
 
 #### A. Tool Release (tt CLI Tool)
-The tool release compiles binaries, packages archives, and publishes them directly to GitHub Releases.
-- Run `./scripts/dist/tool/release.sh tt` to publish the release.
-- This script builds the binaries, packages the archives, and uploads them to the distribution channels (such as GitHub Releases).
+The tool release embeds the product version, compiles binaries, packages archives, and publishes them to GitHub Releases.
+- The product version lives in `features/tt/internal/version/version.go`. Confirm a local binary with `tt version`.
+- Run `./scripts/dist/tool/release.sh tt` (or with an absolute `vN.N.N`) to publish.
+- The script rewrites the embedded constant to the release version, rebuilds, packages, commits `version.go`, then creates the GitHub Release tag so source, tag, and binary match.
 - Typically run from the `main` branch or a dedicated release branch after code changes are merged.
 
 #### B. Content Release (Catalog Templates)
