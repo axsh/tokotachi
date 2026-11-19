@@ -29,9 +29,9 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.Version = version.Version
 	rootCmd.SetVersionTemplate("tt {{.Version}}\n")
-	rootCmd.InitDefaultVersionFlag()
-	if f := rootCmd.Flags().Lookup("version"); f != nil {
-		f.Shorthand = "V"
+	// Register --version/-V before cobra's default (which uses -v and conflicts with changing Shorthand later).
+	if rootCmd.Flags().Lookup("version") == nil {
+		rootCmd.Flags().BoolP("version", "V", false, "version for "+rootCmd.Name())
 	}
 
 	rootCmd.PersistentFlags().BoolVar(&flagVerbose, "verbose", false, "Show debug logs")

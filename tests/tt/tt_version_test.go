@@ -16,10 +16,10 @@ func readEmbeddedVersion(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("read version.go: %v", err)
 	}
-	re := regexp.MustCompile(`(?m)^const Version = "([^"]+)"$`)
+	re := regexp.MustCompile(`(?m)^const Version = "([^"]+)"\r?$`)
 	m := re.FindSubmatch(data)
 	if m == nil {
-		t.Fatalf("const Version not found in %s", path)
+		t.Fatalf("const Version not found in %s\ncontent:\n%s", path, data)
 	}
 	return string(m[1])
 }

@@ -24,8 +24,8 @@ if [[ ! -f "$VERSION_FILE" ]]; then
   exit 1
 fi
 
-# Exactly one const Version = "..." line must exist.
-match_count=$(grep -cE '^const Version = "[^"]+"$' "$VERSION_FILE" || true)
+# Exactly one const Version = "..." line must exist (allow CRLF).
+match_count=$(grep -cE '^const Version = "[^"]+"\r?$' "$VERSION_FILE" || true)
 if [[ "$match_count" -ne 1 ]]; then
   echo "ERROR: Expected exactly one 'const Version = \"...\"' line in ${VERSION_FILE}, found ${match_count}" >&2
   exit 1
@@ -36,7 +36,7 @@ tmp_file="$(mktemp)"
 trap 'rm -f "$tmp_file"' EXIT
 
 awk -v ver="$NEW_VERSION" '
-  /^const Version = "[^"]+"$/ {
+  /^const Version = "[^"]+"\r?$/ {
     print "const Version = \"" ver "\""
     next
   }
@@ -46,7 +46,7 @@ awk -v ver="$NEW_VERSION" '
 mv "$tmp_file" "$VERSION_FILE"
 trap - EXIT
 
-if ! grep -qE "^const Version = \"${NEW_VERSION}\"\$" "$VERSION_FILE"; then
+if ! grep -qE "^const Version = \"${NEW_VERSION}\"\r?\$" "$VERSION_FILE"; then
   echo "ERROR: After rewrite, Version constant does not equal ${NEW_VERSION} in ${VERSION_FILE}" >&2
   exit 1
 fi
