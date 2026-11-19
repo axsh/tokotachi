@@ -3,7 +3,7 @@ apiVersion: agent.meta/v1
 id: Tt-Kdb-Std-And-Agent-Help
 kind: idea
 title: tt への KDB 標準機能実装とエージェント向け help
-status: draft
+status: approved
 ---
 
 # tt への KDB 標準機能実装とエージェント向け help
