@@ -77,8 +77,8 @@ func registerKdbHelp() {
 		"When you need status/distill/dump/merge/pack for a specific KDB.",
 		"Do not use to iterate all KDBs; use `tt kdb-track`.",
 		"Registry entry for `<id>`. Non-builtin KDBs need `bash` on PATH. Flags: `--workspace`, `--registry`, `--prefer` (merge).",
-		"Operations: status, distill, dump, merge, pack. The builtin `backlog` runs inside tt; other ids run the registry `*_cmd` and their stdout is passed through (JSON when the command emits JSON).\n"+json,
-		"0 success\n1 operation failed (or backlog not wired in this build)\n2 usage error (unknown id or operation)",
-		"`tt help kdb-track`",
+		"Operations: status, distill, dump, merge, pack. The builtin `backlog` runs inside tt and has more operations (`tt kdb backlog <op>`, see `tt help kdb backlog`); other ids run the registry `*_cmd` and their stdout is passed through (JSON when the command emits JSON).\n"+json,
+		"0 success\n1 operation failed\n2 usage error (unknown id or operation)",
+		"`tt help kdb backlog`\n`tt help kdb-track`",
 	))
 }

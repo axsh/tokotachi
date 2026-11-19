@@ -10,7 +10,6 @@ import (
 	"github.com/axsh/tokotachi/features/tt/internal/kdb/builtin"
 	"github.com/axsh/tokotachi/features/tt/internal/kdb/delegate"
 	"github.com/axsh/tokotachi/features/tt/internal/kdb/jsonout"
-	"github.com/axsh/tokotachi/features/tt/internal/kdb/paths"
 	"github.com/axsh/tokotachi/features/tt/internal/kdb/registry"
 )
 
@@ -98,6 +97,10 @@ func runKdb(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return jsonout.Fail(out, hint, jsonout.CodeUsage, err.Error(), nil)
 	}
+	// The builtin backlog owns its operations, flags and help pages.
+	if len(a.positions) > 0 && a.positions[0] == builtin.BacklogID {
+		return runKdbBacklog(cmd, a)
+	}
 	if a.help || len(a.positions) == 0 || a.positions[0] == "help" {
 		agentHelpFunc(cmd, nil)
 		return nil
@@ -111,11 +114,6 @@ func runKdb(cmd *cobra.Command, args []string) error {
 	}
 	op := rest[0]
 
-	// Backlog CRUD subcommands belong to the backlog implementation (not wired here).
-	if id == builtin.BacklogID && !isPipelineOp(op) {
-		return jsonout.Fail(out, hint, jsonout.CodeBusiness,
-			fmt.Sprintf("backlog subcommand %q is not available in this build (backlog CRUD is not implemented yet)", op), nil)
-	}
 	if !isPipelineOp(op) {
 		return jsonout.Fail(out, hint, jsonout.CodeUsage,
 			fmt.Sprintf("unknown operation %q for knowledge DB %q (one of: %s)", op, id, strings.Join(kdbPipelineOps, ", ")), nil)
@@ -139,25 +137,6 @@ func runKdb(cmd *cobra.Command, args []string) error {
 
 func runKdbOp(ctx context.Context, cmd *cobra.Command, hint, workspace string, a kdbArgs, e registry.Entry, op string) error {
 	out := cmd.OutOrStdout()
-
-	if builtin.IsBuiltin(e.ID) {
-		p, err := paths.ForEntry(paths.InputFromEnv(workspace, a.registry), e)
-		if err != nil {
-			return jsonout.Fail(out, hint, jsonout.CodeBusiness, err.Error(), nil)
-		}
-		if op == "status" {
-			raw, err := builtin.Status(ctx, p)
-			if err != nil {
-				return jsonout.Fail(out, hint, jsonout.CodeBusiness, err.Error(), map[string]any{"id": e.ID})
-			}
-			_, werr := fmt.Fprintln(out, strings.TrimSpace(string(raw)))
-			return werr
-		}
-		if err := builtin.Op(ctx, op, p, a.prefer); err != nil {
-			return jsonout.Fail(out, hint, jsonout.CodeBusiness, err.Error(), map[string]any{"id": e.ID, "op": op})
-		}
-		return jsonout.OK(out, map[string]any{"id": e.ID, "op": op})
-	}
 
 	cmdLine := map[string]string{
 		"status":  e.StatusCmd,

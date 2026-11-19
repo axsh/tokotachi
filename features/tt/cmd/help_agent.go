@@ -25,10 +25,19 @@ func runAgentHelp(cmd *cobra.Command, args []string) error {
 		writeRootHelp(cmd.OutOrStdout())
 		return nil
 	}
-	target, _, err := rootCmd.Find(args)
+	target, remaining, err := rootCmd.Find(args)
 	if err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Unknown help topic: %s\n\nRun `tt help` for a command list.\n", strings.Join(args, " "))
 		return err
+	}
+	// Topics below commands that parse their own arguments (e.g. `kdb backlog add`)
+	// are not cobra subcommands; resolve them against the registered pages.
+	if len(remaining) > 0 {
+		topic := strings.TrimSpace(commandPathOf(target) + " " + strings.Join(remaining, " "))
+		if p, ok := clihelp.Lookup(topic); ok {
+			fmt.Fprint(cmd.OutOrStdout(), clihelp.Render(p))
+			return nil
+		}
 	}
 	agentHelpFunc(target, nil)
 	return nil

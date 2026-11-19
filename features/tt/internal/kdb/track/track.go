@@ -161,6 +161,11 @@ func interpretOutput(raw []byte) (out json.RawMessage, dirty bool, ok bool, errM
 	}
 	if d, isBool := obj["dirty"].(bool); isBool {
 		dirty = d
+	} else if data, isObj := obj["data"].(map[string]any); isObj {
+		// status.sh / tt kdb backlog status nest the report under "data".
+		if d, isBool := data["dirty"].(bool); isBool {
+			dirty = d
+		}
 	}
 	if okv, isBool := obj["ok"].(bool); isBool && !okv {
 		msg, _ := obj["error"].(string)

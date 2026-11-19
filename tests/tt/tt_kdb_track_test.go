@@ -150,21 +150,21 @@ func TestKdb_UnknownIDAndOp(t *testing.T) {
 	}
 }
 
-func TestKdb_BacklogNotWiredIsClearError(t *testing.T) {
+func TestKdb_BacklogIsWiredBuiltin(t *testing.T) {
 	ws := newKdbWorkspace(t, "echo ok")
-	out, _, code := runKdbTT(t, nil, "kdb", "backlog", "list", "--workspace", ws)
-	if code == 0 {
-		t.Fatalf("backlog CRUD must fail until wired:\n%s", out)
+	out, stderr, code := runKdbTT(t, nil, "kdb", "backlog", "list", "--workspace", ws)
+	if code != 0 {
+		t.Fatalf("backlog list exit %d\n%s\n%s", code, out, stderr)
 	}
 	m := firstLineJSON(t, out)
-	if m["ok"] != false || !strings.Contains(m["error"].(string), "backlog") {
-		t.Fatalf("unclear error: %v", m)
+	if m["ok"] != true || m["total"] != float64(0) {
+		t.Fatalf("unexpected list output: %v", m)
 	}
 }
 
 func TestKdbTrack_StatusAllPartialFailureExits1(t *testing.T) {
-	// backlog is builtin and not wired -> fails; designdb must still be reported.
-	ws := newKdbWorkspace(t, `echo '{"ok":true,"dirty":false}'`)
+	// designdb reports ok=false -> exit 1; the builtin backlog must still be reported.
+	ws := newKdbWorkspace(t, `echo '{"ok":false,"error":"boom"}'`)
 	out, _, code := runKdbTT(t, nil, "kdb-track", "status-all", "--workspace", ws)
 	if code != 1 {
 		t.Fatalf("want exit 1, got %d\n%s", code, out)
@@ -177,8 +177,11 @@ func TestKdbTrack_StatusAllPartialFailureExits1(t *testing.T) {
 	if len(statuses) != 2 {
 		t.Fatalf("all entries must be processed: %v", m["statuses"])
 	}
-	if statuses[1].(map[string]any)["ok"] != true {
-		t.Fatalf("designdb should succeed: %v", statuses[1])
+	if statuses[0].(map[string]any)["ok"] != true {
+		t.Fatalf("backlog should succeed: %v", statuses[0])
+	}
+	if statuses[1].(map[string]any)["ok"] != false {
+		t.Fatalf("designdb should fail: %v", statuses[1])
 	}
 }
 

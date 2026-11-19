@@ -34,7 +34,9 @@ body: inline
 8. 遠方知識の systematize とは別系統。sync 前に両方を片付ける
 9. 製品 DB の RLS / 保持は自動適用しない
 10. **レコード UUID（テーブル ID と並列）** — 下節「レコード UUID の設計意図」
-このリポジトリが追跡する知識DBの一覧は `features/kdb/registry.yaml` である。操作はビルド不要の bash（`./scripts/kdb/list.sh` / `unregistered.sh` / `status-all.sh` / `systematize.sh`）が行う。pre-sync と `systematize-knowledge-database` はこれらのスクリプトを呼ぶ。
+このリポジトリが追跡する知識DBの一覧は registry（既定は `features/kdb/registry.yaml`、`--registry` または `KDB_REGISTRY` で変更できる）である。全知識DBの追跡は `tt kdb-track`（`list` / `unregistered` / `status-cmds` / `status-all` / `systematize`）が行い、一つの知識DBへの操作は `tt kdb <id> <operation>` が行う。pre-sync と `systematize-knowledge-database` は `tt kdb-track systematize` を呼ぶ。bash スクリプトは使わない。使い方の説明は `tt help kdb-track` と `tt help kdb` で読む。
+
+backlog は `tt` に内蔵された知識DBである。操作は `tt kdb backlog <op>`（`add` / `list` / `get` / `update` / `resolve` / `status` / `distill` / `dump` / `merge` / `pack` / `unpack` / `restore` / `import-md` / `migrate-uuids`）で、説明は `tt help kdb backlog` と `tt help kdb backlog <op>` で読む。埋め込み SQLite で動くので、Python と外部の `sqlite3` は要らない。置き場は registry の `module_path` と `corpus_path` が決める。新しい依頼元では `scripts/kdb/backlog`（`corpus/` はその下）を推奨し、`features/backlog` でも動く。
 
 ### レコード UUID の設計意図
 
@@ -103,7 +105,7 @@ example（designdb）へいつ列を足すかは、その知識DBの仕様／バ
 - `help` はデータベースが止まっていても、終了コード 0 で読める。
 - 操作の成功は、標準出力の JSON 一つである。
 - `help` の成功は、標準出力の Markdown である。
-- 失敗は、標準エラーの JSON である。終了コードの意味を Exit codes に書き、次に読む `help` を失敗 JSON から辿れるようにする。
+- 失敗は JSON である（bash の CLI は標準エラー。`tt kdb` / `tt kdb-track` は標準出力の先頭行）。終了コードの意味を Exit codes に書き、次に読む `help` を失敗 JSON から辿れるようにする。
 - ログに、API キー、接続文字列のパスワード、認可ヘッダを出さない。
 
 個別のコマンドの引数、閾値、終了コードの番号は、その知識DBの `help` に書く。このスキルへ写さない。
