@@ -94,10 +94,18 @@ tt exec <feature> [branch] -- <command> [args...]
 - GitHub: `gh pr create`
 - GitLab: `glab mr create`
 
-ホスト判定は `TT_FORGE`（明示）が最優先で、未設定時は `origin` URL から自動検出します。hostname に `gitlab` が無いセルフホストでも `TT_FORGE=gitlab` で GitLab 経路にできます。
+ホスト解決の優先順位（高い順）:
+
+1. CLI フラグ `--forge <github|gitlab>`（そのプロセスのみ。永続設定は書き換えない）
+2. 環境変数 `TT_FORGE`
+3. `git remote get-url origin` の hostname による自動検出
+
+hostname に `gitlab` が無いセルフホストでも `--forge gitlab` または `TT_FORGE=gitlab` で GitLab 経路にできます。不正な `--forge` 値はコマンド失敗になります。
 
 ```bash
 tt pr <branch> [feature]
+tt pr --forge gitlab <branch> [feature]
+TT_FORGE=gitlab tt pr <branch> [feature]
 ```
 
 ### 9. `list` — ブランチ一覧の表示
@@ -110,6 +118,23 @@ tt list [flags]
 - **主なフラグ**:
   - `--full`: 文字数制限によるカラムの省略（切り詰め）を行わず、すべての情報を表示します。
   - `--env`: 実行レポートに環境変数の設定セクションを含めます。
+  - `--update`: CodeStatus をフォアグラウンドで即時更新します（forge ホスト解決を使用）。
+  - `--forge <github|gitlab>`: forge ホストの明示指定（`TT_FORGE` より優先。主に `--update` と併用）。
+
+### `doctor` — リポジトリ健全性チェック
+
+リポジトリ構造・設定・外部ツール（`gh` / `glab`）を診断します。ホスト解決は `pr` / `list` と同じ優先順位（`--forge` > `TT_FORGE` > origin URL）です。
+
+```bash
+tt doctor
+tt doctor --forge gitlab
+TT_FORGE=gitlab tt doctor --json
+```
+
+- **主なフラグ**:
+  - `--json`: JSON 形式で結果を出力します。
+  - `--fix`: 自動修正可能な項目を修復します。
+  - `--forge <github|gitlab>`: forge ホストの明示指定（`TT_FORGE` より優先）。不正値はコマンド失敗になります。
 
 ### 10. `scaffold` — テンプレートの適用
 外部テンプレートリポジトリから定義ファイルをダウンロードし、プロジェクト構造やファイルを生成します。
@@ -235,4 +260,4 @@ tt prompt update [flags]
 | `TT_CMD_GIT` | Git CLI のパス | `git` |
 | `TT_CMD_GH` | GitHub CLI のパス | `gh` |
 | `TT_CMD_GLAB` | GitLab CLI (`glab`) のパス | `glab` |
-| `TT_FORGE` | forge 明示指定（`github` / `gitlab`）。空なら origin URL から自動検出 | （空） |
+| `TT_FORGE` | forge 明示指定（`github` / `gitlab`）。`--forge` 未指定時に使用。空なら origin URL から自動検出 | （空） |

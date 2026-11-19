@@ -16,6 +16,7 @@ type Options struct {
 	FeatureFilter string // empty = all features
 	ToolChecker   ToolChecker
 	Fix           bool
+	ForgeOverride string // from --forge; empty = unset
 }
 
 // Run executes all checks and returns a Report.
@@ -24,8 +25,16 @@ func Run(opts Options) (*Report, error) {
 
 	// 1. External tools (host-aware: gh vs glab)
 	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
-	host, _, hostErr := forge.DetectHostFromRepo(opts.RepoRoot, gitCmd)
+	host, _, hostErr := forge.DetectHostFromRepoOpts(forge.DetectOpts{
+		RepoRoot:    opts.RepoRoot,
+		GitCmd:      gitCmd,
+		CLIOverride: opts.ForgeOverride,
+	})
 	if hostErr != nil {
+		// Invalid --forge fails fast; invalid TT_FORGE softens to unknown for diagnosis.
+		if strings.TrimSpace(opts.ForgeOverride) != "" {
+			return nil, hostErr
+		}
 		host = forge.HostUnknown
 	}
 	report.Results = append(report.Results, checkExternalTools(opts.ToolChecker, host)...)

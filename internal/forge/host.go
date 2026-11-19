@@ -55,7 +55,33 @@ func ParseForgeOverride(value string) (Host, error) {
 	}
 }
 
-// ResolveHost applies priority: TT_FORGE override > DetectHost(remoteURL).
+// DetectOpts configures host detection from a local git repo.
+type DetectOpts struct {
+	RepoRoot    string
+	GitCmd      string
+	CLIOverride string // --forge value; empty = unset (do not override)
+}
+
+// ResolveHostPriority applies:
+//  1. cliOverride (--forge) if non-empty after trim
+//  2. envOverride (TT_FORGE) if non-empty after trim
+//  3. DetectHost(remoteURL)
+//
+// Invalid cliOverride returns an error containing "invalid --forge".
+// Invalid envOverride returns the existing ParseForgeOverride error ("invalid TT_FORGE").
+func ResolveHostPriority(cliOverride, envOverride, remoteURL string) (Host, error) {
+	if strings.TrimSpace(cliOverride) != "" {
+		h, err := ParseForgeOverride(cliOverride)
+		if err != nil {
+			return HostUnknown, fmt.Errorf("invalid --forge %q: want github or gitlab", cliOverride)
+		}
+		return h, nil
+	}
+	return ResolveHost(envOverride, remoteURL)
+}
+
+// ResolveHost applies priority: TT_FORGE-style override > DetectHost(remoteURL).
+// Prefer ResolveHostPriority when both CLI and env overrides may be set.
 func ResolveHost(override, remoteURL string) (Host, error) {
 	h, err := ParseForgeOverride(override)
 	if err != nil {
@@ -67,13 +93,13 @@ func ResolveHost(override, remoteURL string) (Host, error) {
 	return DetectHost(remoteURL), nil
 }
 
-// DetectHostFromRepo runs `git remote get-url origin` then ResolveHost(os.Getenv(EnvForge), url).
-// When remote lookup fails but a valid override is set, the override wins and error is nil.
-func DetectHostFromRepo(repoRoot, gitCmd string) (Host, string, error) {
-	override := os.Getenv(EnvForge)
+// DetectHostFromRepoOpts runs `git remote get-url origin` then ResolveHostPriority.
+// When remote lookup fails but a valid override (CLI or env) is set, the override wins and error is nil.
+func DetectHostFromRepoOpts(opts DetectOpts) (Host, string, error) {
+	envOverride := os.Getenv(EnvForge)
 
-	remoteURL, remoteErr := getOriginURL(repoRoot, gitCmd)
-	host, err := ResolveHost(override, remoteURL)
+	remoteURL, remoteErr := getOriginURL(opts.RepoRoot, opts.GitCmd)
+	host, err := ResolveHostPriority(opts.CLIOverride, envOverride, remoteURL)
 	if err != nil {
 		return HostUnknown, remoteURL, err
 	}
@@ -85,6 +111,15 @@ func DetectHostFromRepo(repoRoot, gitCmd string) (Host, string, error) {
 		return HostUnknown, "", remoteErr
 	}
 	return host, remoteURL, nil
+}
+
+// DetectHostFromRepo runs detection with env TT_FORGE and origin URL (no CLI override).
+func DetectHostFromRepo(repoRoot, gitCmd string) (Host, string, error) {
+	return DetectHostFromRepoOpts(DetectOpts{
+		RepoRoot:    repoRoot,
+		GitCmd:      gitCmd,
+		CLIOverride: "",
+	})
 }
 
 func getOriginURL(repoRoot, gitCmd string) (string, error) {

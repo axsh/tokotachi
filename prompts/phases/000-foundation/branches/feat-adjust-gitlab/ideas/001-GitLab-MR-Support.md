@@ -43,18 +43,22 @@
 
 #### R4: ホスト解決と CLI オーバーライド
 
+> **更新**: CLI `--forge` による明示指定は [003-Forge-CLI-Flag-And-Help.md](file://prompts/phases/000-foundation/branches/feat-adjust-gitlab/ideas/003-Forge-CLI-Flag-And-Help.md) が正本。以下はそれに合わせて更新した優先順位。
+
 **ホスト解決の優先順位（確定）:**
 
-1. 環境変数 `TT_FORGE`（明示指定）
-2. `git remote get-url origin` の hostname による自動検出
-3. `unknown`（クライアント選択時は GitHub 経路へフォールバック）
+1. CLI フラグ `--forge`（明示指定・最優先。`tt pr` / `tt list` / `tt doctor`）
+2. 環境変数 `TT_FORGE`（明示指定）
+3. `git remote get-url origin` の hostname による自動検出
+4. `unknown`（クライアント選択時は GitHub 経路へフォールバック）
 
-**`TT_FORGE`:**
+**`--forge` / `TT_FORGE`:**
 
 - 値: `github` | `gitlab`（大文字小文字無視）
-- 未設定 / 空: オーバーライドなし（URL 自動検出へ）
-- 不正値: エラー（黙殺しない）。ただし `tt doctor` は診断継続のため unknown 扱いにしてよい
-- URL に `gitlab` 文字列が無いセルフホストでも `TT_FORGE=gitlab` で GitLab 経路にできること
+- 未設定 / 空: オーバーライドなし（次の優先へ）
+- 不正な `--forge`: エラー（黙殺しない。`tt doctor` も Fail Fast）
+- 不正な `TT_FORGE`: エラー（黙殺しない）。ただし `tt doctor` は診断継続のため unknown 扱いにしてよい
+- URL に `gitlab` 文字列が無いセルフホストでも `--forge gitlab` または `TT_FORGE=gitlab` で GitLab 経路にできること
 
 **URL 自動検出:**
 
@@ -98,13 +102,16 @@
 
 ```mermaid
 flowchart LR
-  ttPr["tt pr"] --> resolve["forge.ResolveHost"]
+  ttPr["tt pr"] --> resolve["forge.ResolveHostPriority"]
   ttList["tt list --update"] --> resolve
   ttDoctor["tt doctor"] --> resolve
-  resolve --> ttForge{"TT_FORGE set?"}
+  resolve --> forgeFlag{"--forge set?"}
+  forgeFlag -->|yes| useFlag["Use --forge"]
+  forgeFlag -->|no| ttForge{"TT_FORGE set?"}
   ttForge -->|yes| explicitHost["Use TT_FORGE"]
   ttForge -->|no| urlDetect["Detect from origin URL"]
-  explicitHost --> client["forge.Client"]
+  useFlag --> client["forge.Client"]
+  explicitHost --> client
   urlDetect --> client
   client -->|GitHub or unknown| ghOps["gh pr create / pr list"]
   client -->|GitLab| glabOps["glab mr create / mr list"]
@@ -162,13 +169,13 @@ type Client interface {
 
 1. origin が `https://github.com/org/repo.git` のとき、`tt doctor --json` の外部ツール結果に `gh` が含まれる。
 2. origin が `https://gitlab.com/group/proj.git` のとき、`tt doctor --json` の外部ツール結果に `glab` が含まれる。
-3. origin が `https://git.example.com/g/p.git`（hostname に `gitlab` なし）かつ `TT_FORGE=gitlab` のとき、`tt doctor --json` に `glab` が含まれる。
-4. `TT_FORGE=gitlab` のとき、`tt pr` 経路（単体/Recorder）が `glab mr create` を worktree cwd で呼ぶ。
-5. `TT_FORGE` 未設定かつ GitHub URL のとき、`tt pr` 経路が `gh pr create` を呼ぶ（回帰）。
+3. origin が `https://git.example.com/g/p.git`（hostname に `gitlab` なし）かつ `TT_FORGE=gitlab` のとき、`tt doctor --json` に `glab` が含まれる。`--forge gitlab` でも同様。
+4. `TT_FORGE=gitlab` または `--forge gitlab` のとき、`tt pr` 経路（単体/Recorder）が `glab mr create` を worktree cwd で呼ぶ。
+5. `--forge` / `TT_FORGE` 未設定かつ GitHub URL のとき、`tt pr` 経路が `gh pr create` を呼ぶ（回帰）。
 6. GitLab 経路で open MR JSON（`iid` / `created_at`）があるとき、`codestatus.Resolve` が `CodeStatusPR` と `PRCreatedAt` を返す。
 7. forge/CLI 失敗時、`codestatus.Resolve` が `CodeStatusHosted` にフォールバックする。
 8. `tt scaffold` の取得先・GitHub Contents API 実装が本変更で変わっていない。
-9. 不正な `TT_FORGE`（例: `bitbucket`）は create/list 経路でエラーになる（doctor は診断継続可）。
+9. 不正な `TT_FORGE`（例: `bitbucket`）は create/list 経路でエラーになる（doctor は診断継続可）。不正な `--forge` は doctor も含め Fail Fast。
 
 ---
 

@@ -3,6 +3,7 @@ package doctor
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -175,6 +176,78 @@ func TestFixDirectory(t *testing.T) {
 	info, err := os.Stat(filepath.Join(root, "work"))
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
+}
+
+func TestRun_InvalidForgeOverride_ReturnsError(t *testing.T) {
+	root := setupDoctorRepoWithOrigin(t, "https://github.com/a/b.git")
+
+	checker := &mockToolChecker{
+		results: map[string]toolResult{
+			"git":    {version: "git version 2.43.0"},
+			"docker": {version: "Docker version 24.0.7"},
+			"gh":     {version: "gh version 2.40.0"},
+			"glab":   {version: "glab 1.36.0"},
+		},
+	}
+
+	_, err := Run(Options{
+		RepoRoot:      root,
+		ToolChecker:   checker,
+		ForgeOverride: "bogus",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--forge")
+}
+
+func TestRun_ForgeOverride_SelectsGitLabTools(t *testing.T) {
+	root := setupDoctorRepoWithOrigin(t, "https://github.com/a/b.git")
+	t.Setenv("TT_FORGE", "github")
+
+	checker := &mockToolChecker{
+		results: map[string]toolResult{
+			"git":    {version: "git version 2.43.0"},
+			"docker": {version: "Docker version 24.0.7"},
+			"gh":     {version: "gh version 2.40.0"},
+			"glab":   {version: "glab 1.36.0"},
+		},
+	}
+
+	report, err := Run(Options{
+		RepoRoot:      root,
+		ToolChecker:   checker,
+		ForgeOverride: "gitlab",
+	})
+	require.NoError(t, err)
+
+	names := map[string]bool{}
+	for _, r := range report.Results {
+		if r.Category == "External Tools" {
+			names[r.Name] = true
+		}
+	}
+	assert.True(t, names["glab"], "expected glab when --forge=gitlab")
+	assert.False(t, names["gh"], "gh should not be checked for gitlab host")
+}
+
+func setupDoctorRepoWithOrigin(t *testing.T, originURL string) string {
+	t.Helper()
+	root := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "features", "demo"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "work"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "scripts"), 0o755))
+
+	cmd := exec.Command("git", "init")
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "git init: %s", out)
+
+	cmd = exec.Command("git", "remote", "add", "origin", originURL)
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0")
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err, "git remote add: %s", out)
+	return root
 }
 
 // mockToolChecker is defined in checks_test.go, reuse it here via same package.

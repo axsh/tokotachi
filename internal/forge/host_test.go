@@ -114,6 +114,143 @@ func TestResolveHost_OverrideBeatsURL(t *testing.T) {
 	}
 }
 
+func TestResolveHostPriority(t *testing.T) {
+	tests := []struct {
+		name        string
+		cli         string
+		env         string
+		url         string
+		want        Host
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name: "cli gitlab beats env github and github URL",
+			cli:  "gitlab",
+			env:  "github",
+			url:  "https://github.com/a/b.git",
+			want: HostGitLab,
+		},
+		{
+			name: "cli github beats env gitlab and gitlab URL",
+			cli:  "github",
+			env:  "gitlab",
+			url:  "https://gitlab.com/g/p.git",
+			want: HostGitHub,
+		},
+		{
+			name: "empty cli uses env over URL",
+			cli:  "",
+			env:  "gitlab",
+			url:  "https://git.example.com/g/p.git",
+			want: HostGitLab,
+		},
+		{
+			name: "empty cli and env uses gitlab URL",
+			cli:  "",
+			env:  "",
+			url:  "https://gitlab.com/g/p.git",
+			want: HostGitLab,
+		},
+		{
+			name: "empty cli and env with non-gitlab URL",
+			cli:  "",
+			env:  "",
+			url:  "https://git.example.com/g/p.git",
+			want: HostUnknown,
+		},
+		{
+			name:        "invalid cli fails fast even when env valid",
+			cli:         "bogus",
+			env:         "gitlab",
+			url:         "https://gitlab.com/g/p.git",
+			wantErr:     true,
+			errContains: "--forge",
+		},
+		{
+			name:        "invalid env errors when cli empty",
+			cli:         "",
+			env:         "bogus",
+			url:         "https://gitlab.com/g/p.git",
+			wantErr:     true,
+			errContains: "TT_FORGE",
+		},
+		{
+			name: "cli trim and case insensitive",
+			cli:  "  GitLab  ",
+			env:  "",
+			url:  "https://github.com/a/b.git",
+			want: HostGitLab,
+		},
+		{
+			name: "empty everything",
+			cli:  "",
+			env:  "",
+			url:  "",
+			want: HostUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveHostPriority(tt.cli, tt.env, tt.url)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestDetectHostFromRepoOpts_CLIOverrideBeatsEnvAndURL(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, "init")
+	runGit(t, repo, "remote", "add", "origin", "https://github.com/a/b.git")
+	t.Setenv(EnvForge, "github")
+
+	host, _, err := DetectHostFromRepoOpts(DetectOpts{
+		RepoRoot:    repo,
+		GitCmd:      "git",
+		CLIOverride: "gitlab",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, HostGitLab, host)
+}
+
+func TestDetectHostFromRepoOpts_EmptyCLI_UsesEnv(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, "init")
+	runGit(t, repo, "remote", "add", "origin", "https://git.example.com/g/p.git")
+	t.Setenv(EnvForge, "gitlab")
+
+	host, _, err := DetectHostFromRepoOpts(DetectOpts{
+		RepoRoot:    repo,
+		GitCmd:      "git",
+		CLIOverride: "",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, HostGitLab, host)
+}
+
+func TestDetectHostFromRepoOpts_InvalidCLI_ReturnsError(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, "init")
+	runGit(t, repo, "remote", "add", "origin", "https://github.com/a/b.git")
+
+	_, _, err := DetectHostFromRepoOpts(DetectOpts{
+		RepoRoot:    repo,
+		GitCmd:      "git",
+		CLIOverride: "bogus",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--forge")
+}
+
 func TestDetectHostFromRepo_UsesOriginAndOverride(t *testing.T) {
 	repo := t.TempDir()
 	runGit(t, repo, "init")

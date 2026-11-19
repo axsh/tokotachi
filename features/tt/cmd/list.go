@@ -24,14 +24,20 @@ var (
 	flagListPath   bool
 	flagListUpdate bool
 	flagListFull   bool
+	flagListForge  string
 )
 
 var listCmd = &cobra.Command{
 	Use:   "list [branch]",
 	Short: "List branches or features",
-	Long:  "Without arguments, list all worktree branches. With a branch, list features for that branch.",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runList,
+	Long: `Without arguments, list all worktree branches. With a branch, list features for that branch.
+With --update, refresh CodeStatus using the resolved forge host (gh or glab).` + forgeHostResolveHelp + `
+Examples:
+  tt list --forge gitlab --update
+  TT_FORGE=gitlab tt list --update
+`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runList,
 }
 
 func init() {
@@ -39,6 +45,8 @@ func init() {
 	listCmd.Flags().BoolVar(&flagListPath, "path", false, "Show worktree path column")
 	listCmd.Flags().BoolVar(&flagListUpdate, "update", false, "Force update code status immediately")
 	listCmd.Flags().BoolVar(&flagListFull, "full", false, "Disable column truncation")
+	listCmd.Flags().StringVar(&flagListForge, "forge", "",
+		"Forge host override: github|gitlab (takes precedence over TT_FORGE; used with --update; process-local only)")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -59,6 +67,13 @@ func runListBranches() error {
 	rec := cmdexec.NewRecorder()
 	runner := &cmdexec.Runner{Logger: logger, DryRun: flagDryRun, Recorder: rec}
 
+	// Validate --forge even when --update is not set (Fail Fast; do not ignore bad values).
+	if flagListForge != "" {
+		if _, err := forge.ResolveHostPriority(flagListForge, os.Getenv(forge.EnvForge), ""); err != nil {
+			return err
+		}
+	}
+
 	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 	output, err := runner.Run(gitCmd, "worktree", "list", "--porcelain")
 	if err != nil {
@@ -74,11 +89,15 @@ func runListBranches() error {
 
 	// Handle --update: force foreground update
 	if flagListUpdate {
-		client, host, err := forge.NewClientForRepo(repoRoot, runner)
+		client, host, err := forge.NewClientForRepoOpts(forge.ClientForRepoOpts{
+			RepoRoot:    repoRoot,
+			Runner:      runner,
+			CLIOverride: flagListForge,
+		})
 		if err != nil {
 			return fmt.Errorf("forge client creation failed: %w", err)
 		}
-		logger.Debug("list --update forge host=%s", host)
+		logger.Debug("list --update forge host=%s forgeOverride=%q", host, flagListForge)
 		checker := &codestatus.Checker{
 			GitCmd:   gitCmd,
 			GhCmd:    cmdexec.ResolveCommand("TT_CMD_GH", "gh"),

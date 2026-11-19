@@ -13,6 +13,22 @@ import (
 	"github.com/axsh/tokotachi/pkg/resolve"
 )
 
+// forgeHostResolveHelp is appended to Long help of pr / list / doctor (R3).
+const forgeHostResolveHelp = `
+Host resolution (highest priority first):
+  1. --forge <github|gitlab>   (this process only; does not persist)
+  2. TT_FORGE                  (environment variable)
+  3. git remote get-url origin (hostname heuristics)
+
+--forge values: github | gitlab (case-insensitive).
+Invalid --forge values fail the command (not ignored).
+
+Related environment variables:
+  TT_FORGE      Explicit forge host when --forge is omitted (github|gitlab)
+  TT_CMD_GH     Path/name of GitHub CLI (default: gh)
+  TT_CMD_GLAB   Path/name of GitLab CLI (default: glab)
+`
+
 // AppContext holds shared state for all subcommands.
 type AppContext struct {
 	Logger       *log.Logger
