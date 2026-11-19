@@ -454,8 +454,31 @@ None.
 6.  [x] **Documentation**:
     *   Update `README.md`, `docs/manual/tt-user-manual.md`, and `prompts/phases/000-foundation/branches/feat-adjust-gitlab/ideas/001-GitLab-MR-Support.md` priority lists as in Documentation.
 
-7.  [/] **Verification Plan**:
+7.  [x] **Verification Plan**:
     *   Execute the Verification Plan below (build → selective integration → comprehensive verdict).
+
+### 総合判定結果
+
+**判定**: ✅ 動作確認完了
+
+#### テスト結果サマリ
+- Build (`./scripts/process/build.sh`): 成功
+- 統合 (`--categories tt --specify "Forge|Doctor_Help|Pr_Help|List_Help|TTForge"`): 10 件すべて成功
+- 事実上スキップ: 0 件
+
+#### チェック項目の結果
+| # | チェック項目 | 結果 | 備考 |
+|---|------------|------|------|
+| 1 | スキップされたテスト | ✅ | `t.Skip` なし |
+| 2 | 部分的なエラー | ✅ | PASS のみ |
+| 3 | 迂回 | ✅ | BeatsTTForge / Overrides* で経路確認 |
+| 4 | アダプタ誤適用 | ✅ | doctor JSON の gh/glab が期待どおり |
+| 5 | 順序依存 | ✅ | `--specify` 単独実行で成功 |
+| 6 | カバレッジ | ✅ | Help 3 コマンド + 優先順位 + 不正 + localhost + dry-run pr |
+| 7 | 外部状態 | ✅ | 一時 git repo のみ（ライブ CE 非依存） |
+
+#### 判定理由
+`--forge` の Help 発見性、優先順位、Fail Fast、既存 `TT_FORGE` 互換を単体＋統合で確認できた。
 
 ## Verification Plan
 
