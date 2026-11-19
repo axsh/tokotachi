@@ -58,7 +58,7 @@ func newKdbTrackSub(use, short string, run func(cmd *cobra.Command, workspace st
 				return nil
 			}
 			if len(args) > 0 {
-				return jsonout.Fail(cmd.OutOrStdout(), helpHint(cmd), jsonout.CodeUsage,
+				return jsonout.Fail(cmd.ErrOrStderr(), helpHint(cmd), jsonout.CodeUsage,
 					fmt.Sprintf("unexpected argument %q", args[0]), nil)
 			}
 			workspace, f, err := loadKdbRegistry(cmd, flagKdbWorkspace, flagKdbRegistry)
@@ -76,9 +76,9 @@ func helpHint(cmd *cobra.Command) string {
 }
 
 // loadKdbRegistry resolves the workspace and registry, loads and validates it.
-// On failure it writes a JSON error to stdout and returns an *jsonout.ExitError.
+// On failure it writes a JSON error to stderr and returns an *jsonout.ExitError.
 func loadKdbRegistry(cmd *cobra.Command, workspaceFlag, registryFlag string) (string, *registry.File, error) {
-	return loadKdbRegistryTo(cmd.OutOrStdout(), helpHint(cmd), workspaceFlag, registryFlag)
+	return loadKdbRegistryTo(cmd.ErrOrStderr(), helpHint(cmd), workspaceFlag, registryFlag)
 }
 
 func loadKdbRegistryTo(w io.Writer, hint, workspaceFlag, registryFlag string) (string, *registry.File, error) {
@@ -105,7 +105,7 @@ func runKdbTrackList(cmd *cobra.Command, _ string, f *registry.File) error {
 func runKdbTrackUnregistered(cmd *cobra.Command, workspace string, f *registry.File) error {
 	r, err := track.Unregistered(workspace, f)
 	if err != nil {
-		return jsonout.Fail(cmd.OutOrStdout(), helpHint(cmd), jsonout.CodeBusiness, err.Error(), nil)
+		return jsonout.Fail(cmd.ErrOrStderr(), helpHint(cmd), jsonout.CodeBusiness, err.Error(), nil)
 	}
 	return jsonout.OK(cmd.OutOrStdout(), map[string]any{"ids": r.IDs})
 }
@@ -117,7 +117,7 @@ func runKdbTrackStatusCmds(cmd *cobra.Command, _ string, f *registry.File) error
 func runKdbTrackStatusAll(cmd *cobra.Command, workspace string, f *registry.File) error {
 	statuses, anyFail := track.StatusAll(cmd.Context(), workspace, f)
 	if anyFail {
-		return jsonout.Fail(cmd.OutOrStdout(), helpHint(cmd), jsonout.CodeBusiness,
+		return jsonout.Fail(cmd.ErrOrStderr(), helpHint(cmd), jsonout.CodeBusiness,
 			"one or more knowledge DB status commands failed", map[string]any{"statuses": statuses})
 	}
 	return jsonout.OK(cmd.OutOrStdout(), map[string]any{"statuses": statuses})
@@ -126,6 +126,7 @@ func runKdbTrackStatusAll(cmd *cobra.Command, workspace string, f *registry.File
 func runKdbTrackSystematize(cmd *cobra.Command, workspace string, f *registry.File) error {
 	res, code := track.Systematize(cmd.Context(), workspace, f, flagKdbSysID)
 	out := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
 	extra := map[string]any{
 		"add_candidates": res.AddCandidates,
 		"entries":        res.Entries,
@@ -135,10 +136,10 @@ func runKdbTrackSystematize(cmd *cobra.Command, workspace string, f *registry.Fi
 	}
 	switch {
 	case code == jsonout.CodeUsage:
-		return jsonout.Fail(out, helpHint(cmd), code, res.Warnings[len(res.Warnings)-1], extra)
+		return jsonout.Fail(errOut, helpHint(cmd), code, res.Warnings[len(res.Warnings)-1], extra)
 	case code != 0:
-		// First line is the JSON document; ADD_CANDIDATE lines follow.
-		err := jsonout.Fail(out, helpHint(cmd), code, "one or more knowledge DBs failed to systematize", extra)
+		// Failure JSON on stderr; ADD_CANDIDATE lines remain on stdout for migration.
+		err := jsonout.Fail(errOut, helpHint(cmd), code, "one or more knowledge DBs failed to systematize", extra)
 		writeAddCandidates(out, res.AddCandidates)
 		return err
 	}

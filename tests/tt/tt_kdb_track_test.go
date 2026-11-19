@@ -137,16 +137,16 @@ func TestKdb_DelegatesToRegistryCommand(t *testing.T) {
 
 func TestKdb_UnknownIDAndOp(t *testing.T) {
 	ws := newKdbWorkspace(t, "echo ok")
-	out, _, code := runKdbTT(t, nil, "kdb", "nope", "status", "--workspace", ws)
+	out, stderr, code := runKdbTT(t, nil, "kdb", "nope", "status", "--workspace", ws)
 	if code != 2 {
-		t.Fatalf("unknown id: want exit 2, got %d\n%s", code, out)
+		t.Fatalf("unknown id: want exit 2, got %d\n%s\n%s", code, out, stderr)
 	}
-	if m := firstLineJSON(t, out); m["ok"] != false {
-		t.Fatalf("want ok=false: %v", m)
+	if m := firstLineJSON(t, stderr); m["ok"] != false {
+		t.Fatalf("want ok=false on stderr: %v", m)
 	}
-	out, _, code = runKdbTT(t, nil, "kdb", "designdb", "bogus", "--workspace", ws)
+	out, stderr, code = runKdbTT(t, nil, "kdb", "designdb", "bogus", "--workspace", ws)
 	if code != 2 {
-		t.Fatalf("unknown op: want exit 2, got %d\n%s", code, out)
+		t.Fatalf("unknown op: want exit 2, got %d\n%s\n%s", code, out, stderr)
 	}
 }
 
@@ -165,13 +165,13 @@ func TestKdb_BacklogIsWiredBuiltin(t *testing.T) {
 func TestKdbTrack_StatusAllPartialFailureExits1(t *testing.T) {
 	// designdb reports ok=false -> exit 1; the builtin backlog must still be reported.
 	ws := newKdbWorkspace(t, `echo '{"ok":false,"error":"boom"}'`)
-	out, _, code := runKdbTT(t, nil, "kdb-track", "status-all", "--workspace", ws)
+	out, stderr, code := runKdbTT(t, nil, "kdb-track", "status-all", "--workspace", ws)
 	if code != 1 {
-		t.Fatalf("want exit 1, got %d\n%s", code, out)
+		t.Fatalf("want exit 1, got %d\n%s\n%s", code, out, stderr)
 	}
-	m := firstLineJSON(t, out)
+	m := firstLineJSON(t, stderr)
 	if m["ok"] != false {
-		t.Fatalf("want ok=false: %v", m)
+		t.Fatalf("want ok=false on stderr: %v", m)
 	}
 	statuses, _ := m["statuses"].([]any)
 	if len(statuses) != 2 {

@@ -90,12 +90,12 @@ func isPipelineOp(op string) bool {
 }
 
 func runKdb(cmd *cobra.Command, args []string) error {
-	out := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
 	hint := "tt kdb help"
 
 	a, err := parseKdbArgs(args)
 	if err != nil {
-		return jsonout.Fail(out, hint, jsonout.CodeUsage, err.Error(), nil)
+		return jsonout.Fail(errOut, hint, jsonout.CodeUsage, err.Error(), nil)
 	}
 	// The builtin backlog owns its operations, flags and help pages.
 	if len(a.positions) > 0 && a.positions[0] == builtin.BacklogID {
@@ -109,23 +109,23 @@ func runKdb(cmd *cobra.Command, args []string) error {
 	id := a.positions[0]
 	rest := a.positions[1:]
 	if len(rest) == 0 {
-		return jsonout.Fail(out, hint, jsonout.CodeUsage,
+		return jsonout.Fail(errOut, hint, jsonout.CodeUsage,
 			fmt.Sprintf("missing operation for knowledge DB %q (one of: %s)", id, strings.Join(kdbPipelineOps, ", ")), nil)
 	}
 	op := rest[0]
 
 	if !isPipelineOp(op) {
-		return jsonout.Fail(out, hint, jsonout.CodeUsage,
+		return jsonout.Fail(errOut, hint, jsonout.CodeUsage,
 			fmt.Sprintf("unknown operation %q for knowledge DB %q (one of: %s)", op, id, strings.Join(kdbPipelineOps, ", ")), nil)
 	}
 
-	workspace, f, err := loadKdbRegistryTo(out, hint, a.workspace, a.registry)
+	workspace, f, err := loadKdbRegistryTo(errOut, hint, a.workspace, a.registry)
 	if err != nil {
 		return err
 	}
 	entry, ok := f.ByID(id)
 	if !ok {
-		return jsonout.Fail(out, hint, jsonout.CodeUsage, fmt.Sprintf("unknown knowledge DB id %q", id), nil)
+		return jsonout.Fail(errOut, hint, jsonout.CodeUsage, fmt.Sprintf("unknown knowledge DB id %q", id), nil)
 	}
 
 	ctx := cmd.Context()
@@ -137,6 +137,7 @@ func runKdb(cmd *cobra.Command, args []string) error {
 
 func runKdbOp(ctx context.Context, cmd *cobra.Command, hint, workspace string, a kdbArgs, e registry.Entry, op string) error {
 	out := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
 
 	cmdLine := map[string]string{
 		"status":  e.StatusCmd,
@@ -147,7 +148,7 @@ func runKdbOp(ctx context.Context, cmd *cobra.Command, hint, workspace string, a
 	}[op]
 	stdout, err := delegate.Run(ctx, workspace, cmdLine)
 	if err != nil {
-		return jsonout.Fail(out, hint, jsonout.CodeBusiness, err.Error(), map[string]any{"id": e.ID, "op": op})
+		return jsonout.Fail(errOut, hint, jsonout.CodeBusiness, err.Error(), map[string]any{"id": e.ID, "op": op})
 	}
 	if strings.TrimSpace(stdout) == "" {
 		return jsonout.OK(out, map[string]any{"id": e.ID, "op": op})

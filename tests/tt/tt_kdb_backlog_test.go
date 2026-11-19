@@ -56,7 +56,14 @@ func blRunEnv(t *testing.T, env []string, ws string, args ...string) (map[string
 	full := append([]string{"kdb", "backlog"}, args...)
 	full = append(full, "--workspace", ws)
 	out, stderr, code := runKdbTT(t, env, full...)
-	return firstLineJSON(t, out), out + stderr, code
+	jsonSrc := out
+	if code != 0 {
+		jsonSrc = stderr
+		if strings.TrimSpace(jsonSrc) == "" {
+			jsonSrc = out
+		}
+	}
+	return firstLineJSON(t, jsonSrc), out + stderr, code
 }
 
 func blMustOK(t *testing.T, ws string, args ...string) map[string]any {
@@ -517,11 +524,11 @@ func TestKdbTrackSystematizeBacklogFailsOnInvalidItem(t *testing.T) {
 	mustWrite(t, filepath.Join(ws, "features", "backlog", "data", "items.json"), bad)
 	blMustOK(t, ws, "restore")
 
-	out, _, code := runKdbTT(t, blEnv(), "kdb-track", "systematize", "--id", "backlog", "--workspace", ws)
+	out, stderr, code := runKdbTT(t, blEnv(), "kdb-track", "systematize", "--id", "backlog", "--workspace", ws)
 	if code != 1 {
-		t.Fatalf("want exit 1, got %d\n%s", code, out)
+		t.Fatalf("want exit 1, got %d\n%s\n%s", code, out, stderr)
 	}
-	m := firstLineJSON(t, out)
+	m := firstLineJSON(t, stderr)
 	entry := m["entries"].([]any)[0].(map[string]any)
 	if m["ok"] != false || entry["stage"] != "distill" || !strings.Contains(entry["error"].(string), "empty title") {
 		t.Fatalf("distill failure must be reported: %v", m)

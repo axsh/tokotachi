@@ -62,6 +62,7 @@ func printBacklogHelp(w io.Writer, op string) {
 // runKdbBacklog dispatches `tt kdb backlog <op> [flags]` to the backlog package.
 func runKdbBacklog(cmd *cobra.Command, a kdbArgs) error {
 	out := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
 
 	op := ""
 	var opArgs []string
@@ -80,7 +81,7 @@ func runKdbBacklog(cmd *cobra.Command, a kdbArgs) error {
 	}
 	hint := backlogHelpHint(op)
 	if !isBacklogOp(op) {
-		return jsonout.Fail(out, backlogHelpHint(""), jsonout.CodeUsage,
+		return jsonout.Fail(errOut, backlogHelpHint(""), jsonout.CodeUsage,
 			fmt.Sprintf("unknown backlog operation %q (one of: %s)", op, strings.Join(kdbBacklogOps, ", ")), nil)
 	}
 	if a.help || (len(opArgs) > 0 && isHelpToken(opArgs[0])) {
@@ -111,23 +112,23 @@ func runKdbBacklog(cmd *cobra.Command, a kdbArgs) error {
 		flags, positional, perr = backlog.ParseFlags(nil, opArgs)
 	}
 	if perr != nil {
-		return backlogFail(out, hint, perr)
+		return backlogFail(errOut, hint, perr)
 	}
 	if op == "import-md" && len(positional) == 0 {
-		return backlogFail(out, hint, &backlog.OpError{Code: jsonout.CodeUsage, Msg: "missing PATH argument"})
+		return backlogFail(errOut, hint, &backlog.OpError{Code: jsonout.CodeUsage, Msg: "missing PATH argument"})
 	}
 
-	workspace, f, err := loadKdbRegistryTo(out, hint, a.workspace, a.registry)
+	workspace, f, err := loadKdbRegistryTo(errOut, hint, a.workspace, a.registry)
 	if err != nil {
 		return err
 	}
 	entry, ok := f.ByID(builtin.BacklogID)
 	if !ok {
-		return jsonout.Fail(out, hint, jsonout.CodeUsage, "knowledge DB id \"backlog\" is not registered", nil)
+		return jsonout.Fail(errOut, hint, jsonout.CodeUsage, "knowledge DB id \"backlog\" is not registered", nil)
 	}
 	p, err := paths.ForEntry(paths.InputFromEnv(workspace, a.registry), entry)
 	if err != nil {
-		return jsonout.Fail(out, hint, jsonout.CodeBusiness, err.Error(), nil)
+		return jsonout.Fail(errOut, hint, jsonout.CodeBusiness, err.Error(), nil)
 	}
 	ops := backlog.Ops{P: p}
 
@@ -164,7 +165,7 @@ func runKdbBacklog(cmd *cobra.Command, a kdbArgs) error {
 		fields, err = ops.MigrateUUIDs(flags)
 	}
 	if err != nil {
-		return backlogFail(out, hint, err)
+		return backlogFail(errOut, hint, err)
 	}
 	return jsonout.OK(out, fields)
 }
