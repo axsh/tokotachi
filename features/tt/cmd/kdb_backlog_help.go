@@ -10,7 +10,7 @@ func registerKdbBacklogHelp() {
 	const emb = "The backlog runs inside tt with an embedded SQLite engine; no sqlite3 CLI and no Python are required."
 	const jsonNote = "Success: one JSON object on stdout (`{\"ok\":true,...}`). Failure: `{\"ok\":false,\"error\":\"...\",\"help\":\"tt kdb backlog <op> help\"}` on stdout."
 	const wsFlags = "Common flags: `--workspace DIR`, `--registry FILE`. Environment overrides: `BL_ROOT`, `BL_DATA_DIR`, `BL_DB_PATH`, `BL_CORPUS_DIR`, `BL_TMP_DIR`, `BL_TODAY` (YYYY-MM-DD, tests only)."
-	const pre = "A registry entry with id `backlog` (default `features/kdb/registry.yaml`). Help pages need neither the registry nor the database. "
+	const pre = "Built-in backlog (always registered; optional override in `{workspace}/shared/kdb/registry.yaml` or `--registry`). Help pages need neither the registry nor the database. "
 	exCRUD := "0 success\n1 item not found, key exists, or database error\n2 usage error (missing/invalid flag)"
 	exPipe := "0 success\n1 invalid or missing input, corrupt corpus, or database error\n2 usage error (invalid flag)"
 

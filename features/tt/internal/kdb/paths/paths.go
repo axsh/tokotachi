@@ -5,15 +5,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/axsh/tokotachi/features/tt/internal/kdb/registry"
 )
 
+// DefaultKdbRoot is the workspace-relative directory that holds registry.yaml
+// and per-KDB modules when no --kdb-root / KDB_ROOT override is set.
+const DefaultKdbRoot = "shared/kdb"
+
 // ResolveInput carries explicit overrides (flags / BL_* environment values).
 type ResolveInput struct {
 	Workspace string // flag / TT_WORKSPACE / BL_ROOT / cwd
-	Registry  string // flag / KDB_REGISTRY / {workspace}/features/kdb/registry.yaml
+	Registry  string // flag / KDB_REGISTRY / {workspace}/{kdb-root}/registry.yaml
+	KdbRoot   string // flag / KDB_ROOT / DefaultKdbRoot
 	// Backlog overrides (BL_*):
 	DataDir, DBPath, CorpusDir, TmpDir string
 	Today                              string // BL_TODAY YYYY-MM-DD; empty -> UTC today
@@ -50,16 +56,47 @@ func ResolveWorkspace(flagWorkspace string) (string, error) {
 	return wd, nil
 }
 
+// ResolveKdbRoot returns the workspace-relative KDB root directory.
+// Priority: flag > KDB_ROOT > DefaultKdbRoot.
+func ResolveKdbRoot(flagKdbRoot string) string {
+	root := flagKdbRoot
+	if root == "" {
+		root = os.Getenv("KDB_ROOT")
+	}
+	if root == "" {
+		root = DefaultKdbRoot
+	}
+	root = filepath.ToSlash(filepath.Clean(root))
+	root = strings.TrimPrefix(root, "./")
+	return strings.TrimSuffix(root, "/")
+}
+
 // RegistryPath returns the registry file path.
-// Priority: flag > KDB_REGISTRY > {workspace}/features/kdb/registry.yaml.
-func RegistryPath(workspace, flagRegistry string) string {
+// Priority: flag > KDB_REGISTRY > {workspace}/{kdbRoot}/registry.yaml.
+func RegistryPath(workspace, flagRegistry, kdbRoot string) string {
 	if flagRegistry != "" {
 		return flagRegistry
 	}
 	if env := os.Getenv("KDB_REGISTRY"); env != "" {
 		return env
 	}
-	return filepath.Join(workspace, "features", "kdb", "registry.yaml")
+	return filepath.Join(workspace, filepath.FromSlash(ResolveKdbRoot(kdbRoot)), "registry.yaml")
+}
+
+// BuiltinBacklogEntry returns the built-in backlog registry entry for kdbRoot.
+func BuiltinBacklogEntry(kdbRoot string) registry.Entry {
+	root := ResolveKdbRoot(kdbRoot)
+	module := root + "/backlog"
+	return registry.Entry{
+		ID:         "backlog",
+		ModulePath: module,
+		CorpusPath: module + "/corpus",
+		StatusCmd:  "tt kdb backlog status",
+		DistillCmd: "tt kdb backlog distill",
+		DumpCmd:    "tt kdb backlog dump",
+		MergeCmd:   "tt kdb backlog merge",
+		PackCmd:    "tt kdb backlog pack",
+	}
 }
 
 // ForEntry resolves all paths for a registry entry.
@@ -70,7 +107,7 @@ func ForEntry(in ResolveInput, e registry.Entry) (Paths, error) {
 	}
 	p := Paths{
 		Workspace:    ws,
-		RegistryFile: RegistryPath(ws, in.Registry),
+		RegistryFile: RegistryPath(ws, in.Registry, in.KdbRoot),
 		Entry:        e,
 	}
 	if e.ModulePath != "" {
@@ -115,12 +152,13 @@ func ForEntry(in ResolveInput, e registry.Entry) (Paths, error) {
 	return p, nil
 }
 
-// InputFromEnv builds a ResolveInput from the BL_* environment variables,
+// InputFromEnv builds a ResolveInput from the BL_* / KDB_* environment variables,
 // layered under explicit flag values.
-func InputFromEnv(workspace, registryFile string) ResolveInput {
+func InputFromEnv(workspace, registryFile, kdbRoot string) ResolveInput {
 	return ResolveInput{
 		Workspace: workspace,
 		Registry:  registryFile,
+		KdbRoot:   kdbRoot,
 		DataDir:   os.Getenv("BL_DATA_DIR"),
 		DBPath:    os.Getenv("BL_DB_PATH"),
 		CorpusDir: os.Getenv("BL_CORPUS_DIR"),

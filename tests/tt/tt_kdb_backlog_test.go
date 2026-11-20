@@ -29,7 +29,7 @@ func backlogRegistry(module string) string {
 func newBacklogWorkspace(t *testing.T, module string) string {
 	t.Helper()
 	ws := t.TempDir()
-	mustWrite(t, filepath.Join(ws, "features", "kdb", "registry.yaml"), backlogRegistry(module))
+	mustWrite(t, filepath.Join(ws, "shared", "kdb", "registry.yaml"), backlogRegistry(module))
 	return ws
 }
 

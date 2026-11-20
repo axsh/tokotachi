@@ -19,10 +19,25 @@ import (
 	"github.com/axsh/tokotachi/features/tt/internal/kdb/registry"
 )
 
+// Source labels for list responses.
+const (
+	SourceBuiltin  = "builtin"
+	SourceRegistry = "registry"
+)
+
+// ListedEntry is a registry entry plus where it came from.
+type ListedEntry struct {
+	registry.Entry
+	Source string `json:"source"`
+}
+
 // ListResult is the output of List.
 type ListResult struct {
-	OK      bool             `json:"ok"`
-	Entries []registry.Entry `json:"entries"`
+	OK              bool          `json:"ok"`
+	Registry        string        `json:"registry,omitempty"`
+	RegistryMissing bool          `json:"registry_missing,omitempty"`
+	Message         string        `json:"message,omitempty"`
+	Entries         []ListedEntry `json:"entries"`
 }
 
 // UnregisteredResult is the output of Unregistered.
@@ -59,43 +74,89 @@ type SystematizeResult struct {
 	Warnings      []string           `json:"warnings,omitempty"`
 }
 
-// List returns all registry entries.
-func List(f *registry.File) ListResult {
-	entries := f.KDBs
-	if entries == nil {
-		entries = []registry.Entry{}
+// EffectiveEntries merges yaml entries with the built-in backlog default.
+// When yaml already has id=backlog, the yaml entry wins (source=registry).
+func EffectiveEntries(f *registry.File, kdbRoot string) []ListedEntry {
+	var listed []ListedEntry
+	hasBacklog := false
+	if f != nil {
+		for _, e := range f.KDBs {
+			src := SourceRegistry
+			listed = append(listed, ListedEntry{Entry: e, Source: src})
+			if e.ID == builtin.BacklogID {
+				hasBacklog = true
+			}
+		}
 	}
-	return ListResult{OK: true, Entries: entries}
+	if !hasBacklog {
+		listed = append([]ListedEntry{{
+			Entry:  paths.BuiltinBacklogEntry(kdbRoot),
+			Source: SourceBuiltin,
+		}}, listed...)
+	}
+	return listed
 }
 
-// Unregistered scans workspace/features/*/corpus and returns ids whose
-// features/{id}/corpus path is not a registered corpus_path.
-func Unregistered(workspace string, f *registry.File) (UnregisteredResult, error) {
+// ApplyEffective rewrites f.KDBs from EffectiveEntries and returns the listed view.
+func ApplyEffective(f *registry.File, kdbRoot string) []ListedEntry {
+	listed := EffectiveEntries(f, kdbRoot)
+	entries := make([]registry.Entry, len(listed))
+	for i, le := range listed {
+		entries[i] = le.Entry
+	}
+	if f == nil {
+		return listed
+	}
+	f.KDBs = entries
+	return listed
+}
+
+// List returns effective registry entries (builtin backlog always included).
+func List(f *registry.File, registryPath string, missing bool, kdbRoot string) ListResult {
+	listed := ApplyEffective(f, kdbRoot)
+	r := ListResult{
+		OK:       true,
+		Registry: registryPath,
+		Entries:  listed,
+	}
+	if missing {
+		r.RegistryMissing = true
+		r.Message = "registry file not found: " + registryPath
+	}
+	return r
+}
+
+// Unregistered scans {kdbRoot}/*/corpus and returns ids whose corpus_path
+// is not registered. It does not scan features/*/corpus.
+func Unregistered(workspace, kdbRoot string, f *registry.File) (UnregisteredResult, error) {
 	registered := map[string]bool{}
-	for _, e := range f.KDBs {
-		registered[normRel(e.CorpusPath)] = true
+	if f != nil {
+		for _, e := range f.KDBs {
+			registered[normRel(e.CorpusPath)] = true
+		}
 	}
 	res := UnregisteredResult{OK: true, IDs: []string{}}
 
-	featuresDir := filepath.Join(workspace, "features")
-	dirs, err := os.ReadDir(featuresDir)
+	root := paths.ResolveKdbRoot(kdbRoot)
+	base := filepath.Join(workspace, filepath.FromSlash(root))
+	dirs, err := os.ReadDir(base)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return res, nil
 		}
-		return UnregisteredResult{}, fmt.Errorf("scan %s: %w", featuresDir, err)
+		return UnregisteredResult{}, fmt.Errorf("scan %s: %w", base, err)
 	}
 	for _, d := range dirs {
 		if !d.IsDir() {
 			continue
 		}
-		corpus := filepath.Join(featuresDir, d.Name(), "corpus")
+		corpus := filepath.Join(base, d.Name(), "corpus")
 		st, err := os.Stat(corpus)
 		if err != nil || !st.IsDir() {
 			continue
 		}
-		rel := "features/" + d.Name() + "/corpus"
-		if !registered[rel] {
+		rel := root + "/" + d.Name() + "/corpus"
+		if !registered[normRel(rel)] {
 			res.IDs = append(res.IDs, d.Name())
 		}
 	}
@@ -113,11 +174,11 @@ func StatusCmds(f *registry.File) map[string]any {
 }
 
 // EntryStatusOf computes the status of a single entry (builtin or delegated).
-func EntryStatusOf(ctx context.Context, workspace string, e registry.Entry) EntryStatus {
+func EntryStatusOf(ctx context.Context, workspace, kdbRoot string, e registry.Entry) EntryStatus {
 	st := EntryStatus{ID: e.ID}
 	var raw []byte
 	if builtin.IsBuiltin(e.ID) {
-		p, err := paths.ForEntry(paths.InputFromEnv(workspace, ""), e)
+		p, err := paths.ForEntry(paths.InputFromEnv(workspace, "", kdbRoot), e)
 		if err != nil {
 			st.Error = err.Error()
 			return st
@@ -179,10 +240,10 @@ func interpretOutput(raw []byte) (out json.RawMessage, dirty bool, ok bool, errM
 
 // StatusAll runs status for every entry, never stopping early.
 // anyFail is true when at least one entry failed.
-func StatusAll(ctx context.Context, workspace string, f *registry.File) (statuses []EntryStatus, anyFail bool) {
+func StatusAll(ctx context.Context, workspace, kdbRoot string, f *registry.File) (statuses []EntryStatus, anyFail bool) {
 	statuses = make([]EntryStatus, 0, len(f.KDBs))
 	for _, e := range f.KDBs {
-		st := EntryStatusOf(ctx, workspace, e)
+		st := EntryStatusOf(ctx, workspace, kdbRoot, e)
 		if !st.OK {
 			anyFail = true
 		}
@@ -194,7 +255,7 @@ func StatusAll(ctx context.Context, workspace string, f *registry.File) (statuse
 // Systematize runs distill->dump->merge->pack for every dirty entry
 // (or only onlyID when non-empty). All targeted entries are processed;
 // the exit code is 1 when any entry failed, 2 when onlyID is unknown, else 0.
-func Systematize(ctx context.Context, workspace string, f *registry.File, onlyID string) (SystematizeResult, int) {
+func Systematize(ctx context.Context, workspace, kdbRoot string, f *registry.File, onlyID string) (SystematizeResult, int) {
 	res := SystematizeResult{OK: true, AddCandidates: []string{}, Entries: []EntrySystematize{}}
 
 	targets := f.KDBs
@@ -208,15 +269,16 @@ func Systematize(ctx context.Context, workspace string, f *registry.File, onlyID
 		targets = []registry.Entry{e}
 	}
 
-	if un, err := Unregistered(workspace, f); err == nil {
+	root := paths.ResolveKdbRoot(kdbRoot)
+	if un, err := Unregistered(workspace, kdbRoot, f); err == nil {
 		for _, id := range un.IDs {
-			res.Warnings = append(res.Warnings, fmt.Sprintf("unregistered corpus: features/%s/corpus", id))
+			res.Warnings = append(res.Warnings, fmt.Sprintf("unregistered corpus: %s/%s/corpus", root, id))
 		}
 	}
 
 	anyFail := false
 	for _, e := range targets {
-		r := systematizeEntry(ctx, workspace, e)
+		r := systematizeEntry(ctx, workspace, kdbRoot, e)
 		if !r.OK {
 			anyFail = true
 		} else if r.Action == "systematized" {
@@ -231,10 +293,10 @@ func Systematize(ctx context.Context, workspace string, f *registry.File, onlyID
 	return res, 0
 }
 
-func systematizeEntry(ctx context.Context, workspace string, e registry.Entry) EntrySystematize {
+func systematizeEntry(ctx context.Context, workspace, kdbRoot string, e registry.Entry) EntrySystematize {
 	r := EntrySystematize{ID: e.ID, CorpusPath: e.CorpusPath}
 
-	st := EntryStatusOf(ctx, workspace, e)
+	st := EntryStatusOf(ctx, workspace, kdbRoot, e)
 	if !st.OK {
 		r.Stage, r.Error = "status", st.Error
 		return r
@@ -261,7 +323,7 @@ func systematizeEntry(ctx context.Context, workspace string, e registry.Entry) E
 	}
 	var p paths.Paths
 	if builtin.IsBuiltin(e.ID) {
-		p, err = paths.ForEntry(paths.InputFromEnv(workspace, ""), e)
+		p, err = paths.ForEntry(paths.InputFromEnv(workspace, "", kdbRoot), e)
 		if err != nil {
 			r.Stage, r.Error = "paths", err.Error()
 			return r

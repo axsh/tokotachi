@@ -30,15 +30,32 @@ type Entry struct {
 // Load reads and parses a registry file. Unknown keys are ignored.
 // It does not validate; call Validate on the result.
 func Load(path string) (*File, error) {
+	f, missing, err := LoadOptional(path)
+	if err != nil {
+		return nil, err
+	}
+	if missing {
+		return nil, fmt.Errorf("read registry %s: %w", path, os.ErrNotExist)
+	}
+	return f, nil
+}
+
+// LoadOptional reads a registry file when present.
+// If the file does not exist, it returns an empty File with Version 1, missing=true, and err=nil.
+// Parse or other I/O errors still return err.
+func LoadOptional(path string) (f *File, missing bool, err error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read registry %s: %w", path, err)
+		if os.IsNotExist(err) {
+			return &File{Version: 1}, true, nil
+		}
+		return nil, false, fmt.Errorf("read registry %s: %w", path, err)
 	}
-	var f File
-	if err := yaml.Unmarshal(data, &f); err != nil {
-		return nil, fmt.Errorf("parse registry %s: %w", path, err)
+	var out File
+	if err := yaml.Unmarshal(data, &out); err != nil {
+		return nil, false, fmt.Errorf("parse registry %s: %w", path, err)
 	}
-	return &f, nil
+	return &out, false, nil
 }
 
 // Validate checks version, required fields of every entry, and id uniqueness.

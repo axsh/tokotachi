@@ -37,14 +37,46 @@ func TestResolveWorkspace_Priority(t *testing.T) {
 	assert.NotEmpty(t, got)
 }
 
+func TestKdbRoot_Priority(t *testing.T) {
+	t.Setenv("KDB_ROOT", "")
+	assert.Equal(t, DefaultKdbRoot, ResolveKdbRoot(""))
+	assert.Equal(t, "other/kdb", ResolveKdbRoot("other/kdb/"))
+	t.Setenv("KDB_ROOT", "env/kdb")
+	assert.Equal(t, "env/kdb", ResolveKdbRoot(""))
+	assert.Equal(t, "flag/kdb", ResolveKdbRoot("flag/kdb"))
+}
+
 func TestRegistryPath_Priority(t *testing.T) {
 	t.Setenv("KDB_REGISTRY", "")
+	t.Setenv("KDB_ROOT", "")
 	ws := filepath.Join("a", "ws")
-	assert.Equal(t, filepath.Join(ws, "features", "kdb", "registry.yaml"), RegistryPath(ws, ""))
+	assert.Equal(t, filepath.Join(ws, "shared", "kdb", "registry.yaml"), RegistryPath(ws, "", ""))
 
 	t.Setenv("KDB_REGISTRY", "env.yaml")
-	assert.Equal(t, "env.yaml", RegistryPath(ws, ""))
-	assert.Equal(t, "flag.yaml", RegistryPath(ws, "flag.yaml"))
+	assert.Equal(t, "env.yaml", RegistryPath(ws, "", ""))
+	assert.Equal(t, "flag.yaml", RegistryPath(ws, "flag.yaml", "ignored"))
+}
+
+func TestRegistryPath_UsesKdbRoot(t *testing.T) {
+	t.Setenv("KDB_REGISTRY", "")
+	ws := filepath.Join("a", "ws")
+	assert.Equal(t, filepath.Join(ws, "other", "kdb", "registry.yaml"), RegistryPath(ws, "", "other/kdb"))
+}
+
+func TestBuiltinBacklogEntry(t *testing.T) {
+	e := BuiltinBacklogEntry("")
+	assert.Equal(t, "backlog", e.ID)
+	assert.Equal(t, "shared/kdb/backlog", e.ModulePath)
+	assert.Equal(t, "shared/kdb/backlog/corpus", e.CorpusPath)
+	assert.Equal(t, "tt kdb backlog status", e.StatusCmd)
+	assert.NotEmpty(t, e.DistillCmd)
+	assert.NotEmpty(t, e.DumpCmd)
+	assert.NotEmpty(t, e.MergeCmd)
+	assert.NotEmpty(t, e.PackCmd)
+
+	e2 := BuiltinBacklogEntry("other/kdb")
+	assert.Equal(t, "other/kdb/backlog", e2.ModulePath)
+	assert.Equal(t, "other/kdb/backlog/corpus", e2.CorpusPath)
 }
 
 func TestForEntry_FeaturesLayout(t *testing.T) {
@@ -59,6 +91,16 @@ func TestForEntry_FeaturesLayout(t *testing.T) {
 	assert.Equal(t, filepath.Join(ws, "tmp", "kdb", "backlog"), p.TmpDir)
 	assert.Equal(t, filepath.Join(ws, "tmp", "kdb", "backlog", "items.json"), p.TmpJSON)
 	assert.Equal(t, "2026-01-02", p.Today)
+}
+
+func TestForEntry_SharedLayout(t *testing.T) {
+	ws := t.TempDir()
+	e := BuiltinBacklogEntry("")
+	p, err := ForEntry(ResolveInput{Workspace: ws}, e)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(ws, "shared", "kdb", "backlog", "corpus"), p.CorpusDir)
+	assert.Equal(t, filepath.Join(ws, "shared", "kdb", "backlog", "data"), p.DataDir)
+	assert.Equal(t, filepath.Join(ws, "shared", "kdb", "backlog", "data", "backlog.sqlite"), p.DBPath)
 }
 
 func TestForEntry_ScriptsLayout(t *testing.T) {
@@ -101,8 +143,10 @@ func TestForEntry_NonBacklogHasNoDBPath(t *testing.T) {
 func TestInputFromEnv(t *testing.T) {
 	t.Setenv("BL_DATA_DIR", "dd")
 	t.Setenv("BL_TODAY", "2026-05-05")
-	in := InputFromEnv("ws", "reg")
+	t.Setenv("KDB_ROOT", "custom/kdb")
+	in := InputFromEnv("ws", "reg", "flag/kdb")
 	assert.Equal(t, "dd", in.DataDir)
 	assert.Equal(t, "2026-05-05", in.Today)
 	assert.Equal(t, "ws", in.Workspace)
+	assert.Equal(t, "flag/kdb", in.KdbRoot)
 }

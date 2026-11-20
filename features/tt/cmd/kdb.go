@@ -29,6 +29,7 @@ var kdbCmd = &cobra.Command{
 type kdbArgs struct {
 	workspace string
 	registry  string
+	kdbRoot   string
 	prefer    string
 	help      bool
 	positions []string
@@ -65,6 +66,14 @@ func parseKdbArgs(args []string) (kdbArgs, error) {
 			a.registry, i = v, ni
 		case strings.HasPrefix(arg, "--registry="):
 			a.registry = strings.TrimPrefix(arg, "--registry=")
+		case arg == "--kdb-root":
+			v, ni, err := take(i, arg)
+			if err != nil {
+				return a, err
+			}
+			a.kdbRoot, i = v, ni
+		case strings.HasPrefix(arg, "--kdb-root="):
+			a.kdbRoot = strings.TrimPrefix(arg, "--kdb-root=")
 		case arg == "--prefer":
 			v, ni, err := take(i, arg)
 			if err != nil {
@@ -119,11 +128,11 @@ func runKdb(cmd *cobra.Command, args []string) error {
 			fmt.Sprintf("unknown operation %q for knowledge DB %q (one of: %s)", op, id, strings.Join(kdbPipelineOps, ", ")), nil)
 	}
 
-	workspace, f, err := loadKdbRegistryTo(errOut, hint, a.workspace, a.registry)
+	load, err := loadKdbRegistryTo(errOut, hint, a.workspace, a.registry, a.kdbRoot)
 	if err != nil {
 		return err
 	}
-	entry, ok := f.ByID(id)
+	entry, ok := load.File.ByID(id)
 	if !ok {
 		return jsonout.Fail(errOut, hint, jsonout.CodeUsage, fmt.Sprintf("unknown knowledge DB id %q", id), nil)
 	}
@@ -132,7 +141,7 @@ func runKdb(cmd *cobra.Command, args []string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return runKdbOp(ctx, cmd, hint, workspace, a, entry, op)
+	return runKdbOp(ctx, cmd, hint, load.Workspace, a, entry, op)
 }
 
 func runKdbOp(ctx context.Context, cmd *cobra.Command, hint, workspace string, a kdbArgs, e registry.Entry, op string) error {

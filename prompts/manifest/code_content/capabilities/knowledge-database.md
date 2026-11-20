@@ -26,7 +26,7 @@ body: inline
 
 1. 知識DB = 知識ストア + 目的別 CLI + help + タイミングスキル
 2. 段階 = 蓄積 → 蒸留 → 退避 → 再構築
-3. 置き場 = `features/<kdb-id>/data/`（gitignore）・`features/<kdb-id>/corpus/`（Git 正本）・`tmp/kdb/<kdb-id>/`（現状ダンプ）
+3. 置き場 = `{kdb-root}/<kdb-id>/data/`（gitignore）・`{kdb-root}/<kdb-id>/corpus/`（Git 正本）・`tmp/kdb/<kdb-id>/`（現状ダンプ）。既定の kdb-root は `shared/kdb`
 4. 退避 = distill → dump(tmp) → 単純マージ(tmp, data) → pack(data→corpus)
 5. 再構築 = unpack(corpus→data) → restore(data→DB)。鮮度で corpus が新しければ実施する
 6. 単純マージは結合のみ。重複整理は各知識の distill
@@ -34,9 +34,9 @@ body: inline
 8. 遠方知識の systematize とは別系統。sync 前に両方を片付ける
 9. 製品 DB の RLS / 保持は自動適用しない
 10. **レコード UUID（テーブル ID と並列）** — 下節「レコード UUID の設計意図」
-このリポジトリが追跡する知識DBの一覧は registry（既定は `features/kdb/registry.yaml`、`--registry` または `KDB_REGISTRY` で変更できる）である。全知識DBの追跡は `tt kdb-track`（`list` / `unregistered` / `status-cmds` / `status-all` / `systematize`）が行い、一つの知識DBへの操作は `tt kdb <id> <operation>` が行う。pre-sync と `systematize-knowledge-database` は `tt kdb-track systematize` を呼ぶ。bash スクリプトは使わない。使い方の説明は `tt help kdb-track` と `tt help kdb` で読む。
+このリポジトリが追跡する知識DBの一覧は registry（既定は `shared/kdb/registry.yaml`、`--registry` / `KDB_REGISTRY`、または `--kdb-root` / `KDB_ROOT` で変更できる）である。registry が無くても **backlog は内蔵として常に登録**される。yaml に同 id があれば yaml 優先。全知識DBの追跡は `tt kdb-track`（`list` / `unregistered` / `status-cmds` / `status-all` / `systematize` / `skeleton`）が行い、一つの知識DBへの操作は `tt kdb <id> <operation>` が行う。pre-sync と `systematize-knowledge-database` は `tt kdb-track systematize` を呼ぶ。bash スクリプトは使わない。使い方の説明は `tt help kdb-track` と `tt help kdb` で読む。registry の `*_cmd` は引数付きコマンドライン文字列でよい。
 
-backlog は `tt` に内蔵された知識DBである。操作は `tt kdb backlog <op>`（`add` / `list` / `get` / `update` / `resolve` / `status` / `distill` / `dump` / `merge` / `pack` / `unpack` / `restore` / `import-md` / `migrate-uuids`）で、説明は `tt help kdb backlog` と `tt help kdb backlog <op>` で読む。埋め込み SQLite で動くので、Python と外部の `sqlite3` は要らない。置き場は registry の `module_path` と `corpus_path` が決める。新しい依頼元では `scripts/kdb/backlog`（`corpus/` はその下）を推奨し、`features/backlog` でも動く。
+backlog は `tt` に内蔵された知識DBである。操作は `tt kdb backlog <op>`（`add` / `list` / `get` / `update` / `resolve` / `status` / `distill` / `dump` / `merge` / `pack` / `unpack` / `restore` / `import-md` / `migrate-uuids`）で、説明は `tt help kdb backlog` と `tt help kdb backlog <op>` で読む。埋め込み SQLite で動くので、Python と外部の `sqlite3` は要らない。既定の置き場は `shared/kdb/backlog/`（corpus / data）。registry の `module_path` / `corpus_path` で上書きできる。
 
 ### レコード UUID の設計意図
 
@@ -69,7 +69,7 @@ example（designdb）へいつ列を足すかは、その知識DBの仕様／バ
 
 ## アーキテクチャ
 
-共有の正本は、リポジトリ上の `features/<kdb-id>/corpus/` である。作業中の展開は `features/<kdb-id>/data/`（gitignore、JSON）である。知識を置くデータベースは作業用のキャッシュである。チャットの記憶や、遠方知識のメモを正本にしない。
+共有の正本は、リポジトリ上の `{kdb-root}/<kdb-id>/corpus/`（既定 `shared/kdb/`）である。作業中の展開は `{kdb-root}/<kdb-id>/data/`（gitignore、JSON）である。知識を置くデータベースは作業用のキャッシュである。チャットの記憶や、遠方知識のメモを正本にしない。
 
 現状ダンプは `tmp/kdb/<kdb-id>/` へ出し、既存の `data/` と**単純マージ**する。重複の畳み込みは共通マージでは行わず、各知識 CLI の蒸留（distill）に任せる。PR 前の退避は distill → dump(tmp) → 単純マージ → pack(data→corpus) である。
 
@@ -90,7 +90,7 @@ example（designdb）へいつ列を足すかは、その知識DBの仕様／バ
 - タイミングのスキル。その知識を参照する契機と、蓄える契機を、実際の CLI コマンドで書く。知識の種類ごとに分ける。
 - 退避の手順（procedure `systematize-knowledge-database`）。PR や同期の前に、蒸留と dump／マージ／pack を行い、未退避を残さない。
 
-画面 ID の一例（example）では、キャッシュは `designdb`、正本は `features/designdb/corpus/`、展開は `features/designdb/data/`、入口は `scripts/design/id.sh` と `scripts/design/flow.sh` に加え `distill.sh` / `dump.sh` / `restore.sh` / `status.sh` / `pack.sh` / `unpack.sh` / `merge.sh` / `sync.sh`、タイミングのスキルは `design-screen-id` と `design-screen-flow`、退避は `systematize-knowledge-database` である。これらのパスは一例であり、追跡対象かどうかは `features/kdb/registry.yaml` が決める。新しい知識を、この一例へ自動では足さない。足すか、別の知識DBにするかは、設計のときに決める。
+画面 ID の一例（example）では、キャッシュは `designdb`、正本は registry の `corpus_path`（例: `shared/kdb/designdb/corpus/`）、展開は対になる `data/`、入口は `scripts/design/id.sh` と `scripts/design/flow.sh` に加え `distill.sh` / `dump.sh` / `restore.sh` / `status.sh` / `pack.sh` / `unpack.sh` / `merge.sh` / `sync.sh`、タイミングのスキルは `design-screen-id` と `design-screen-flow`、退避は `systematize-knowledge-database` である。これらのパスは一例であり、追跡対象かどうかは `shared/kdb/registry.yaml`（または `--registry`）が決める。新しい知識を、この一例へ自動では足さない。足すか、別の知識DBにするかは、設計のときに決める。
 
 本システムのデータベース（`legalchk`）の RLS と保持期間は、知識DBへ自動では適用しない。適用するか、別のデータベースに分けるかは、その知識DBの仕様で決める。
 

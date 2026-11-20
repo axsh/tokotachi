@@ -118,15 +118,15 @@ func runKdbBacklog(cmd *cobra.Command, a kdbArgs) error {
 		return backlogFail(errOut, hint, &backlog.OpError{Code: jsonout.CodeUsage, Msg: "missing PATH argument"})
 	}
 
-	workspace, f, err := loadKdbRegistryTo(errOut, hint, a.workspace, a.registry)
+	load, err := loadKdbRegistryTo(errOut, hint, a.workspace, a.registry, a.kdbRoot)
 	if err != nil {
 		return err
 	}
-	entry, ok := f.ByID(builtin.BacklogID)
+	entry, ok := load.File.ByID(builtin.BacklogID)
 	if !ok {
 		return jsonout.Fail(errOut, hint, jsonout.CodeUsage, "knowledge DB id \"backlog\" is not registered", nil)
 	}
-	p, err := paths.ForEntry(paths.InputFromEnv(workspace, a.registry), entry)
+	p, err := paths.ForEntry(paths.InputFromEnv(load.Workspace, a.registry, load.KdbRoot), entry)
 	if err != nil {
 		return jsonout.Fail(errOut, hint, jsonout.CodeBusiness, err.Error(), nil)
 	}

@@ -72,6 +72,30 @@ func TestLoad_MissingFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestLoadOptional_Missing(t *testing.T) {
+	f, missing, err := LoadOptional(filepath.Join(t.TempDir(), "none.yaml"))
+	require.NoError(t, err)
+	assert.True(t, missing)
+	require.NotNil(t, f)
+	assert.Equal(t, 1, f.Version)
+	assert.Empty(t, f.KDBs)
+}
+
+func TestLoadOptional_Present(t *testing.T) {
+	p := write(t, "version: 1\nkdbs:\n"+entry("backlog"))
+	f, missing, err := LoadOptional(p)
+	require.NoError(t, err)
+	assert.False(t, missing)
+	require.NoError(t, f.Validate())
+	assert.Len(t, f.KDBs, 1)
+}
+
+func TestLoadOptional_Corrupt(t *testing.T) {
+	_, missing, err := LoadOptional(write(t, "version: [1\n"))
+	assert.Error(t, err)
+	assert.False(t, missing)
+}
+
 func TestLoad_BadYAML(t *testing.T) {
 	_, err := Load(write(t, "version: [1\n"))
 	assert.Error(t, err)

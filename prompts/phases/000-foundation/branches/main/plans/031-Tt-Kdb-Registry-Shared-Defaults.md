@@ -278,7 +278,26 @@ None. 任意要件 O1（`--stdout`）は実装しない。
 
 ### 総合判定結果
 
-（実装完了時に記入）
+**判定**: ✅ 動作確認完了
+
+#### テスト結果サマリ
+- Build (`scripts/process/build.sh`): PASS
+- Integration (`tt` / `Kdb`): PASS（全件成功）
+- 事実上スキップ: 0 件（`t.Skip` なし。git 欠落は Fatal）
+
+#### チェック項目の結果
+| # | チェック項目 | 結果 | 備考 |
+|---|------------|------|------|
+| 1 | スキップされたテスト | ✅ | なし |
+| 2 | 部分的なエラー | ✅ | 失敗ログなし |
+| 3 | 迂回処理による偽成功 | ✅ | `bin/tt` 実バイナリ。registry 欠落 fixture で builtin 経路を確認 |
+| 4 | アダプタ・コンフィグの誤適用 | ✅ | `source=builtin|registry` と kdb-root 上書きを断言 |
+| 5 | テスト間の依存・順序問題 | ✅ | `--specify Kdb` 単独で成功 |
+| 6 | カバレッジの妥当性 | ✅ | R1–R8 の CLI/unit をカバー |
+| 7 | 外部システムの状態 | ✅ | git/bash のみ。ネットワーク不要 |
+
+#### 判定理由
+欠落時 list が exit 0 で backlog を返し、`shared/kdb` 既定・skeleton・source・引数付き `*_cmd` が試験で確認できた。
 
 ## Documentation
 
