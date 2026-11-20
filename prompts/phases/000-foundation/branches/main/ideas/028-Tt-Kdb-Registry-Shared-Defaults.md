@@ -123,18 +123,22 @@ status: draft
 - 推奨: 主走査は `{kdb-root}`。`features/*/corpus` は deprecated として残すか、
   本仕様では kdb-root のみに寄せる（実現方針で一方に決める）。
 
-#### R8: テスト・回帰
+#### R8: list 応答に `source` を付ける
 
-- registry 欠落 / 組み込み backlog / kdb-root 上書き / skeleton / 引数付き `*_cmd` を
-  自動化テストで担保する（下記「テスト項目」）。
+- `tt kdb-track list` の各 entry に `source` を付ける。
+  - `"builtin"`: 組み込み既定から採用したエントリ（yaml に同 id が無い）
+  - `"registry"`: registry.yaml から採用したエントリ（backlog の yaml 上書きを含む）
+- yaml で backlog を上書きした場合、その backlog の `source` は `"registry"` とする。
+- `source` は list の応答用メタデータであり、registry.yaml の必須フィールドにはしない。
+
+#### R9: テスト・回帰
+
+- registry 欠落 / 組み込み backlog / kdb-root 上書き / skeleton / 引数付き `*_cmd` /
+  `source` 付与を自動化テストで担保する（下記「テスト項目」）。
 
 ### 任意要件
 
-#### O1: list 応答に `source` を付ける
-
-各 entry に `source: "builtin" | "registry"` を付け、yaml 上書きか組み込みかが分かるようにする。
-
-#### O2: skeleton に `--stdout` 明示フラグ
+#### O1: skeleton に `--stdout` 明示フラグ
 
 既定が stdout のとき、対称性のためのエイリアス。必須ではない。
 
@@ -168,9 +172,11 @@ flowchart TD
    - または `LoadOptional` を追加し、欠落時は `(*File, missing=true, err=nil)`。
 
 3. **`internal/kdb/track`（または cmd 層）**
-   - `EffectiveEntries(file, kdbRoot) []Entry`:
-     - yaml に backlog があればそれを採用。
-     - 無ければ builtin 既定を先頭または安定した位置に挿入。
+   - `EffectiveEntries(file, kdbRoot)`:
+     - yaml に backlog があればそれを採用（`source: registry`）。
+     - 無ければ builtin 既定を先頭または安定した位置に挿入（`source: builtin`）。
+     - yaml 由来の他 id はすべて `source: registry`。
+   - list 用に `Entry` を拡張するか、応答専用の `ListedEntry`（`Entry` + `source`）を返す。
    - `List` 等の JSON に `registry_missing` / `registry` を載せる。
    - `Unregistered` の走査ルートを kdb-root に変更（本仕様では **kdb-root のみ** とする）。
 
@@ -197,6 +203,7 @@ flowchart TD
 | unregistered 走査 | `{kdb-root}/*/corpus` のみ（`features/*/corpus` は走査しない） |
 | skeleton 既定 | stdout の YAML。`--write` でファイル作成（既存あれば失敗） |
 | `*_cmd` 形式 | 単一文字列のシェルコマンドライン（引数可）。YAML 配列形式は本仕様の範囲外 |
+| list の `source` | 必須。`builtin` / `registry`。yaml 上書き backlog は `registry` |
 
 ### 含めないもの（非ゴール）
 
@@ -212,13 +219,12 @@ flowchart TD
 1. ワークスペースに `shared/kdb/registry.yaml` も `features/kdb/registry.yaml` も無い状態で
    `tt kdb-track list` を実行する。終了コード 0、`ok: true`、`registry_missing: true`、
    `entries` に `id=backlog` が 1 件あり、その `module_path` / `corpus_path` が
-   `shared/kdb/backlog` 系である。エラー扱いにならない。
+   `shared/kdb/backlog` 系であり、`source` は `"builtin"` である。エラー扱いにならない。
 2. 同じ欠落状態で `tt kdb backlog status`（または list）が動き、registry 欠落だけで失敗しない。
 3. `shared/kdb/registry.yaml` に backlog 以外の KDB を 1 件だけ書き、`tt kdb-track list` する。
-   entries は「yaml の 1 件 + builtin backlog」の 2 件（または yaml に backlog を書けば
-   yaml の backlog 1 件に上書きされ、重複しない）。
+   entries は 2 件: yaml 側は `source: "registry"`、backlog は `source: "builtin"`。
 4. yaml に `id: backlog` と別の `module_path`（例: `shared/kdb/backlog-custom`）を書き、
-   list の backlog エントリがそのパスになっている（yaml 優先）。
+   list の backlog エントリがそのパスになっており、`source` は `"registry"`（yaml 優先）。
 5. `tt kdb-track skeleton` が YAML を stdout に出し、exit 0。DB や registry が無くても成功。
 6. `tt kdb-track skeleton --write` で `{kdb-root}/registry.yaml` が新規作成される。
    二度目の `--write` は既存保護で失敗する。
@@ -243,6 +249,7 @@ flowchart TD
 | R5 | skeleton の YAML に version と必須キー例が含まれる。`--write` の新規成功・既存失敗 |
 | R6 | フィクスチャ yaml の `*_cmd` に引数を含め、delegate または status-cmds が文字列を保持 |
 | R7 | unregistered が kdb-root 配下のみを見る |
+| R8 | list: 欠落時 backlog は `source=builtin`。yaml 上書き backlog は `source=registry` |
 
 既存: `tests/tt/tt_kdb_track_test.go` / `tt_kdb_backlog_test.go` を新既定パス
 （`shared/kdb/...`）と欠落時成功に合わせて更新する。
