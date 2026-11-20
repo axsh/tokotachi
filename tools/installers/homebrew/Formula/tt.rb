@@ -1,25 +1,25 @@
 class Tt < Formula
   desc "Tokotachi CLI - Project scaffolding and management tool"
   homepage "https://github.com/axsh/tokotachi"
-  version "0.6.1"
+  version "0.9.2"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/axsh/tokotachi/releases/download/v0.6.1/tt_darwin_arm64.tar.gz"
-      sha256 "1d098eeb2a54cb488304acdc6c7d36457948dc5666ce09b17f17125776db724d"
+      url "https://github.com/axsh/tokotachi/releases/download/v0.9.2/tt_darwin_arm64.tar.gz"
+      sha256 "df6fc7e4c0020d279cf565545da4aa0c9d205b78bc8546327061803bcd0e4923"
     else
-      url "https://github.com/axsh/tokotachi/releases/download/v0.6.1/tt_darwin_amd64.tar.gz"
-      sha256 "ea646e3877b05b8f99ab2042b9d2cbfea5a7e071c2a613a42f7434304a6f1163"
+      url "https://github.com/axsh/tokotachi/releases/download/v0.9.2/tt_darwin_amd64.tar.gz"
+      sha256 "58df68be93b6392f1890683760b12cd33c8d69971073b0750a24fd81248c8df2"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/axsh/tokotachi/releases/download/v0.6.1/tt_linux_arm64.tar.gz"
-      sha256 "d9feda75088413e11e9e05b38fbf6510faab2ceae4364f9b2db94befab534844"
+      url "https://github.com/axsh/tokotachi/releases/download/v0.9.2/tt_linux_arm64.tar.gz"
+      sha256 "7f68d736a6d44e087ce0fa27d1c2ce006a3e992dab0577f39ae9aa69c8b5f6e3"
     else
-      url "https://github.com/axsh/tokotachi/releases/download/v0.6.1/tt_linux_amd64.tar.gz"
-      sha256 "81e9fbef56553611d2f416128a2bcba0e3c3c6d841ae3dc09ab492347604e7fa"
+      url "https://github.com/axsh/tokotachi/releases/download/v0.9.2/tt_linux_amd64.tar.gz"
+      sha256 "b766ae18c449330824c896cfe9ca8efc252cdcfe340c7b9975feb4d75295f7eb"
     end
   end
 
