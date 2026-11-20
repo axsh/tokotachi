@@ -8,13 +8,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/axsh/tokotachi/internal/forge"
 	"github.com/axsh/tokotachi/pkg/state"
 )
 
 // Checker resolves the code hosting status for branches.
 type Checker struct {
 	GitCmd   string        // git command path
-	GhCmd    string        // gh command path
+	GhCmd    string        // gh command path (legacy fallback when Forge is nil)
+	GlabCmd  string        // glab command path (informational / future use)
+	Host     forge.Host    // resolved forge host
+	Forge    forge.Client  // non-nil uses FindOpenChangeRequest
 	RepoRoot string        // repository root
 	Timeout  time.Duration // timeout for external commands
 }
@@ -80,8 +84,20 @@ func (c *Checker) hasRemoteBranch(ctx context.Context, branch string) (bool, err
 	return strings.TrimSpace(string(out)) != "", nil
 }
 
-// findPR checks for an open PR with the given head branch.
+// findPR checks for an open PR/MR with the given head/source branch.
 func (c *Checker) findPR(ctx context.Context, branch string) (*prInfo, error) {
+	if c.Forge != nil {
+		info, err := c.Forge.FindOpenChangeRequest(c.RepoRoot, branch)
+		if err != nil {
+			return nil, err
+		}
+		if info == nil {
+			return nil, nil
+		}
+		return &prInfo{Number: info.Number, CreatedAt: info.CreatedAt}, nil
+	}
+
+	// Legacy fallback: gh pr list
 	cmdCtx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 

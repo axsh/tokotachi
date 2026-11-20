@@ -5,7 +5,7 @@
 # and adds it to the user PATH. No admin privileges required.
 #
 # Usage:
-#   powershell -ExecutionPolicy Bypass -File .\scripts\dist\tool\internal\install.ps1
+#   powershell -ExecutionPolicy Bypass -File .\scripts\dist\tool\internal\win\install.ps1
 # ============================================================
 
 Set-StrictMode -Version Latest
@@ -42,10 +42,10 @@ if (Test-Path $LocalBinary) {
 } else {
     Write-Info "Running in Developer Repository Mode."
     
-    # Resolve project root relative to the script location (scripts/dist/tool/internal/install.ps1)
-    $ProjectRoot = (Resolve-Path (Join-Path $ScriptDir "..\..\..\..")).Path
+    # Resolve project root relative to the script location (scripts/dist/tool/internal/win/install.ps1)
+    $ProjectRoot = (Resolve-Path (Join-Path $ScriptDir "..\..\..\..\..")).Path
     $BinDir       = Join-Path $ProjectRoot "bin"
-    $SourceBinary = Join-Path $BinDir $BinaryName
+    $SourceBinary = Join-Path $BinDir "$BinaryName.exe"
 
     if (-not (Test-Path $SourceBinary)) {
         $goExe = Get-Command go -ErrorAction SilentlyContinue

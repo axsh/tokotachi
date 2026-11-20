@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/axsh/tokotachi/internal/forge"
 )
 
 const categoryTools = "External Tools"
@@ -39,17 +41,33 @@ type toolDef struct {
 	fixHint  string
 }
 
-// tools lists the external tools to check.
-var tools = []toolDef{
-	{name: "git", required: true, fixHint: "Install Git: https://git-scm.com/"},
-	{name: "docker", required: true, fixHint: "Install Docker: https://docs.docker.com/get-docker/"},
-	{name: "gh", required: false, fixHint: "Install GitHub CLI: https://cli.github.com/ (only required for 'tt pr')"},
+func forgeTools(host forge.Host) []toolDef {
+	base := []toolDef{
+		{name: "git", required: true, fixHint: "Install Git: https://git-scm.com/"},
+		{name: "docker", required: true, fixHint: "Install Docker: https://docs.docker.com/get-docker/"},
+	}
+	gh := toolDef{
+		name: "gh", required: false,
+		fixHint: "Install GitHub CLI: https://cli.github.com/ (only required for 'tt pr')",
+	}
+	glab := toolDef{
+		name: "glab", required: false,
+		fixHint: "Install GitLab CLI (glab): https://gitlab.com/gitlab-org/cli (only required for 'tt pr')",
+	}
+	switch host {
+	case forge.HostGitLab:
+		return append(base, glab)
+	case forge.HostGitHub:
+		return append(base, gh)
+	default:
+		return append(base, gh, glab)
+	}
 }
 
-// checkExternalTools checks git, docker, gh availability.
-func checkExternalTools(checker ToolChecker) []CheckResult {
+// checkExternalTools checks git, docker, and forge CLI availability.
+func checkExternalTools(checker ToolChecker, host forge.Host) []CheckResult {
 	var results []CheckResult
-	for _, tool := range tools {
+	for _, tool := range forgeTools(host) {
 		version, err := checker.CheckTool(tool.name)
 		if err != nil {
 			status := StatusFail

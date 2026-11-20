@@ -1,0 +1,30 @@
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:17.7.0-ce.0
+    container_name: tokotachi-gitlab
+    hostname: gitlab
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://localhost:8929'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+    ports:
+      - "8929:80"
+      - "2224:22"
+    volumes:
+      - tokotachi_gitlab_config:/etc/gitlab
+      - tokotachi_gitlab_logs:/var/log/gitlab
+      - tokotachi_gitlab_data:/var/opt/gitlab
+    shm_size: "256m"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/-/readiness || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 30
+      start_period: 300s
+
+volumes:
+  tokotachi_gitlab_config:
+  tokotachi_gitlab_logs:
+  tokotachi_gitlab_data:
