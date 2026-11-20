@@ -3,7 +3,7 @@ apiVersion: agent.meta/v1
 id: Tt-Kdb-Registry-Shared-Defaults
 kind: idea
 title: KDB registry の shared 既定と欠落下の正常終了・組み込み backlog
-status: draft
+status: approved
 ---
 
 # KDB registry の shared 既定と欠落下の正常終了・組み込み backlog
