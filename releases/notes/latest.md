@@ -2,4 +2,4 @@
 
 ## What's New
 
-No changes detected since last release.
+Changes were made but no specification documents were found.
