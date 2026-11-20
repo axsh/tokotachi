@@ -99,7 +99,9 @@ func registerWorktreeHelp() {
 		"Discovering active worktrees/features.",
 		"Do not use for container health; use `tt status` / `tt doctor`.",
 		"Git worktrees readable.",
-		"`tt list [branch]`",
+		"`tt list [branch] [--forge github|gitlab] [--update]`\n"+
+			"Host resolution (highest priority first): `--forge` (this process only), then `TT_FORGE`, then `git remote get-url origin` (github/gitlab heuristics).\n"+
+			"Related env: `TT_FORGE`, `TT_CMD_GH` (default gh), `TT_CMD_GLAB` (default glab). Invalid `--forge` fails the command.",
 		ex,
 		"`tt help status`",
 	))
@@ -361,7 +363,9 @@ func registerMiscHelp() {
 		"When opening a PR after local work.",
 		"Do not invent remote URLs; use configured remotes.",
 		"Authenticated gh/host CLI as required.",
-		"`tt pr` with flags per implementation.",
+		"`tt pr [--forge github|gitlab] <branch> [feature]`\n"+
+			"Host resolution (highest priority first): `--forge` (this process only), then `TT_FORGE`, then `git remote get-url origin` (github/gitlab heuristics).\n"+
+			"Related env: `TT_FORGE`, `TT_CMD_GH` (default gh), `TT_CMD_GLAB` (default glab). Invalid `--forge` fails the command.",
 		ex,
 		"`tt help merge`",
 	))
@@ -371,7 +375,9 @@ func registerMiscHelp() {
 		"When setup looks wrong or onboarding.",
 		"Do not treat doctor as a substitute for `tt status`.",
 		"Readable repo root.",
-		"`tt doctor`",
+		"`tt doctor [--forge github|gitlab] [--json]`\n"+
+			"Host resolution (highest priority first): `--forge` (this process only), then `TT_FORGE`, then `git remote get-url origin` (github/gitlab heuristics).\n"+
+			"Related env: `TT_FORGE`, `TT_CMD_GH` (default gh), `TT_CMD_GLAB` (default glab). Invalid `--forge` fails the command.",
 		ex,
 		"`tt help status`",
 	))
