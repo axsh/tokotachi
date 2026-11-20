@@ -7,9 +7,10 @@ import (
 
 // Runner executes container and editor actions via cmdexec.
 type Runner struct {
-	Logger    pkglog.Logger
-	DryRun    bool
-	CmdRunner *cmdexec.Runner
+	Logger        pkglog.Logger
+	DryRun        bool
+	CmdRunner     *cmdexec.Runner
+	ForgeOverride string // from --forge; empty = unset
 }
 
 // DockerRun executes "docker <args...>" interactively.

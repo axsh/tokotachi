@@ -12,20 +12,28 @@ var (
 	doctorFlagFeature string
 	doctorFlagJSON    bool
 	doctorFlagFix     bool
+	doctorFlagForge   string
 )
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Check repository health and configuration",
-	Long:  "Diagnose the repository structure, configuration files, and external tool availability.",
-	Args:  cobra.NoArgs,
-	RunE:  runDoctor,
+	Long: `Diagnose the repository structure, configuration files, and external tool
+availability (gh for GitHub or glab for GitLab, depending on resolved forge host).` + forgeHostResolveHelp + `
+Examples:
+  tt doctor --forge gitlab
+  TT_FORGE=gitlab tt doctor --json
+`,
+	Args: cobra.NoArgs,
+	RunE: runDoctor,
 }
 
 func init() {
 	doctorCmd.Flags().StringVar(&doctorFlagFeature, "feature", "", "Check only the specified feature")
 	doctorCmd.Flags().BoolVar(&doctorFlagJSON, "json", false, "Output results in JSON format")
 	doctorCmd.Flags().BoolVar(&doctorFlagFix, "fix", false, "Auto-fix issues where possible")
+	doctorCmd.Flags().StringVar(&doctorFlagForge, "forge", "",
+		"Forge host override: github|gitlab (takes precedence over TT_FORGE; process-local only)")
 }
 
 func runDoctor(cmd *cobra.Command, args []string) error {
@@ -39,6 +47,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		FeatureFilter: doctorFlagFeature,
 		ToolChecker:   &doctor.DefaultToolChecker{},
 		Fix:           doctorFlagFix,
+		ForgeOverride: doctorFlagForge,
 	}
 
 	report, err := doctor.Run(opts)

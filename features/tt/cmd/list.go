@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
+	"github.com/axsh/tokotachi/internal/forge"
 	"github.com/axsh/tokotachi/internal/listing"
 	"github.com/axsh/tokotachi/internal/log"
 	"github.com/axsh/tokotachi/internal/report"
@@ -23,14 +24,20 @@ var (
 	flagListPath   bool
 	flagListUpdate bool
 	flagListFull   bool
+	flagListForge  string
 )
 
 var listCmd = &cobra.Command{
 	Use:   "list [branch]",
 	Short: "List branches or features",
-	Long:  "Without arguments, list all worktree branches. With a branch, list features for that branch.",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runList,
+	Long: `Without arguments, list all worktree branches. With a branch, list features for that branch.
+With --update, refresh CodeStatus using the resolved forge host (gh or glab).` + forgeHostResolveHelp + `
+Examples:
+  tt list --forge gitlab --update
+  TT_FORGE=gitlab tt list --update
+`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runList,
 }
 
 func init() {
@@ -38,6 +45,8 @@ func init() {
 	listCmd.Flags().BoolVar(&flagListPath, "path", false, "Show worktree path column")
 	listCmd.Flags().BoolVar(&flagListUpdate, "update", false, "Force update code status immediately")
 	listCmd.Flags().BoolVar(&flagListFull, "full", false, "Disable column truncation")
+	listCmd.Flags().StringVar(&flagListForge, "forge", "",
+		"Forge host override: github|gitlab (takes precedence over TT_FORGE; used with --update; process-local only)")
 }
 
 func runList(cmd *cobra.Command, args []string) error {
@@ -58,6 +67,13 @@ func runListBranches() error {
 	rec := cmdexec.NewRecorder()
 	runner := &cmdexec.Runner{Logger: logger, DryRun: flagDryRun, Recorder: rec}
 
+	// Validate --forge even when --update is not set (Fail Fast; do not ignore bad values).
+	if flagListForge != "" {
+		if _, err := forge.ResolveHostPriority(flagListForge, os.Getenv(forge.EnvForge), ""); err != nil {
+			return err
+		}
+	}
+
 	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
 	output, err := runner.Run(gitCmd, "worktree", "list", "--porcelain")
 	if err != nil {
@@ -73,10 +89,21 @@ func runListBranches() error {
 
 	// Handle --update: force foreground update
 	if flagListUpdate {
-		ghCmd := cmdexec.ResolveCommand("TT_CMD_GH", "gh")
+		client, host, err := forge.NewClientForRepoOpts(forge.ClientForRepoOpts{
+			RepoRoot:    repoRoot,
+			Runner:      runner,
+			CLIOverride: flagListForge,
+		})
+		if err != nil {
+			return fmt.Errorf("forge client creation failed: %w", err)
+		}
+		logger.Debug("list --update forge host=%s forgeOverride=%q", host, flagListForge)
 		checker := &codestatus.Checker{
 			GitCmd:   gitCmd,
-			GhCmd:    ghCmd,
+			GhCmd:    cmdexec.ResolveCommand("TT_CMD_GH", "gh"),
+			GlabCmd:  cmdexec.ResolveCommand("TT_CMD_GLAB", "glab"),
+			Host:     host,
+			Forge:    client,
 			RepoRoot: repoRoot,
 			Timeout:  30 * time.Second,
 		}

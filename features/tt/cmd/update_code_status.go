@@ -9,8 +9,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/axsh/tokotachi/internal/cmdexec"
-	"github.com/axsh/tokotachi/pkg/codestatus"
+	"github.com/axsh/tokotachi/internal/forge"
 	"github.com/axsh/tokotachi/internal/log"
+	"github.com/axsh/tokotachi/pkg/codestatus"
 	"github.com/axsh/tokotachi/pkg/state"
 )
 
@@ -57,11 +58,21 @@ func runUpdateCodeStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
-	ghCmd := cmdexec.ResolveCommand("TT_CMD_GH", "gh")
+	rec := cmdexec.NewRecorder()
+	runner := &cmdexec.Runner{Logger: logger, DryRun: false, Recorder: rec}
+	client, host, err := forge.NewClientForRepo(repoRoot, runner)
+	if err != nil {
+		logger.Warn("Forge client creation failed, skipping update: %v", err)
+		return nil
+	}
+	logger.Debug("background code-status forge host=%s", host)
 
 	checker := &codestatus.Checker{
 		GitCmd:   gitCmd,
-		GhCmd:    ghCmd,
+		GhCmd:    cmdexec.ResolveCommand("TT_CMD_GH", "gh"),
+		GlabCmd:  cmdexec.ResolveCommand("TT_CMD_GLAB", "glab"),
+		Host:     host,
+		Forge:    client,
 		RepoRoot: repoRoot,
 		Timeout:  30 * time.Second,
 	}

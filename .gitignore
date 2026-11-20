@@ -9,6 +9,10 @@ build/
 # Temporary files
 tmp/
 
+# GitLab live verification (local only)
+docker/gitlab/.env
+
+
 # Worktrees
 work/*
 

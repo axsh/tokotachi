@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/axsh/tokotachi/internal/cmdexec"
+	"github.com/axsh/tokotachi/internal/forge"
 )
 
 // Options holds configuration for the doctor run.
@@ -13,14 +16,28 @@ type Options struct {
 	FeatureFilter string // empty = all features
 	ToolChecker   ToolChecker
 	Fix           bool
+	ForgeOverride string // from --forge; empty = unset
 }
 
 // Run executes all checks and returns a Report.
 func Run(opts Options) (*Report, error) {
 	report := &Report{}
 
-	// 1. External tools
-	report.Results = append(report.Results, checkExternalTools(opts.ToolChecker)...)
+	// 1. External tools (host-aware: gh vs glab)
+	gitCmd := cmdexec.ResolveCommand("TT_CMD_GIT", "git")
+	host, _, hostErr := forge.DetectHostFromRepoOpts(forge.DetectOpts{
+		RepoRoot:    opts.RepoRoot,
+		GitCmd:      gitCmd,
+		CLIOverride: opts.ForgeOverride,
+	})
+	if hostErr != nil {
+		// Invalid --forge fails fast; invalid TT_FORGE softens to unknown for diagnosis.
+		if strings.TrimSpace(opts.ForgeOverride) != "" {
+			return nil, hostErr
+		}
+		host = forge.HostUnknown
+	}
+	report.Results = append(report.Results, checkExternalTools(opts.ToolChecker, host)...)
 
 	// 2. Repository structure
 	report.Results = append(report.Results, checkRepoStructure(opts.RepoRoot)...)

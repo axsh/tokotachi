@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/axsh/tokotachi/internal/forge"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,7 +38,7 @@ func TestCheckExternalTools_AllPresent(t *testing.T) {
 			"gh":     {version: "gh version 2.40.0"},
 		},
 	}
-	results := checkExternalTools(checker)
+	results := checkExternalTools(checker, forge.HostGitHub)
 	for _, r := range results {
 		assert.Equal(t, StatusPass, r.Status, "tool %s should pass", r.Name)
 	}
@@ -51,7 +52,7 @@ func TestCheckExternalTools_GitMissing(t *testing.T) {
 			"gh":     {version: "gh version 2.40.0"},
 		},
 	}
-	results := checkExternalTools(checker)
+	results := checkExternalTools(checker, forge.HostGitHub)
 	var gitResult CheckResult
 	for _, r := range results {
 		if r.Name == "git" {
@@ -70,7 +71,7 @@ func TestCheckExternalTools_GhMissing(t *testing.T) {
 			"gh":     {err: fmt.Errorf("not found")},
 		},
 	}
-	results := checkExternalTools(checker)
+	results := checkExternalTools(checker, forge.HostGitHub)
 	var ghResult CheckResult
 	for _, r := range results {
 		if r.Name == "gh" {
@@ -79,6 +80,65 @@ func TestCheckExternalTools_GhMissing(t *testing.T) {
 	}
 	// gh is only a warning, not a failure
 	assert.Equal(t, StatusWarn, ghResult.Status)
+}
+
+func TestCheckExternalTools_GitLab_ChecksGlab(t *testing.T) {
+	checker := &mockToolChecker{
+		results: map[string]toolResult{
+			"git":    {version: "git version 2.43.0"},
+			"docker": {version: "Docker version 24.0.7"},
+			"glab":   {version: "glab 1.36.0"},
+		},
+	}
+	results := checkExternalTools(checker, forge.HostGitLab)
+	names := map[string]bool{}
+	for _, r := range results {
+		names[r.Name] = true
+		if r.Name == "glab" {
+			assert.Equal(t, StatusPass, r.Status)
+		}
+	}
+	assert.True(t, names["glab"])
+	assert.False(t, names["gh"])
+}
+
+func TestCheckExternalTools_Unknown_ChecksBothAsWarn(t *testing.T) {
+	checker := &mockToolChecker{
+		results: map[string]toolResult{
+			"git":    {version: "git version 2.43.0"},
+			"docker": {version: "Docker version 24.0.7"},
+			"gh":     {err: fmt.Errorf("not found")},
+			"glab":   {err: fmt.Errorf("not found")},
+		},
+	}
+	results := checkExternalTools(checker, forge.HostUnknown)
+	var sawGh, sawGlab bool
+	for _, r := range results {
+		if r.Name == "gh" {
+			sawGh = true
+			assert.Equal(t, StatusWarn, r.Status)
+		}
+		if r.Name == "glab" {
+			sawGlab = true
+			assert.Equal(t, StatusWarn, r.Status)
+		}
+	}
+	assert.True(t, sawGh && sawGlab)
+}
+
+func TestCheckExternalTools_TTForgeOverride_GitLabWithoutGitlabInURL(t *testing.T) {
+	// Host is already resolved as GitLab by ResolveHost; check list should be glab-only.
+	checker := &mockToolChecker{
+		results: map[string]toolResult{
+			"git":    {version: "git version 2.43.0"},
+			"docker": {version: "Docker version 24.0.7"},
+			"glab":   {version: "glab 1.36.0"},
+		},
+	}
+	results := checkExternalTools(checker, forge.HostGitLab)
+	for _, r := range results {
+		assert.NotEqual(t, "gh", r.Name)
+	}
 }
 
 func TestCheckRepoStructure(t *testing.T) {
