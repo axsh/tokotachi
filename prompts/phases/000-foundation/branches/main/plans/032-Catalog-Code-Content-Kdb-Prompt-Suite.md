@@ -194,18 +194,18 @@ None.（仕様レビュー済み。ユーザー指示により計画→実装→
 
 ## Step-by-Step Implementation Guide
 
-1. **[ ] 計画コミット**: 本計画を `git commit`。
-2. **[ ] TDD レッド**: `tt_catalog_code_content_kdb_suite_test.go` を追加し、`./scripts/process/integration_test.sh --categories tt --specify CatalogCodeContentKdbSuite` が失敗することを確認。
-3. **[ ] scaffold / root gitignore**: `scaffold.yaml` とルート `.gitignore` に `_runs/` 規則を追加。
-4. **[ ] 共有 id 正本作成**: knowledge-database / committed-doc-links / create-backlog-item / systematize-knowledge-database / verify-and-specify-next / create-reproducible-report / portable-file-references / pre-sync / record-far-knowledge を BASE に書き、同一内容を REPO へコピー。
-5. **[ ] create-specification / project-instructions**: BASE・REPO を改訂（R3/R5/R9）。
-6. **[ ] O2 復元**: create-pull-request / execute-all-after-spec / workflow-blueprint を REPO へ。
-7. **[ ] ガードテスト緑**: 同 `--specify` が通るまで修正。
-8. **[ ] deploy**: `tt prompt update --target all`。生成物を確認。
-9. **[ ] ビルド＋tt カテゴリ検証**: Verification Plan を実行。
-10. **[ ] コミット**: 論理単位でコミット（テスト→コンテンツ→deploy）。
-11. **[ ] 遠方知識**: `record-far-knowledge` スキルに従う。
-12. **[ ] Content release**: `./scripts/dist/content/release.sh`（ツールリリースは行わない）。
+1. **[x] 計画コミット**: 本計画を `git commit`。
+2. **[x] TDD レッド**: `tt_catalog_code_content_kdb_suite_test.go` を追加し、`./scripts/process/integration_test.sh --categories tt --specify CatalogCodeContentKdbSuite` が失敗することを確認。
+3. **[x] scaffold / root gitignore**: `scaffold.yaml` とルート `.gitignore` に `_runs/` 規則を追加。
+4. **[x] 共有 id 正本作成**: knowledge-database / committed-doc-links / create-backlog-item / systematize-knowledge-database / verify-and-specify-next / create-reproducible-report / portable-file-references / pre-sync / record-far-knowledge を BASE に書き、同一内容を REPO へコピー。
+5. **[x] create-specification / project-instructions**: BASE・REPO を改訂（R3/R5/R9）。
+6. **[x] O2 復元**: create-pull-request / execute-all-after-spec / workflow-blueprint を REPO へ。
+7. **[x] ガードテスト緑**: 同 `--specify` が通るまで修正。
+8. **[x] deploy**: `tt prompt update --target all`。生成物を確認。
+9. **[x] ビルド＋tt カテゴリ検証**: Verification Plan を実行。
+10. **[x] コミット**: 論理単位でコミット（テスト→コンテンツ→deploy）。
+11. **[x] 遠方知識**: `record-far-knowledge` スキルに従う。
+12. **[x] Content release**: `./scripts/dist/content/release.sh`（ツールリリースは行わない）。
 
 最後に Verification Plan を実行すること。
 
