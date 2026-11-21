@@ -51,13 +51,18 @@ body: inline
 バッククォートの相対パスはインラインコードであり、通常はリンクにならない。
 
 ```markdown
-<!-- 推奨（クリック可能）: Markdown 相対リンク -->
-[analysis-report.md](tmp/autoeval/<cardId>/analysis/analysis-report.md)
+<!-- 推奨（クリック可能）: コミット対象かつ git 追跡済みのファイルへの相対リンク -->
 [012-Foo.md](prompts/phases/000-foundation/branches/x/investigations/012-Foo.md)
 
 <!-- 文書本文でパスを識別子として書くだけならバッククォート可（リンクにはならない） -->
 実装は `features/example/src/main/java/com/example/repository/UserRepository.java` を参照。
+
+<!-- ローカル専用（gitignore）はコミット文書ではリンクにしない。平文で引用する -->
+確かめた報告: 054-Example（ローカル `_runs/procedures`。リポジトリには含めない）
 ```
+
+コミット対象 Markdown から、gitignore / 未追跡パス（`tmp/`・`_runs/` など）へリンクしてはならない。
+詳細は {{capability:committed-doc-links}}。チャットでローカル専用パスを開かせる案内は相対リンク可だが、「リポジトリには含まれない」と添える。
 
 ### 表や箇条書き内での記述
 
@@ -90,12 +95,13 @@ body: inline
 
 | 対象 | 形式 | 例 |
 | :--- | :--- | :--- |
-| リポジトリ内のファイルを**開かせる**（チャット・提示） | Markdown **相対**リンク（`file://` なし）一択 | `[014-spec.md](prompts/phases/refs/drafts/014-spec.md)` |
+| 追跡済みのリポジトリ内ファイルを**開かせる**（チャット・コミット文書） | Markdown **相対**リンク（`file://` なし） | `[014-spec.md](prompts/phases/refs/drafts/014-spec.md)` |
 | リポジトリ内のパスを**識別子として書くだけ**（表・箇条書き） | バッククォート可（リンクにはならない） | `` `prompts/phases/refs/drafts/014-spec.md` `` |
+| ローカル専用（gitignore）をコミット文書で引用 | 平文・バッククォートのみ（リンク禁止） | `` ` _runs/procedures/054-….md` `` |
 | 外部 URL (HTTP/HTTPS) | Markdown リンク記法 | `[Spring Boot 公式ドキュメント](https://spring.io/projects/spring-boot)` |
 
 リポジトリ内パスへの `[text](url)` では、`url` に必ずワークスペース相対パスを書く。`file://` は付けない。
-チャットでファイルを示すときはバッククォートだけにせず、必ず相対リンクにする。
+チャットで**追跡済み**ファイルを示すときはバッククォートだけにせず、相対リンクにする。
 
 ## 適用範囲
 

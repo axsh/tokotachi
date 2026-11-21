@@ -13,6 +13,8 @@ placement:
     strip_extension: true
   file_mappings: []
   post_actions:
+    gitignore_entries:
+      - "prompts/phases/*/branches/*/_runs/"
     file_permissions:
       - pattern: "scripts/**/*.sh"
         executable: true

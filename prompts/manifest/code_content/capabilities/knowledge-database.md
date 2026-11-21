@@ -92,7 +92,7 @@ example（designdb）へいつ列を足すかは、その知識DBの仕様／バ
 
 画面 ID の一例（example）では、キャッシュは `designdb`、正本は registry の `corpus_path`（例: `shared/kdb/designdb/corpus/`）、展開は対になる `data/`、入口は `scripts/design/id.sh` と `scripts/design/flow.sh` に加え `distill.sh` / `dump.sh` / `restore.sh` / `status.sh` / `pack.sh` / `unpack.sh` / `merge.sh` / `sync.sh`、タイミングのスキルは `design-screen-id` と `design-screen-flow`、退避は `systematize-knowledge-database` である。これらのパスは一例であり、追跡対象かどうかは `shared/kdb/registry.yaml`（または `--registry`）が決める。新しい知識を、この一例へ自動では足さない。足すか、別の知識DBにするかは、設計のときに決める。
 
-本システムのデータベース（`legalchk`）の RLS と保持期間は、知識DBへ自動では適用しない。適用するか、別のデータベースに分けるかは、その知識DBの仕様で決める。
+製品データベースの RLS と保持期間は、知識DBへ自動では適用しない。適用するか、別のデータベースに分けるかは、その知識DBの仕様で決める。
 
 ## CLI の help の規約
 
@@ -124,7 +124,7 @@ example（designdb）へいつ列を足すかは、その知識DBの仕様／バ
 4. 形が決まってから CLI を決める。目的別の入口と、`help` のトピックを、上の規約で設計する。データベースと連携するだけでなく、知識をどう扱うかも決める。読み書きだけで足りるか。Tern を介したコーディングエージェントに、取り込みや整形をさせるか。Embedding や LLM で、検索、要約、分類をするか。取得・参照の入口は UUID でも辿れるようにする。
 5. 初期データを決める。空の台帳から、これから蓄えるのか。すでにいる仕様書、一覧、文書から、初期データを作るのか。初期データを作る処理から、外部の API を呼ぶのか。移行時もレコードごとに UUID を一度付け、以降は保持する。
 6. タイミングのスキルを設計する。参照する契機と、蓄える契機を、CLI のコマンド名で書く。登録の前に探す、など、誤った重複を防ぐ契機を先に書く。
-7. Git 共有の契約を決める。正本の置き場（`features/<id>/corpus/`）、展開（`data/`）、tmp ダンプ、単純マージ、**UUID による突き合わせ**（テーブル ID の保存必須化はしない）、チャンク命名、蒸留の検査、鮮度チェック、退避 procedure、pre-sync での未退避検出。
+7. Git 共有の契約を決める。正本の置き場（`{kdb-root}/<id>/corpus/`）、展開（`data/`）、tmp ダンプ、単純マージ、**UUID による突き合わせ**（テーブル ID の保存必須化はしない）、チャンク命名、蒸留の検査、鮮度チェック、退避 procedure、pre-sync での未退避検出。
 8. 本システムのデータベースと分けるか、RLS や保持期間を付けるかを、仕様に書く。
 
 ## 依頼主に問うこと

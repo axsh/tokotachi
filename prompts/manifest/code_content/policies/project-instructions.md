@@ -90,7 +90,7 @@ procedure（ワークフロー）は、以下の順序で連携して動作し�
 ### 5. 確かめと次の仕様のフェーズ
 **ワークフロー**: `{{procedure:verify-and-specify-next}}`
 
-1. **人間**: 実装の確認の報告（`{{procedure:create-reproducible-report}}` の再現手順の報告、E2E の記録、調査の報告など）を指定
+1. **人間**: 実装の確認の報告（`{{procedure:create-reproducible-report}}` の `_runs/procedures/`（gitignore）の再現手順の報告、E2E の記録、調査の報告など）を指定
 2. **AI**: `{{procedure:verify-and-specify-next}}` に従って、元の仕様と報告を熟読し、自分で確かめる
    - 問題があれば、直しの仕様を `{{procedure:create-specification}}` で作成
    - 問題が無ければ、次に実装すべきものを提案し、その仕様を `{{procedure:create-specification}}` で作成

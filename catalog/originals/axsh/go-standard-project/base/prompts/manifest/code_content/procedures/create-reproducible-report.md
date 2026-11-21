@@ -5,7 +5,7 @@ kind: procedure
 title: Create Reproducible Report
 trigger:
     command: create-reproducible-report
-description: Build a tutorial-style report that a human can reproduce by hand from ideas and plans, run every step, and store it under procedures/. When a step runs a test, the report itself explains the test body, the processing behind each log line, and the intent of each check.
+description: Build a tutorial-style report that a human can reproduce by hand from ideas and plans, run every step, and store it under _runs/procedures/ (gitignored, not committed). When a step runs a test, the report itself explains the test body, the processing behind each log line, and the intent of each check.
 tags:
   - baseline
 
@@ -16,8 +16,9 @@ tags:
 このワークフローは、仕様書 (`ideas/`) と実装計画 (`plans/`) を元に、実装済みの機能を**人が手で再現できる**チュートリアル形式のレポートにまとめる。
 レポートは「どんな操作をすると、どんな処理が動作して、どんな結果が出るのか」を、手順ごとに示す。
 
-レポートの正本の出力先は `prompts/phases/[Phase]/branches/[Branch]/procedures/` である。`ideas/`、`plans/`、`investigations/` と並ぶフォルダである。
+レポートの正本の出力先は `prompts/phases/[Phase]/branches/[Branch]/_runs/procedures/` である。`_runs/` はローカル検証ログ（gitignore）であり、`ideas/` / `plans/` / `investigations/` とはコミット境界が異なる。
 ワークフロー定義を置く `prompts/manifest/code_content/procedures/` とは別の場所である。
+コミット対象文書から `_runs/` へ Markdown リンクを書かない（{{capability:committed-doc-links}}）。
 
 ## 目的
 
@@ -39,7 +40,7 @@ tags:
 - レポートの手順に書くコマンドとブラウザ操作の実行（ビルドスクリプト、生成済みバイナリ、`go run`、サーバの起動と停止など）
 - 手順の実行で生じるデータの作成と、リカバリ手順による破棄
 - 中間ファイル（採取した出力、下書き）の作成（`tmp/` 以下のみ）
-- レポートと添付ファイルの作成（`procedures/` 以下のみ）と、その `git commit`
+- レポートと添付ファイルの作成（`_runs/procedures/` 以下のみ）。**git commit しない**
 
 ### 禁止される操作
 
@@ -51,7 +52,7 @@ tags:
 
 1.  **ステータスの取得**:
     *   `scripts/utils/show_current_status.sh` を実行し、JSON 出力から `phase`、`branch` を取得する。
-    *   連番は `next_procedures_id` を使う。`show_current_status.sh` はブランチ配下の各サブディレクトリ名に対し `next_<dirname>_id` を出力する。`procedures/` が未作成だとキーが無いので、§2 でディレクトリを作ったあと再実行してよい。キーが無い場合は `000` とする。
+    *   連番は `next_procedures_id` を使う。`show_current_status.sh` は `_runs/` 配下の子（`procedures` など）からも `next_<dirname>_id` を出す。`_runs/procedures/` が未作成だとキーが無いので、§2 でディレクトリを作ったあと再実行してよい。キーが無い場合は `000` とする。
     *   以下、`[Phase]`、`[Branch]`、`[NextID]` とする。
 2.  **入力の特定**:
     *   ユーザーが指定した仕様書・実装計画、または機能を入力とする。指定が無ければ、エディタで開いているファイルを入力とする。
@@ -65,14 +66,14 @@ tags:
 ## 2. 出力先の決定
 
 1.  **ディレクトリの確定**:
-    *   基本パス: `prompts/phases/[Phase]/branches/[Branch]/procedures/`
-    *   例: `prompts/phases/000-foundation/branches/design-thr-first/procedures/`
+    *   基本パス: `prompts/phases/[Phase]/branches/[Branch]/_runs/procedures/`
+    *   例: `prompts/phases/000-foundation/branches/design-thr-first/_runs/procedures/`
     *   存在しない場合は作成し、`scripts/utils/show_current_status.sh` を再実行して `next_procedures_id` を確定する。
 2.  **ファイル名の決定**:
     *   形式: `[NextID]-[名前].md`（`[NextID]` は 3 桁ゼロ埋め。例: `000`、`001`）
     *   `[名前]` は、確認する振る舞いを表す簡潔な名称にする（例: `Queue-Command-Call`、`Settings-Save-And-Reload`）。
 3.  **添付ファイル**:
-    *   スクリーンショットなどの添付は、必要なときだけ `procedures/[NextID]-[名前]/` に置く。
+    *   スクリーンショットなどの添付は、必要なときだけ `_runs/procedures/[NextID]-[名前]/` に置く。
     *   レポートからは、レポートファイルからの相対パスで埋め込む（例: `![手順 3 の画面](000-Queue-Command-Call/step-03.png)`）。
 
 ## 3. 手順の組み立てと実行
@@ -267,20 +268,15 @@ tags:
 7.  **追跡性**: 確認する振る舞いが、仕様書の要件・検証シナリオと実装計画に結び付いているか。
 8.  **秘匿情報**: 認証情報、トークン、個人の絶対パスが残っていないか。
 
-## 7. 完了確認とコミット
+## 7. 完了確認（コミットしない）
 
-1.  **レポートの Git コミット**:
-    *   作成したレポートと添付ファイルだけを `git add` → `git commit` する。
-    *   コミットメッセージ例: `docs: add reproducible report XXX-Name`
-    ```bash
-    git add prompts/phases/[Phase]/branches/[Branch]/procedures/[ファイル名]
-    git commit -m 'docs: add reproducible report XXX-Name'
-    ```
-    *   添付ファイルのディレクトリがある場合は、それも `git add` する。
-    *   `git push` はユーザーが明示したときだけ行う。
+1.  **ローカル保存のみ**:
+    *   `_runs/` 以下のレポートは **git add / commit しない**（gitignore）。
+    *   広い `git add prompts/phases` を使うときも `_runs/` を stage しない。
 2.  **レポートの提示**:
-    *   作成したファイルを、ワークスペースルートからの相対パスのインラインコードで示す。
+    *   作成したファイルを、ワークスペースルートからの相対パスのインラインコードで示す。チャットでは「リポジトリには含まれない」と添える（{{capability:portable-file-references}} / {{capability:committed-doc-links}}）。
     *   確認できたこと、差異があった手順、実行できなかった手順を、チャットでも短く報告する。
+    *   次の仕様（`ideas/`）の参照欄には、報告への Markdown リンクを書かず、番号とファイル名を平文で書く。
 3.  **フォローアップ**:
     *   差異の原因を調べる必要があれば `/investigate` を、修正が必要なら `/create-specification` からの開発フローを提案する。勝手に始めない。
     *   実装が変わって手順が古くなったときは、同じレポートを更新するか、新しい `[NextID]` で作り直す。

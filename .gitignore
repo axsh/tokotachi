@@ -22,3 +22,6 @@ features/release-note/settings/secrets/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Branch-local verification runs (not for commit)
+prompts/phases/*/branches/*/_runs/

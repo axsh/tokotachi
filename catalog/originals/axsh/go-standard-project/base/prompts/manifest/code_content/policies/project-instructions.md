@@ -88,6 +88,16 @@ procedure（ワークフロー）は、以下の順序で連携して動作し�
    - 失敗時は修正して該当テストのみ再実行 (`--specify` オプション使用)
 3. **AI**: 必要に応じて全テストを再実行してリグレッション確認
 
+
+### 5. 確かめと次の仕様のフェーズ
+**ワークフロー**: `{{procedure:verify-and-specify-next}}`
+
+1. **人間**: 実装の確認の報告（`{{procedure:create-reproducible-report}}` の `_runs/procedures/` 配下の再現手順の報告、調査の報告など）を指定
+2. **AI**: `{{procedure:verify-and-specify-next}}` に従って、元の仕様と報告を熟読し、自分で確かめる
+   - 問題があれば、直しの仕様を `{{procedure:create-specification}}` で作成
+   - 問題が無ければ、次に実装すべきものを提案し、その仕様を `{{procedure:create-specification}}` で作成
+3. **人間**: 仕様書をレビュー（以降は仕様書作成フェーズと同じ）
+
 ### 調査ワークフロー（開発フローとは独立）
 **ワークフロー**: `{{procedure:investigate}}`
 
@@ -123,6 +133,12 @@ procedure（ワークフロー）は、以下の順序で連携して動作し�
        └→ [AI: {{procedure:build-pipeline}}]
               ├→ scripts/process/build.sh (全体ビルド・単体テスト)
               └→ scripts/process/integration_test.sh (統合テスト)
+       ↓
+[AI: {{procedure:create-reproducible-report}}] → `_runs/procedures/`（gitignore・commit しない）
+       ↓
+[AI: {{procedure:verify-and-specify-next}}] → 確かめて、直しの仕様か次の仕様を生成
+       ↓
+[人間: レビュー・修正・進行指示] → 実装計画生成へ
 
 === 調査フロー（独立・読み取り専用）===
 
