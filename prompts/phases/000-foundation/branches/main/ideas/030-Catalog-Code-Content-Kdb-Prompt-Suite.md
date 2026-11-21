@@ -74,6 +74,7 @@ status: draft
 | `capabilities/pre-sync-knowledge-compile.md` | 遠方知識 pending に加え、Step 1b で `tt kdb-track status-all`（必要なら `systematize`）を実行。`./scripts/kdb/*` や `features/kdb/...` 固定は書かない。`systematize-knowledge-database` を references に含める |
 | `capabilities/record-far-knowledge.md` | KDB 立て付け全文を遠方知識ノートに書かず、`knowledge-database` を指す注意を追加（REPO の短文） |
 | `procedures/create-specification.md` | 仮決定・確認事項は `{{procedure:create-backlog-item}}` で項目化し、仕様からは `backlog:<uuid>`（インラインコード）で参照する一文を追加。提示はワークスペース相対の Markdown リンク（`file://` を付けない）に揃える |
+| `procedures/create-reproducible-report.md` | **R9**: 出力先をコミット対象の `…/procedures/` から **`…/_runs/procedures/`** へ移し、**git commit しない**（PLC 相当）。詳細は R9 |
 | `capabilities/prompt-manifest-update.md` | 大規模改訂は不要。テンプレート参照・エスケープ説明が仕様 025 と矛盾しないことを確認し、必要なら BASE 現行の明示的な `\{{kind:id}}` 説明を維持 |
 
 #### R4: REPO（tokotachi 本体）を BASE と同じ正本へ収束する
@@ -89,19 +90,23 @@ status: draft
 
 - `procedures/verify-and-specify-next.md` を新規追加する。
 - 骨格: 元仕様と与えられた報告（再現手順 / 調査など）を熟読し、自分で確かめ、問題があれば直しの仕様、無ければ次の仕様を `create-specification` で書く。
+- 再現手順レポートやローカル検証記録の置き場は **R9 の `_runs/`** とする。次仕様（`ideas/`）から `_runs/` へ Markdown リンクを張らず、番号・ファイル名を平文で引用する（`committed-doc-links`）。
 - **含めないもの**: 特定製品の画面 blueprint 必須、特定の E2E カテゴリ名の固定、特定 DB（RLS）手順の固定、`features/kdb/registry.yaml` 必須フラグ。
 - backlog に触れる場合は `tt kdb backlog` と `backlog:<uuid>` に留め、採番用 Markdown `backlogs/` フォルダは使わない。
-- `project-instructions.md`（BASE と REPO）の開発フローに、任意または推奨として本 procedure と（BASE に既にある）`create-reproducible-report` への接続を書き、参照切れを作らない。
+- `project-instructions.md`（BASE と REPO）の開発フローに、任意または推奨として本 procedure と（R9 改訂後の）`create-reproducible-report` への接続を書き、参照切れを作らない。
 
 #### R6: 取り込んではいけないもの（非ゴールの明示）
 
 次は本仕様の変更対象に**含めない**:
 
 - REPO / PLC の `coding-rules` / `testing-rules` の製品向け全面差分（SPA・PostgreSQL 17・entitlements 等）で BASE の go-standard 骨格を置き換えること
-- PLC の画面系（`design-screen-*`、`blueprint-screen-layout`）、`database-rules`、`web-security-rules`、`record-e2e-results`、`purge-procedure-artifacts`
+- PLC の画面系（`design-screen-*`、`blueprint-screen-layout`）、`database-rules`、`web-security-rules`
+- PLC 固有の E2E 記録パイプライン全体（`record-e2e-results`、製品フラグ `CHKAI_E2E_RECORD` 等）と `purge-procedure-artifacts`（任意要件 O3）
 - vv6 の `terminology-rules` 全文（任意要件 O1 で一般化版を検討可）
 - vv6 / preview-legal-chkai リポジトリ本体への追従 PR（下流は本仕様完了後の別作業）
 - `tt` CLI 本体の挙動変更（026 / 028 の範囲。本仕様はプロンプト / カタログ文言と接続のみ）
+
+**含めないものに「`_runs/` 規約そのもの」は入らない。** `_runs/` をローカル検証ログとして gitignore し、再現レポートをそこに置きコミットしないことは **R9 で必須**とする。
 
 #### R7: 内容の機械的ガード（自動化可能な範囲）
 
@@ -112,7 +117,9 @@ status: draft
    - 例: `features/kdb/registry.yaml` を必須とする命令調、`./scripts/kdb/` を正入口とする記述
 3. BASE の当該ファイルに、期待パターンが含まれる  
    - 例: `tt kdb-track`、`shared/kdb`、`systematize-knowledge-database`、`backlog:<uuid>`（create-specification / create-backlog-item）
-4. REPO の同名共通ファイルについて、BASE との差分が「許容された差異リスト」に無い限り一致する、または REPO 側も同じ禁止・期待パターン検査を通る
+   - R9: `create-reproducible-report` に `_runs/procedures` があり、完了手順が **git commit しない**こと（旧 `procedures/` への commit 指示が残っていないこと）
+4. カタログ側に R9 の gitignore 規則が含まれること
+5. REPO の同名共通ファイルについて、BASE との差分が「許容された差異リスト」に無い限り一致する、または REPO 側も同じ禁止・期待パターン検査を通る
 
 許容差異がある場合はテスト側に明示リストを置く。原則は **BASE = REPO（共通 id）**。
 
@@ -123,6 +130,43 @@ status: draft
 - `tt kdb-track list` / `status-all` は registry 欠落でも成功し、builtin backlog が見える
 - `create-backlog-item` は `tt kdb backlog add` を入口とし、Markdown `backlogs/` を作らない
 - `pre-sync` の KDB 確認は `tt kdb-track` を呼び、存在しないシェルラッパに依存しない
+- `_runs/` が gitignore され、`create-reproducible-report` がそこへ書き **commit しない**（R9）
+
+#### R9: ブランチローカル検証ツリー `_runs/`（PLC 共通化・必須）
+
+PLC が持つ「再現手順・ローカル検証ログをブランチ文書ツリーの `_runs/` に置き、gitignore でコミットしない」規約を、共通テンプレートへ取り込む。
+
+**現状の充足状況（改訂前）:**
+
+| 層 | 状態 |
+| :--- | :--- |
+| リンク境界（コミット文書から `_runs/` へ Markdown リンクしない） | 仕様草稿では R2 の `committed-doc-links` として **既に必須化済み**。BASE カタログ本体には未収録 |
+| 出力先を `_runs/procedures/` にし **git commit しない** | **未充足**。BASE の `create-reproducible-report` は今も `…/branches/…/procedures/` へ書き **commit する** |
+| スキャフォールドの `.gitignore` | **未充足**。PLC は `prompts/phases/*/branches/*/_runs/`。BASE カタログに当該規則が無い |
+
+**必須とする内容:**
+
+1. **gitignore**  
+   `go-standard-project` のスキャフォールド成果物に、次と同等の規則を含める（ルート `.gitignore` の新設または既存への追記。カタログ originals 上の配置は実装計画で具体化する）:
+
+   ```gitignore
+   prompts/phases/*/branches/*/_runs/
+   ```
+
+2. **`create-reproducible-report` の改訂（BASE と REPO）**  
+   - 正本出力先: `prompts/phases/[Phase]/branches/[Branch]/_runs/procedures/`  
+   - レポートおよびその添付は **git add / git commit しない**  
+   - 広い `git add prompts/phases` を使う場合も `_runs/` を stage しない旨を明記  
+   - `committed-doc-links` / `portable-file-references` への参照を本文に含める  
+   - 連番は `_runs/procedures` 配下を見て取る（`show_current_status` の `next_procedures_id` が `_runs` 配下を拾う前提。拾えない場合の扱いは PLC 文言に合わせ、ディレクトリ作成後の再実行を許す）
+
+3. **文書境界のマーカー**  
+   `committed-doc-links` に既にあるとおり、`prompts/phases/*/branches/*/` 直下で `_` で始まるディレクトリはローカル作業ログでありコミットしない、という説明を維持・同梱する。
+
+4. **関連ワークフローの言い回し**  
+   `project-instructions` / `verify-and-specify-next` で再現レポートの場所に触れるときは `_runs/procedures`（gitignore）とし、旧パス `branches/.../procedures/`（コミット対象）を正にしない。
+
+**本 R9 で必須としないもの（O3）:** `_runs/e2e-tests` / `_runs/screenshots` 専用の記録 procedure、パージ用 capability。置き場の命名空間としては `_runs/` 配下に置けることを `committed-doc-links` の例で示してよいが、製品固有の記録スクリプトまではテンプレ必須にしない。
 
 ### 任意要件
 
@@ -132,7 +176,11 @@ vv6 の原則（定着したカタカナはカタカナ、造語の漢語言い�
 
 #### O2: BASE に欠落している既存 procedure の REPO 復元
 
-REPO に無く BASE にある `create-pull-request` / `create-reproducible-report` / `execute-all-after-spec` / `workflow-blueprint-design-philosophy` を、REPO へ戻す作業を本仕様に含めてよい。R5 で `create-reproducible-report` を参照する場合は、少なくともそのファイルの存在は必須（R4-3 / R5）。
+REPO に無く BASE にある `create-pull-request` / `create-reproducible-report` / `execute-all-after-spec` / `workflow-blueprint-design-philosophy` を、REPO へ戻す作業を本仕様に含めてよい。R5 / R9 で `create-reproducible-report` を参照・改訂する場合は、そのファイルの存在は必須（R4-3 / R5 / R9）。復元するときは **R9 適用後の本文**を置く。
+
+#### O3: `_runs` 肥大化の掃除・E2E 記録 procedure
+
+PLC の `purge-procedure-artifacts` や `record-e2e-results` を、製品フラグを除いた汎用版として追加してよい。必須ではない。追加する場合も `_runs/` は gitignore のままとし、コミットしない。
 
 ---
 
@@ -164,10 +212,10 @@ flowchart LR
 ### 作業の単位
 
 1. **正本ドラフト作成**（`tmp/` で差分確認してもよいが、最終成果は BASE / REPO の tracked ファイル）
-2. **BASE へ新規追加（R2, R5）と改訂（R3）**
-3. **REPO を同一内容へ揃える（R4）。欠落していた `create-reproducible-report` 等は O2 / R5 に従い復元**
+2. **BASE へ新規追加（R2, R5）と改訂（R3, R9）。gitignore 規則をスキャフォールドに追加**
+3. **REPO を同一内容へ揃える（R4）。欠落していた `create-reproducible-report` 等は O2 / R5 / R9 適用後本文で復元**
 4. **ガードテスト追加（R7）**
-5. **`tt prompt update` で生成物を更新し、コミット対象に含める**
+5. **`tt prompt update` で生成物を更新し、コミット対象に含める**（`_runs/` 配下はコミットしない）
 
 ### 設計上の決定
 
@@ -202,13 +250,18 @@ flowchart LR
    - `create-specification` に `create-backlog-item` / `backlog:<uuid>` の一文がある  
    - `project-instructions` から `verify-and-specify-next`（および参照するなら `create-reproducible-report`）へ辿れる
 
-4. **REPO 収束後**  
+4. **`_runs/` 規約（R9）**  
+   - スキャフォールドの gitignore に `prompts/phases/*/branches/*/_runs/` がある  
+   - `create-reproducible-report` の出力先が `_runs/procedures/` であり、完了手順に git commit が無い  
+   - `ideas/` から `_runs/` へリンクしない旨が `committed-doc-links` / `verify-and-specify-next` に書かれている
+
+5. **REPO 収束後**  
    共通 id のファイルが BASE と同じ内容（または R7 の同一検査に合格）である。`tt prompt update --target cursor` 後、`.cursor/skills/knowledge-database/SKILL.md` に旧 `scripts/kdb` / 必須 `features/kdb` が残っていない。
 
-5. **registry 無しワークスペースでの手順の読み合わせ**  
+6. **registry 無しワークスペースでの手順の読み合わせ**  
    一時ディレクトリまたは既存ワークスペースで `tt kdb-track list` が成功し builtin backlog が見えることと、`create-backlog-item` / `pre-sync` の記述が「registry 必須で失敗する」前提になっていないことを確認する（CLI 自体の回帰は 028 のテストに委ね、本シナリオはプロンプト文言の整合が主）。
 
-6. **非ゴールの確認**  
+7. **非ゴールの確認**  
    BASE の `coding-rules.md` / `testing-rules.md` が、legalchk / SPA 全面置換になっていないこと（差分レビュー）。
 
 ---
@@ -220,11 +273,11 @@ flowchart LR
 | 要件 | 自動化 |
 | :--- | :--- |
 | R1 / R2 / R5 ファイル存在 | 新規テストで BASE（および REPO）パスの存在断言 |
-| R1 / R2 / R3 禁止・期待パターン | 同上テストで本文マッチ |
+| R1 / R2 / R3 / R9 禁止・期待パターン | 同上テストで本文マッチ（`_runs/procedures`、commit 禁止を含む） |
 | R4 REPO 収束 | BASE と REPO の共通 id についてバイト一致、または同一パターン検査 |
 | R6 非ゴール | レビューチェックリスト。必要なら「BASE coding-rules に legalchk パスが無い」断言 |
 | R7 | 本表のテストそのもの |
-| R8 | プロンプト文言検査 +（既存）`tt` の kdb-track 欠落時テストへの依存を Verification に明記 |
+| R8 / R9 | プロンプト文言検査 + カタログ gitignore 検査 +（既存）`tt` の kdb-track 欠落時テストへの依存を Verification に明記 |
 
 ### ビルド・全体検証
 
