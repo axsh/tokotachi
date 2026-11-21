@@ -3,7 +3,7 @@ apiVersion: agent.meta/v1
 id: Catalog-Code-Content-Kdb-Prompt-Suite
 kind: idea
 title: go-standard-project テンプレートへの KDB / 文書規約プロンプト同梱と本体収束
-status: draft
+status: implemented
 ---
 
 # go-standard-project テンプレートへの KDB / 文書規約プロンプト同梱と本体収束
