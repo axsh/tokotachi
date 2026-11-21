@@ -1,6 +1,6 @@
 ---
 name: pre-sync-knowledge-compile
-description: Before creating a Pull Request or pulling from a remote/local branch, ensure all pending intake events have been systematized and compiled into agent-readable skills via the systematize-far-knowledge workflow.
+description: Before creating a Pull Request or pulling from a remote/local branch, ensure all pending intake events have been systematized and compiled into agent-readable skills via the systematize-far-knowledge workflow, and that tracked knowledge-DB caches are not left dirty.
 disable-model-invocation: false
 ---
 
@@ -43,17 +43,15 @@ pending events が **1 件以上** ある場合、sync 操作の **前に** 以�
 
 ## Step 1b: 知識DB（追跡一覧）の未退避確認
 
-遠方知識に加え、`features/kdb/registry.yaml` に載っている知識DBキャッシュに未退避（dirty）が無いかを確認する。一括なら:
+遠方知識に加え、registry（既定 `shared/kdb/registry.yaml`）に載っている知識DBキャッシュに未退避（dirty）が無いかを確認する:
 
 ```bash
-./scripts/kdb/status-all.sh
+tt kdb-track status-all
 ```
 
-または一覧の各 `status_cmd` を実行する（designdb の例: `./scripts/design/status.sh`）。
-
-- いずれかの Entry で `dirty` が true の場合、sync の **前に** `systematize-knowledge-database`（実体は `./scripts/kdb/systematize.sh`）を実行し、当該 `corpus_path`（例: `features/designdb/corpus/`）を更新してコミットする。
+- いずれかの Entry で `dirty` が true の場合、sync の **前に** `systematize-knowledge-database`（実体は `tt kdb-track systematize`）を実行し、当該 `corpus_path` を更新してコミットする。
 - ある知識DBに接続できない場合は、その旨を報告する。作業ツリーに当該 corpus の未コミット差分があればコミットを促し、接続不能を理由に dirty チェックを黙殺して PR しない。
-- 未登録の `features/*/corpus/` があれば WARN を報告する（新規KDBの登録漏れの気づき）。
+- 未登録の corpus があれば WARN を報告する（`tt kdb-track unregistered`。新規KDBの登録漏れの気づき）。
 - 全 Entry で `dirty` が false で corpus 差分も無ければ、次へ進む。
 
 ```text
