@@ -21,6 +21,16 @@
       },
       "additionalProperties": false
     },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "rules": { "type": "boolean" },
+        "skills": { "type": "boolean" },
+        "workflows": { "type": "boolean" },
+        "subagents": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
     "paths": {
       "type": "object",
       "properties": {
