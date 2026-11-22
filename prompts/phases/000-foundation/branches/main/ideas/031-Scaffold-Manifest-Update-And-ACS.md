@@ -17,8 +17,9 @@ status: ready
 | 安定識別子 | frontmatter `uid`（RFC 4122 UUID） |
 | 文書類似度 | Character n-gram Jaccard。提示は常に上位 3 件 + スコア |
 | グラム長 n | 仕様では未固定。小規模フィクスチャ比較で適度な分散を確認してから実装定数化（`backlog:ae7030f2-cf41-49f0-a709-8d3f34057272`） |
+| エージェント手順 | カタログ BASE（および REPO）に、`tt` による上流アップデートとマージ方法の capability を追加 |
 
-仕様時点の未決は **n の具体値のみ**（実装計画または実装初期の先送り）。それ以外の方針は本仕様で固定する。
+仕様時点の未決は **n の具体値**および capability の最終 `id`（実装計画で確定可）。それ以外の方針は本仕様で固定する。
 
 ## 背景 (Background)
 
@@ -109,6 +110,17 @@ status: ready
 - `--update` 成功後（クリーン更新完了、または更新ワークスペースの準備完了）は、当該スキャフォールドのダウンロード履歴を更新してよい。
 - `--update` は「スキップ」してはならない。常に最新取得を試みる。
 
+#### A9. カタログ capability（更新・マージ手順のスキル化）（必須）
+
+- `catalog/originals/axsh/go-standard-project/base/prompts/manifest/code_content/capabilities/` に、本機能のエージェント向け手順を **capability（スキル）として追加**する。
+- 対象パス（正本）: `catalog/originals/axsh/go-standard-project/base/prompts/manifest/`
+- tokotachi 本体の `prompts/manifest/code_content/capabilities/` にも同じ正本を同期する（既存のカタログ／REPO 収束方針に合わせる）。
+- 既存の `prompt-manifest-update`（ローカルテンプレート編集後の `tt prompt update` によるデプロイ）とは役割を分ける。本 capability は次を扱う。
+  1. **`tt` による上流プロンプトのアップデート方法**（`tt scaffold … --update [workdir]` の実行タイミング、workdir レイアウト、クリーン更新と AI マージ経路の見分け）
+  2. **マージ方法**（`instruction.md` と `doc-relations-NNN.md` の読み方、英語マージ方針の遵守、`uid` 一致優先、類似上位はヒント、プロジェクト固有情報の保全、マージ後の確認）
+- capability の `id` / ファイル名は実装計画で最終確定してよい（例: `scaffold-manifest-update`）。スキーマ必須の frontmatter（`uid` 導入後はそれも含む）と `tags: [baseline]`（または同等）を満たすこと。
+- `instruction.md` の本文方針と矛盾しないこと。エージェントが `--update` 出力を受け取ったあと、このスキルを参照してマージ作業を完了できる粒度で書く。
+
 ### B. Agent Config Set (ACS) 支援
 
 追加範囲は **B 案** で確定する。タグ選択エンジンの再実装はせず、既存 Manifest Selection Tags の上に運用面を足す。
@@ -191,6 +203,9 @@ flowchart TD
 5. **ACS（B 案）**  
    既存 `tags.go` の選択ロジックは維持する。追加は (1) `tt prompt tags` 相当の列挙、(2) カタログの非 `baseline` サンプル、(3) ACS 呼称付きヘルプ／capability 文書。
 
+6. **更新・マージ capability（A9）**  
+   カタログ BASE と REPO の `code_content/capabilities/` に新規 capability を置く。`prompt-manifest-update` はローカル編集のデプロイ手順のまま残し、上流取り込み（`--update`）と AI マージ手順は新 capability に集約する。必要なら相互参照を付ける。
+
 ### `--force` との役割分担
 
 | 用途 | フラグ |
@@ -255,6 +270,13 @@ flowchart TD
 1. 通常の 2 回目 `tt scaffold project axsh-go-standard` は引き続きスキップされる。
 2. 同じ状態で `--update` を付けるとスキップされず、取得処理に入る。
 
+### シナリオ 6: カタログ capability（更新・マージ）
+
+1. BASE（`catalog/originals/axsh/go-standard-project/base/prompts/manifest/code_content/capabilities/`）に、`tt scaffold … --update` とマージ手順を書いた capability が存在する。
+2. REPO の同パス相当にも同期されている。
+3. 内容に、workdir レイアウト、`instruction.md` / `doc-relations-NNN.md` の使い方、マージ方針、`prompt-manifest-update` との役割分担が含まれる。
+4. スキーマ検証（および導入後の `uid`）を通る。
+
 ---
 
 ## テスト項目 (Testing for the Requirements)
@@ -265,7 +287,7 @@ flowchart TD
    `scripts/process/build.sh`
 
 2. scaffold / prompt 関連の統合テスト（`tests/tt`）:
-   `scripts/process/integration_test.sh --categories "tt" --specify "Scaffold|PromptTags|PromptUpdate|ManifestUpdate|ACS|DocRelations|Uid|PromptTagsList"`
+   `scripts/process/integration_test.sh --categories "tt" --specify "Scaffold|PromptTags|PromptUpdate|ManifestUpdate|ACS|DocRelations|Uid|PromptTagsList|ScaffoldManifestUpdate"`
 
 3. タグ既存回帰と発見 CLI:
    `scripts/process/integration_test.sh --categories "tt" --specify "PromptTags"`
@@ -286,6 +308,7 @@ flowchart TD
 | B2 ドキュメント | ヘルプまたは capability 本文に ACS 説明・`--tags` 案内が含まれることの検査 |
 | B3 発見 CLI | `tt prompt tags` の単体／統合テスト（タグ一覧と所属の期待値） |
 | B4 非 baseline サンプル | カタログ検査＋ scaffold 後にサンプルが残ることの統合テスト |
+| A9 更新・マージ capability | BASE / REPO にファイルが存在し、必須キーワード（`--update`、`instruction.md`、`doc-relations-`、マージ方針）とスキーマ適合を検査 |
 
 手動の目視だけを完了条件にしない。上記スクリプトによる自動検証を必須とする。
 
