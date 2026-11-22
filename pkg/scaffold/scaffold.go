@@ -52,6 +52,8 @@ type RunOptions struct {
 	UseDefaults     bool              // --default flag: auto-apply defaults for non-required options
 	SkipDeps        bool              // --skip-deps flag: skip dependency resolution
 	Force           bool              // --force flag: ignore download history and re-download all
+	Update          bool              // --update: prepare manifest update workspace (AI merge)
+	UpdateWorkDir   string            // workdir for --update (empty → DefaultUpdateWorkDir)
 }
 
 // githubEntryFetcher implements EntryFetcher using the GitHub API.
@@ -259,6 +261,10 @@ func Apply(plan *Plan, opts RunOptions) error {
 
 // applySingleScaffold applies a single scaffold (no dependencies).
 func applySingleScaffold(plan *Plan, opts RunOptions) error {
+	if opts.Update && opts.Force {
+		return fmt.Errorf("cannot combine --update and --force")
+	}
+
 	spinner := NewSpinner(os.Stderr)
 
 	// Re-download template files for application
@@ -276,12 +282,16 @@ func applySingleScaffold(plan *Plan, opts RunOptions) error {
 	historyStore := NewDownloadHistoryStore(opts.RepoRoot)
 	isDynamic := IsDynamic(placement)
 
-	if !isDynamic && !opts.Force && historyStore.IsDownloaded(entry.Category, entry.Name) {
+	if !opts.Update && !isDynamic && !opts.Force && historyStore.IsDownloaded(entry.Category, entry.Name) {
 		opts.Logger.Info("Skipping %s/%s (already downloaded)", entry.Category, entry.Name)
 		if err := RemoveCheckpoint(opts.RepoRoot); err != nil {
 			opts.Logger.Warn("Failed to remove checkpoint: %v", err)
 		}
 		return nil
+	}
+
+	if opts.Update {
+		return applyManifestUpdate(entry, templateFiles, placement, opts, historyStore, isDynamic)
 	}
 
 	optionValues := plan.OptionValues
@@ -321,11 +331,90 @@ func applySingleScaffold(plan *Plan, opts RunOptions) error {
 	return nil
 }
 
+// applyManifestUpdate prepares the update workspace instead of applying files normally.
+func applyManifestUpdate(
+	entry *ScaffoldEntry,
+	templateFiles []DownloadedFile,
+	placement *Placement,
+	opts RunOptions,
+	historyStore *DownloadHistoryStore,
+	isDynamic bool,
+) error {
+	latest := CollectManifestFiles(templateFiles, placement)
+	if len(latest) == 0 {
+		return fmt.Errorf("scaffold %s/%s has no prompts/manifest content to update", entry.Category, entry.Name)
+	}
+	workdir := opts.UpdateWorkDir
+	if workdir == "" {
+		workdir = DefaultUpdateWorkDir(opts.RepoRoot, entry.Category, entry.Name)
+	}
+	if !filepath.IsAbs(workdir) {
+		workdir = filepath.Join(opts.RepoRoot, workdir)
+	}
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	res, err := PrepareUpdateWorkspace(UpdateWorkspaceOptions{
+		RepoRoot:      opts.RepoRoot,
+		WorkDir:       workdir,
+		LocalManifest: filepath.Join(opts.RepoRoot, "prompts", "manifest"),
+		LatestFiles:   latest,
+		Stdout:        stdout,
+	})
+	if err != nil {
+		return err
+	}
+	if !isDynamic {
+		if err := historyStore.RecordDownload(entry.Category, entry.Name); err != nil {
+			opts.Logger.Warn("Failed to record download: %v", err)
+		}
+	}
+	if err := RemoveCheckpoint(opts.RepoRoot); err != nil {
+		opts.Logger.Warn("Failed to remove checkpoint: %v", err)
+	}
+	if res.CleanApplied {
+		opts.Logger.Info("Manifest clean update applied via --update")
+	} else {
+		opts.Logger.Info("Manifest update workspace ready at %s", res.WorkDir)
+	}
+	return nil
+}
+
 // applyDependencyChain applies all scaffolds in the dependency chain in order.
 func applyDependencyChain(plan *Plan, opts RunOptions) error {
+	if opts.Update && opts.Force {
+		return fmt.Errorf("cannot combine --update and --force")
+	}
+
 	spinner := NewSpinner(os.Stderr)
 	total := len(plan.DependencyPlans)
 	historyStore := NewDownloadHistoryStore(opts.RepoRoot)
+
+	if opts.Update {
+		// For dependency chains, use the last plan entry that yields manifest files
+		// (typically the requested leaf / project scaffold).
+		for i := len(plan.DependencyPlans) - 1; i >= 0; i-- {
+			dp := plan.DependencyPlans[i]
+			downloader, err := github.NewClient(opts.RepoURL)
+			if err != nil {
+				return fmt.Errorf("failed to create downloader: %w", err)
+			}
+			downloader.Branch = opts.RepoBranch
+			templateFiles, placement, err := fetchTemplateAndPlacement(
+				downloader, &dp.Entry, opts.Lang, opts.Logger, spinner)
+			if err != nil {
+				return err
+			}
+			latest := CollectManifestFiles(templateFiles, placement)
+			if len(latest) == 0 {
+				continue
+			}
+			isDynamic := IsDynamic(placement)
+			return applyManifestUpdate(&dp.Entry, templateFiles, placement, opts, historyStore, isDynamic)
+		}
+		return fmt.Errorf("no prompts/manifest content found in dependency chain for --update")
+	}
 
 	for i, dp := range plan.DependencyPlans {
 		category := dp.Entry.Category

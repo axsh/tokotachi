@@ -24,6 +24,7 @@ var (
 	scaffoldFlagDefault  bool
 	scaffoldFlagSkipDeps bool
 	scaffoldFlagForce    bool
+	scaffoldFlagUpdate   string
 )
 
 var scaffoldCmd = &cobra.Command{
@@ -46,6 +47,11 @@ func init() {
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagDefault, "default", false, "Use default values for non-required options without prompting")
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagSkipDeps, "skip-deps", false, "Skip dependency resolution and apply only the specified scaffold")
 	scaffoldCmd.Flags().BoolVar(&scaffoldFlagForce, "force", false, "Force re-download all scaffolds, ignoring download history")
+	scaffoldCmd.Flags().StringVar(&scaffoldFlagUpdate, "update", "",
+		"Prepare prompts/manifest update workspace for AI merge (optional workdir; omit value for default under tmp/scaffold-update/)")
+	if f := scaffoldCmd.Flags().Lookup("update"); f != nil {
+		f.NoOptDefVal = "__default__"
+	}
 }
 
 func runScaffold(cmd *cobra.Command, args []string) error {
@@ -87,6 +93,16 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	updateMode := false
+	updateDir := ""
+	if cmd.Flags().Changed("update") {
+		updateMode = true
+		updateDir = scaffoldFlagUpdate
+		if updateDir == "__default__" || updateDir == "" {
+			updateDir = ""
+		}
+	}
+
 	// Run scaffold
 	opts := scaffold.RunOptions{
 		Pattern:         args,
@@ -103,6 +119,8 @@ func runScaffold(cmd *cobra.Command, args []string) error {
 		UseDefaults:     scaffoldFlagDefault,
 		SkipDeps:        scaffoldFlagSkipDeps,
 		Force:           scaffoldFlagForce,
+		Update:          updateMode,
+		UpdateWorkDir:   updateDir,
 	}
 
 	plan, err := scaffold.Run(opts)
