@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: create-implementation-plan
+uid: 7e48f70b-5d38-4d91-8e15-84af0474362e
 kind: procedure
 title: Create Implementation Plan
 trigger:
@@ -74,7 +75,7 @@ tags:
 
 ### [コンポーネント名 (e.g. ide/extension)]
 
-#### [MODIFY/NEW] [ファイルパス](プロジェクトルートからの相対パス)
+#### [MODIFY/NEW] [ファイルパス](file://プロジェクトルートからの相対パス)
 *   **Description**: [変更の概要]
 *   **Technical Design**:
     *   [関数シグネチャやインターフェース定義の変更点]
@@ -123,7 +124,7 @@ tags:
     既存の E2E テストインフラ (`tests/agentservice_e2e_test.go` のヘルパー関数等) を積極的に活用すること。
     E2E テストが不要な場合（純粋な内部リファクタリング等）は、その理由を明記すること。
 
-    #### [NEW/MODIFY] [テストファイル名](tests/xxx_test.go)
+    #### [NEW/MODIFY] [テストファイル名](file://tests/xxx_test.go)
     *   **テストケース**: [テスト関数名と検証内容]
     *   **検証ポイント**: [何が動作していれば成功か]
 
@@ -131,7 +132,7 @@ tags:
 
 `prompts/specifications`フォルダ以下にある、既存の仕様書およびドキュメントの内容を解析し、本計画で影響を受けるものを最新の状態に更新します。
 
-#### [MODIFY] [ファイル名](プロジェクトルートからの相対パス)
+#### [MODIFY] [ファイル名](file://プロジェクトルートからの相対パス)
 *   **更新内容**: [変更点]
 ```
 ### Template End

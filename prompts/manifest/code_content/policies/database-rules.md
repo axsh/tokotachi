@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: database-rules
+uid: d37e938f-c796-4579-b9c6-863a4c36e76f
 kind: policy
 scope: project
 title: Database Rules

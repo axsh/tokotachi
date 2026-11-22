@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: planning-rules
+uid: 64a828e2-d2e0-45a5-81e1-7ff6ebffe790
 kind: policy
 scope: project
 title: Planning Rules

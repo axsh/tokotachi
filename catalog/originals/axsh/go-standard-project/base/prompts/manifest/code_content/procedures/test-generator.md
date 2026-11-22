@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: test-generator
+uid: c6a88f4b-13c3-4cf1-86d8-3182b3f0316f
 kind: procedure
 title: Test Generator
 trigger:
@@ -204,5 +205,5 @@ tags:
 ## 11. ファイルの保存と完了
 
 1.  作成したファイルを指定されたディレクトリに保存する。
-2.  作成したファイルへのリンクをユーザーに提示する（ワークスペース相対の Markdown リンク。`file://` は付けない。`{{capability:portable-file-references}}`）。
+2.  作成したファイルへのリンクをユーザーに提示する（`file://` 形式）。
 3.  **フェーズ移行禁止**: 次のステップに進むのは、ユーザーが明示的に指示した場合のみ。

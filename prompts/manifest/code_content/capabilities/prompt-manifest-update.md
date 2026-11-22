@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: capability
 id: prompt-manifest-update
+uid: 967cc4c3-3f9c-4e76-b387-44d9b6441eb5
 title: Prompt Manifest Update (Rules / Skills / Procedures)
 description: >-
   ルール・スキル・ワークフロー等の Agent 向けプロンプトを改変する際の手順。
@@ -29,6 +30,9 @@ references:
   - "prompts/manifest/schemas/capability.schema.json"
   - "prompts/manifest/schemas/policy.schema.json"
   - "prompts/manifest/schemas/procedure.schema.json"
+  - "prompts/manifest/code_content/capabilities/scaffold-manifest-update.md"
+uses_capabilities:
+  - scaffold-manifest-update
 body: inline
 tags:
   - baseline
@@ -40,6 +44,16 @@ tags:
 Agent 向けの**ルール・スキル・ワークフロー（手順書）**を改変するときは、
 各エージェントの設定ディレクトリ（`.cursor/`, `.agent/`, `.codex/`, `.claude/`）を直接編集せず、
 **manifest テンプレートを編集してからデプロイ**する。
+
+## 0. 上流カタログからの取り込み（ACS / scaffold update）
+
+スキャフォールド上流の `prompts/manifest/` をプロジェクトへ取り込む・マージする手順は
+本ドキュメントに重複して書かない。必ず次を呼び出す:
+
+- `\{{capability:scaffold-manifest-update}}`
+
+Agent Config Set（タグで集合を切り替える運用）の発見は `tt prompt tags`、
+選択デプロイは `tt prompt update --tags <a,b,...>`（省略時は `baseline`）。
 
 > [!CAUTION]
 > 各エージェントの rules / skills は **`tt prompt update` により生成される**。

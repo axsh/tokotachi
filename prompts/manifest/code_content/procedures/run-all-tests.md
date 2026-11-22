@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: run-all-tests
+uid: 04be4f69-cbe8-4e45-9ff7-3b406e1a2c02
 kind: procedure
 title: Run All Tests
 trigger:

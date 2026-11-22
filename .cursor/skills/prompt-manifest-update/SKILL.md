@@ -11,6 +11,16 @@ Agent 向けの**ルール・スキル・ワークフロー（手順書）**を�
 各エージェントの設定ディレクトリ（`.cursor/`, `.agent/`, `.codex/`, `.claude/`）を直接編集せず、
 **manifest テンプレートを編集してからデプロイ**する。
 
+## 0. 上流カタログからの取り込み（ACS / scaffold update）
+
+スキャフォールド上流の `prompts/manifest/` をプロジェクトへ取り込む・マージする手順は
+本ドキュメントに重複して書かない。必ず次を呼び出す:
+
+- `{{capability:scaffold-manifest-update}}`
+
+Agent Config Set（タグで集合を切り替える運用）の発見は `tt prompt tags`、
+選択デプロイは `tt prompt update --tags <a,b,...>`（省略時は `baseline`）。
+
 > [!CAUTION]
 > 各エージェントの rules / skills は **`tt prompt update` により生成される**。
 > テンプレートとの二重管理を避けるため、**正（canonical）は常に `prompts/manifest/code_content/`** とする。

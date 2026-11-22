@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: procedure
 id: systematize-far-knowledge
+uid: 1f8802e2-cd92-44a3-b788-0dae32ca4fd7
 title: Systematize Far-Knowledge
 trigger:
     command: systematize-far-knowledge

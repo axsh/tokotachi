@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: logging-rules
+uid: abe2d728-e100-473b-aa54-1956b85edb03
 kind: policy
 scope: project
 title: Logging Rules
@@ -75,6 +76,10 @@ tags:
 logger.Debug("routing request", "model", model, "provider", provider, "mode", mode)
 ```
 
+**画面への出来事（events）**: 封筒の `data`（中身）は、どのレベルでもログに出さない。出すのは種類・対象・`trace_id`・件名など、中身以外の識別子だけにする。
+
+**メール**: 宛先・件名・本文・SMTP 応答の文（宛先を含むことがある）は、どのレベルでも出さない。出すのはメール ID・種類・状態・試行回数・SMTP の応答番号・`trace_id` だけにする。不達と最終失敗は WARN にする。
+
 ### 1.5 TRACE (開発者向け -- データダンプ)
 
 **定義**: DEBUG を補足する詳細データのダンプ。
@@ -97,13 +102,15 @@ logger.Debug("routing request", "model", model, "provider", provider, "mode", mo
 |---|---|
 | Tern コアサーバー | `tern` |
 | LLM Gateway Proxy | `llmgateway` |
-| Agent Service | `agentservice` |
+| Agent Service | `legalchk` |
 | Coding Agent (Claude Code) | `claudecode` |
 | Coding Agent (Codex) | `codex` |
 | WebSocket Server | `wsserver` |
 | Bifrost Driver | `bifrost-driver` |
 | Config Loader | `config` |
 | Vault | `vault` |
+| 設計データベース CLI | `designdb` |
+| 進捗報告書の道具 | `progress-report` |
 
 ## 3. フィールド命名規則
 
@@ -111,16 +118,24 @@ logger.Debug("routing request", "model", model, "provider", provider, "mode", mo
 
 - **スネークケース**を使用: `session_id`, `model_name`, `provider`
 - **共通フィールド名**:
+  - `trace_id`: W3C Trace Context の trace-id（32 桁の小文字 16 進数）。GUI サーバのリクエストと CLI の実行ごとに付ける。`logger.WithTrace(ctx)` で取得する
   - `session_id`: セッション識別子
   - `model`: モデル名
   - `provider`: プロバイダー名 ("anthropic", "openai")
   - `method`: HTTP メソッド
-  - `path`: リクエストパス
+  - `path`: リクエストパス（クエリ文字列を除く）
   - `status`: HTTP ステータスコード
   - `duration_ms`: 処理時間（ミリ秒）
   - `error`: エラーメッセージ
   - `body_size`: ボディサイズ（バイト）
   - `attempt`: リトライ試行回数
+
+### 3.1 リクエストと CLI 実行のログ
+
+- **GUI サーバ**: 全リクエストを trace middleware で包み、完了時に INFO で 1 行出す。フィールド: `method`, `path`, `status`, `duration_ms`, `trace_id`
+- **CLI の db コマンド** (`db setup`, `db migrate`, `db status`): 実行ごとに trace_id を発行し、以降のログに付ける
+- **ジョブのワーカー / `jobs enqueue`**: ログに少なくとも `job_id`, `kind`, `tenant_id`, `attempts`, `trace_id` を付ける（機微や本文は載せない）
+- **ファイル / アーカイブ**: ファイル名・オブジェクトキー・中身・SHA-256 の全文をログに出さない。識別子は `file_id` / `blob_id` / `size_bytes` などに限る
 
 ## 4. 実装における注意事項
 

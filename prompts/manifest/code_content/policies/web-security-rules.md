@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: web-security-rules
+uid: 505d38ca-3aca-429f-a65f-f11268bd3bd0
 kind: policy
 scope: project
 title: Web Security Rules

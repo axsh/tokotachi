@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: capability
 id: workflow-blueprint-design-philosophy
+uid: 2ea114e0-1b63-4f89-8c44-084a5731d088
 title: TypeScriptを用いたWorkflow記述における設計思想
 description: >-
   本プロジェクトにおけるWorkflowの設計における基本的な思想を定義する。

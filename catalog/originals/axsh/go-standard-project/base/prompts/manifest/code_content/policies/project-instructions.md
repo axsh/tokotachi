@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: project-instructions
+uid: e2ecc1a2-432c-4319-9409-542d4fcf4897
 kind: policy
 scope: project
 title: Project Instructions
@@ -80,19 +81,17 @@ procedure（ワークフロー）は、以下の順序で連携して動作し�
 
 1. **AI**: `scripts/process/build.sh` を実行
    - 全体ビルドと単体テストを実行
-   - **Linux**（ワークスペースの OS が Linux）および **Cursor / VS Code の Remote-SSH で接続先が Linux** の場合は、**必ず `--skip-etc` を付けて** `./scripts/process/build.sh --skip-etc` とすること（`etc` 配下の `mcp-command-runner` / `image-inspector` 等が当該環境で失敗しやすいため）
    - 失敗時は即座に修正して再実行
 2. **AI**: `scripts/process/integration_test.sh` を実行
    - 統合テストを実行
-   - **Linux** および **Remote-SSH の接続先が Linux** のときは **headless 前提**とする: **`--headed` と `--ui` を付けない**（Playwright の headless 既定のまま）。`integration_test.sh` は **`xvfb-run -a` で必ずラップ**して実行する（`./scripts/process/integration_test.sh` を直接叩かない。`--resume` や `--specify` を付けるときも同様）。根拠は `features/frontend/scripts/integration_test.sh` 冒頭コメント。**`xvfb-run` が無いホストでは先に Xvfb 系パッケージを入れてから実行**する。
+   - **Linux** および **Remote-SSH の接続先が Linux** のときは **headless 前提**とする: E2E テストに **`--headed` と `--ui` を付けない**（Playwright の headless 既定のまま）。
    - 失敗時は修正して該当テストのみ再実行 (`--specify` オプション使用)
 3. **AI**: 必要に応じて全テストを再実行してリグレッション確認
-
 
 ### 5. 確かめと次の仕様のフェーズ
 **ワークフロー**: `{{procedure:verify-and-specify-next}}`
 
-1. **人間**: 実装の確認の報告（`{{procedure:create-reproducible-report}}` の `_runs/procedures/` 配下の再現手順の報告、調査の報告など）を指定
+1. **人間**: 実装の確認の報告（`{{procedure:create-reproducible-report}}` の `_runs/procedures/`（gitignore）の再現手順の報告、E2E の記録、調査の報告など）を指定
 2. **AI**: `{{procedure:verify-and-specify-next}}` に従って、元の仕様と報告を熟読し、自分で確かめる
    - 問題があれば、直しの仕様を `{{procedure:create-specification}}` で作成
    - 問題が無ければ、次に実装すべきものを提案し、その仕様を `{{procedure:create-specification}}` で作成
@@ -134,7 +133,7 @@ procedure（ワークフロー）は、以下の順序で連携して動作し�
               ├→ scripts/process/build.sh (全体ビルド・単体テスト)
               └→ scripts/process/integration_test.sh (統合テスト)
        ↓
-[AI: {{procedure:create-reproducible-report}}] → `_runs/procedures/`（gitignore・commit しない）
+[AI: {{procedure:create-reproducible-report}}] → 再現手順の報告
        ↓
 [AI: {{procedure:verify-and-specify-next}}] → 確かめて、直しの仕様か次の仕様を生成
        ↓
@@ -182,9 +181,7 @@ procedure（ワークフロー）は、以下の順序で連携して動作し�
 ### Mac / Linux環境
 
 - 標準のbashシェルを使用してください
-- **Linux**（ローカル Linux および **Remote-SSH のリモートが Linux**）: `scripts/process/build.sh` を叩くときは **`--skip-etc`** を付与すること（例: `./scripts/process/build.sh --skip-etc`）
-- **Linux / Remote-SSH（Linux）**: `scripts/process/integration_test.sh` は **`--headed` / `--ui` を付けず**、かつ **`xvfb-run -a` で必ずラップ**して実行する（スクリプトを直接実行しない）
-- **macOS**: 上記 `--skip-etc` は Linux / Remote-SSH（Linux）専用の補足であり、macOS では従来どおりプロジェクトの期待に合わせて実行すればよい
+- **Linux / Remote-SSH（Linux）**: E2E テストに **`--headed` / `--ui` を付けない**（headless で実行する）
 
 ## Git 操作ルール
 
@@ -228,7 +225,7 @@ git push
 ## ファイル管理規則
 - **中間生成ファイル**: タスク進行中に生成される中間ファイル（ビルドエラーログ、デバッグ出力、一時的なドキュメントなど）は、必ず `tmp/` ディレクトリ以下に作成してください。
     - 例: `build_error.txt`, `doc_delta.txt`, `doc_resp.txt` などは `tmp/build_error.txt`, `tmp/doc_delta.txt`, `tmp/doc_resp.txt` として作成
-    - ログファイル、PIDファイルなども同様に `tmp/` 以下に配置すること（例: `tmp/vscode_launch.log`, `tmp/.vscode_cdp.pid`）。
+    - ログファイル、PIDファイルなども同様に `tmp/` 以下に配置すること（例: `tmp/e2e_run.log`, `tmp/server.pid`）。
     - これらのファイルはプロセスでは必要ですが、タスク完了後はゴミとなり、誤ってコミットされるリスクがあります。
     - `tmp/` ディレクトリは `.gitignore` で除外されているため、コミットされません。
 - **ファイルパスの表示**: ファイルを開かせる・クリックさせる提示では、ワークスペース相対の Markdown リンクを使うこと（例: `[path/to/file.md](path/to/file.md)`）。`file://` や絶対パスは付けないこと（`{{capability:portable-file-references}}`）。

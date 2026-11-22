@@ -1,0 +1,15 @@
+{
+  "kdb": "backlog",
+  "format_version": 1,
+  "content_hash": "5a76d5152015de32d29c130143872b9468b5013fc4b3d9f8fb96721622792a69",
+  "generated_at": "2026-11-22T10:10:24Z",
+  "chunk_size": 100,
+  "chunks": [
+    {
+      "path": "items/chunk-0000.json",
+      "kind": "items",
+      "count": 5,
+      "sha256": "41290e8ab65e4512fd11cf1440b07a813d3f22f2a19dfba445c60f36959f8ffb"
+    }
+  ]
+}

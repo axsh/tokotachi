@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: capability
 id: record-far-knowledge
+uid: a5caf662-d2a5-4ba4-8a79-803fad60d410
 title: Record Far-Knowledge via record.sh
 description: >-
   Shared skill for recording far-knowledge (cross-cutting knowledge not

@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: project-instructions
+uid: e2ecc1a2-432c-4319-9409-542d4fcf4897
 kind: policy
 scope: project
 title: Project Instructions

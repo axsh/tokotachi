@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: test-generator
+uid: c6a88f4b-13c3-4cf1-86d8-3182b3f0316f
 kind: procedure
 title: Test Generator
 trigger:

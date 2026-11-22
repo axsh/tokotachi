@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: create-pull-request
+uid: 4e3c0886-6cc1-4ed5-949b-3750b2213c23
 kind: procedure
 title: Create Pull Request
 trigger:

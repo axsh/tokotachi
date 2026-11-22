@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: create-specification
+uid: 4307db2f-fdae-4cb9-ab41-89c3b490e6f9
 kind: procedure
 title: Create Specification
 trigger:

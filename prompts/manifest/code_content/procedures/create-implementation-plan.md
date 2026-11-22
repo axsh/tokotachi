@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: create-implementation-plan
+uid: 7e48f70b-5d38-4d91-8e15-84af0474362e
 kind: procedure
 title: Create Implementation Plan
 trigger:

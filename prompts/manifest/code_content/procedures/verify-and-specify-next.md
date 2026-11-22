@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: verify-and-specify-next
+uid: 80714fc7-114c-401f-a053-1b7ff839a34d
 kind: procedure
 title: Verify and Specify Next
 trigger:

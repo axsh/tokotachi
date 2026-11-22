@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: capability
 id: portable-file-references
+uid: c47bfa12-7c3b-4688-8469-834fd5f8b71b
 title: Markdown 内ファイル参照のポータビリティ規約
 description: >-
   Markdown ドキュメントおよびチャット提示で、ファイル参照を
