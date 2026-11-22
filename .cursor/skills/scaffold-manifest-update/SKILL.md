@@ -7,7 +7,7 @@ disable-model-invocation: false
 
 # Scaffold Manifest Update（上流マニフェストの取り込みとマージ）
 
-上流スキャフォールド（例: `axsh-go-standard`）の `prompts/manifest/` を、ローカル編集を壊さずに取り込むときの手順。
+上流スキャフォールドの `prompts/manifest/` を、ローカル編集を壊さずに取り込むときの手順。
 
 ローカルテンプレートを編集して各エージェントへデプロイする手順は `{{capability:prompt-manifest-update}}` を参照。本スキルは **上流取り込み** の正本である。
 
@@ -17,12 +17,24 @@ disable-model-invocation: false
 - `tt scaffold` がダウンロード履歴でスキップし、単純な再実行では内容が変わらないとき
 - `--force` での破壊的再適用をしたくないとき
 
-## 2. アップデートの実行
+## 2. 実行前の確認（必須）
+
+`tt scaffold` の位置引数（`<category> <name>`）や追加フラグはプロジェクトごとに異なる。
+**エージェントは、次をユーザに問い合わせてから実行すること。推測や固定例の流用でコマンドを組み立ててはならない。**
+
+確認する項目の例:
+
+- `<category> <name>`（例としてあり得る形: `project some-scaffold`。実際の値はユーザ指定）
+- 作業ディレクトリ（`--update` の値。省略時はデフォルト）
+- 必要なら `--branch` / `--repo` / `--yes` など追加フラグ
+
+ユーザの回答をそのまま使い、次の形で実行する:
 
 ```bash
-tt scaffold project axsh-go-standard --update
+tt scaffold <category> <name> --update
 # または作業ディレクトリを指定
-tt scaffold project axsh-go-standard --update tmp/update/
+tt scaffold <category> <name> --update <workdir>
+# ユーザが指定した追加フラグがあればそれも付ける
 ```
 
 - `--update` は履歴があっても最新を取得する（スキップしない）
