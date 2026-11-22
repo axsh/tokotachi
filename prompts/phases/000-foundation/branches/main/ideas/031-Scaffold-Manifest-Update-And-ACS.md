@@ -20,7 +20,7 @@ status: draft
 
 複数エージェント／用途ごとにプロンプトセットを分けたい需要がある。フォルダを A / B / C に複製して `tt prompt` の入出力パスで切り替える運用は、重複とドリフトのコストが高い。本来は 1 本の `prompts/manifest/` にタグを付け、compile / deploy 時に必要な集合だけ選ぶ方がよい。
 
-調査の結果、この核は既に **Manifest Selection Tags** として実装済みである（`--tags` / `TT_TAGS`、暗黙 `baseline`、`--tag-refs`）。関連仕様: [feat-tags の 000-Manifest-Tags.md](../../feat-tags/ideas/000-Manifest-Tags.md)。本仕様の ACS 節は、製品概念としての整理と、既存実装に対する残ギャップの扱いを定める。暗黙タグ名を `dev` にする案は採らず、既存どおり `baseline` を維持する（`backlog:02bee65a-49a3-4945-8e10-18d2e23ac2c0`）。ACS として追加実装する範囲はレビューで確認する（`backlog:85d5fd04-4028-47ff-87ba-f20b69b41773`）。
+調査の結果、この核は既に **Manifest Selection Tags** として実装済みである（`--tags` / `TT_TAGS`、暗黙 `baseline`、`--tag-refs`）。関連仕様: [feat-tags の 000-Manifest-Tags.md](../../feat-tags/ideas/000-Manifest-Tags.md)。本仕様の ACS 節は、製品概念としての整理と、既存実装に対する残ギャップ（発見 CLI・サンプル・ドキュメント）を埋める。暗黙タグは既存の `baseline` をそのまま使い、別途 `dev` タグを定義しない（`backlog:02bee65a-49a3-4945-8e10-18d2e23ac2c0`）。追加範囲は B 案（ドキュメント＋非 baseline サンプル＋発見 CLI）で確定した（`backlog:85d5fd04-4028-47ff-87ba-f20b69b41773`）。
 
 ---
 
@@ -96,6 +96,8 @@ status: draft
 
 ### B. Agent Config Set (ACS) 支援
 
+追加範囲は **B 案** で確定する。タグ選択エンジンの再実装はせず、既存 Manifest Selection Tags の上に運用面を足す。
+
 #### B1. 既存機能の位置づけ（必須・前提）
 
 次を ACS の核として公式に位置づける（新規再実装はしない）。
@@ -105,22 +107,29 @@ status: draft
 - 環境変数 `TT_TAGS` / `TT_TAG_REFS`
 - `--tag-refs include|strict`
 
-無指定時は `baseline` が選ばれていると解釈する（利用者案の `dev` にはしない。`backlog:02bee65a-49a3-4945-8e10-18d2e23ac2c0`）。
+無指定時は既定どおり `baseline` が選ばれていると解釈する。`dev` タグの新設や暗黙タグの改名は行わない（`backlog:02bee65a-49a3-4945-8e10-18d2e23ac2c0`）。
 
 #### B2. 製品ドキュメント（必須）
 
-- ACS とは「単一の manifest ツリーをタグでエージェント／用途別に切り出す運用」であることを、prompt 関連ヘルプまたは capability（例: `prompt-manifest-update` 周辺）に短く記載する。
+- ACS とは「単一の manifest ツリーをタグでエージェント／用途別に切り出す運用」であること、および ACS の入口が既存の `--tags` / `TT_TAGS` と発見 CLI（B3）であることを、prompt 関連ヘルプおよび capability（例: `prompt-manifest-update` 周辺）に短く記載する。
 - フォルダ複製セット（A/B/C）よりタグ選択を推奨する旨を書く。
+- CLI ヘルプに ACS という呼称をシノニムとして追記する（例: `tt help prompt` に「ACS: selection via --tags」）。
 
-#### B3. 残作業候補（任意・範囲は確認事項）
+#### B3. 発見 CLI（必須）
 
-レビュー結果（`backlog:85d5fd04-4028-47ff-87ba-f20b69b41773`）に応じ、次のいずれかまたは複数を必須へ昇格してよい。
+- `tt prompt tags`（名称はこの程度でよい。実装計画で最終確定）を追加する。
+- 少なくとも次を出力する。
+  - マニフェスト上に現れるタグ名の一覧（暗黙 `baseline` を含む解釈を明示）
+  - 各タグに属する code_content エンティティ（kind / id / 相対パス）
+- 読み取り専用であり、compile / deploy は行わない。
+- `--workspace` / `--prompts-dir` など既存の path フラグと整合させる。
 
-- 利用可能タグと所属エンティティを列挙する発見コマンド（例: `tt prompt tags` 相当）
-- カタログへの非 `baseline` サンプル（例: `editor-only` / `external-agent`）
-- ACS という呼称を CLI ヘルプのシノニムとして追記
+#### B4. 非 baseline サンプル（必須）
 
-現状の仮扱い: **B1 と B2 を必須**、B3 は確認後に確定。
+- カタログ（`catalog/originals/axsh/go-standard-project`）に、`baseline` 以外のタグを持つ最小サンプルを 1 セット以上置く。
+- 例: `editor-only`（エディタ向けのみ）や `external-agent`（エディタ外エージェント向け）など。タグ名は実装計画で最終確定してよい。
+- サンプルは「フォルダを分けずタグで切り替える」使い方の見本とし、手順書（B2）から参照できるようにする。
+- 既存の `baseline` のみのエンティティの挙動は変えない。
 
 ---
 
@@ -155,8 +164,8 @@ flowchart TD
 4. **Similarity mapper**  
    Go 実装の決定論的類似度。調査結果に従い 1 手法を採用。入出力はテスト可能にする。
 
-5. **ACS 文書**  
-   既存 `tags.go` / スキーマを変更せず、ヘルプとエージェント向け説明を足す（B3 採択時のみ CLI 追加）。
+5. **ACS（B 案）**  
+   既存 `tags.go` の選択ロジックは維持する。追加は (1) `tt prompt tags` 相当の列挙、(2) カタログの非 `baseline` サンプル、(3) ACS 呼称付きヘルプ／capability 文書。
 
 ### `--force` との役割分担
 
@@ -206,13 +215,15 @@ flowchart TD
 3. `uid` 無しの改名・大幅改稿ペアを用意し、類似上位 3 件に期待ファイルが含まれることを確認する。
 4. `__far-knowledge-` 対象が主表から除外されることを確認する。
 
-### シナリオ 4: ACS（既存タグ）の確認
+### シナリオ 4: ACS（既存タグ＋発見 CLI＋サンプル）
 
-1. 同一 manifest ツリーに `tags: [baseline]` と `tags: [external-agent]` の capability を置く。
+1. 同一 manifest ツリーに `tags: [baseline]` と非 baseline（例: `external-agent`）の capability を置く。
 2. `tt prompt compile --tags baseline` では後者が selected にならない（参照モードに注意）。
 3. `tt prompt compile --tags external-agent` では後者が選ばれる。
 4. `--tags` 省略時は baseline 相当になる。
-5. フォルダを複製せずにセット切替できることを確認する。
+5. `tt prompt tags` が両タグと所属エンティティを列挙する。
+6. カタログ由来の非 baseline サンプルが scaffold 後に存在し、手順書またはヘルプから辿れる。
+7. フォルダを複製せずにセット切替できることを確認する。
 
 ### シナリオ 5: 履歴スキップとの共存
 
@@ -229,9 +240,9 @@ flowchart TD
    `scripts/process/build.sh`
 
 2. scaffold / prompt 関連の統合テスト（`tests/tt`）:
-   `scripts/process/integration_test.sh --categories "tt" --specify "Scaffold|PromptTags|PromptUpdate|ManifestUpdate|ACS|DocRelations|Uid"`
+   `scripts/process/integration_test.sh --categories "tt" --specify "Scaffold|PromptTags|PromptUpdate|ManifestUpdate|ACS|DocRelations|Uid|PromptTagsList"`
 
-3. タグ既存回帰:
+3. タグ既存回帰と発見 CLI:
    `scripts/process/integration_test.sh --categories "tt" --specify "PromptTags"`
 
 ### 要件とテストの対応
@@ -247,8 +258,9 @@ flowchart TD
 | A7 doc-relations | 類似度単体テスト（決定論）＋上位 3 件の期待値テスト |
 | A8 履歴 | `--update` 後にスキップされないこと／履歴更新の単体テスト |
 | B1 既存 ACS 核 | 既存 `PromptTags` 系テストの継続成功 |
-| B2 ドキュメント | ヘルプまたは capability 本文に ACS 説明が含まれることの検査（文字列またはフロントマター検査） |
-| B3 | 採択時のみ追加テスト |
+| B2 ドキュメント | ヘルプまたは capability 本文に ACS 説明・`--tags` 案内が含まれることの検査 |
+| B3 発見 CLI | `tt prompt tags` の単体／統合テスト（タグ一覧と所属の期待値） |
+| B4 非 baseline サンプル | カタログ検査＋ scaffold 後にサンプルが残ることの統合テスト |
 
 手動の目視だけを完了条件にしない。上記スクリプトによる自動検証を必須とする。
 
@@ -259,10 +271,10 @@ flowchart TD
 | 項目 | 参照 |
 | :--- | :--- |
 | 既存タグ仕様 | [000-Manifest-Tags.md](../../feat-tags/ideas/000-Manifest-Tags.md) |
-| 暗黙タグ `baseline` 維持 | `backlog:02bee65a-49a3-4945-8e10-18d2e23ac2c0` |
+| 暗黙タグ `baseline` 維持（`dev` 不要） | `backlog:02bee65a-49a3-4945-8e10-18d2e23ac2c0`（決着） |
 | frontmatter `uid` | `backlog:b7c00a38-db8d-4b8c-948f-e94f860db404` |
 | 類似度アルゴリズム選定 | `backlog:2752d038-bdd8-4920-91af-fa6fc32b01e4` |
-| ACS 残作業範囲 | `backlog:85d5fd04-4028-47ff-87ba-f20b69b41773` |
+| ACS 追加範囲は B 案 | `backlog:85d5fd04-4028-47ff-87ba-f20b69b41773`（決着） |
 
 ---
 
@@ -271,4 +283,4 @@ flowchart TD
 - `--update` 実行中に LLM API を呼び出して自動マージまで完了すること（指示とヒントの生成までが `tt` の責務）。
 - memory 文書や safety / targets のタグ選択モデルの変更。
 - 既存 `--force` の意味の置き換え。
-- 暗黙タグ名の `dev` への改名。
+- 暗黙タグ名の `dev` への改名、および `dev` タグの新規定義。
