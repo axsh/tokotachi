@@ -59,7 +59,7 @@ status: ready
 | `backup/` | 更新開始時点のローカル `prompts/manifest/`（対象範囲）のコピー |
 | `latest/` | カタログから取得した最新スキャフォールドのうち、マニフェスト相当の展開結果 |
 | `instruction.md` | AI 向けマージ指示（英語の方針本文を含む） |
-| `doc-relations.md`（および必要なら分割ファイル） | `backup` 視点の対応表（uid 一致・類似上位） |
+| `doc-relations-NNN.md`（連番、1 件でも `001` から） | `backup` 視点の対応表（uid 一致・類似上位） |
 
 遠方知識など更新対象外とするプレフィックス（例: ファイル名または id が `__far-knowledge-` で始まるもの）は、対応表の主対象から除外してよい。除外規則は実装時に明文化し、`instruction.md` にも書く。
 
@@ -82,7 +82,7 @@ status: ready
 2. Prefer incorporating improvements and convenience from `latest/`.
 3. Do not break existing references (`uses_capabilities`, template refs, relative links, skill ids).
 4. Keep current behavior working while absorbing upstream improvements.
-5. Use `doc-relations.md` (and splits) as mechanical hints; do not invent renames that contradict uid matches.
+5. Use `doc-relations-NNN.md` (zero-padded sequence starting at 001, even when only one file) as mechanical hints; do not invent renames that contradict uid matches.
 6. After merging into the real `prompts/manifest/`, leave the workdir intact for review unless the user asks to delete it.
 
 #### A6. Frontmatter `uid`（安定識別子）
@@ -98,7 +98,8 @@ status: ready
 - `backup` の各対象ファイルについて、少なくとも次を機械生成する。
   - `uid` 一致する `latest` 側パス（あれば）
   - `uid` 不一致／欠落時の類似ドキュメント上位 3 件（スコア付き）
-- 件数が多い場合はファイル分割し、`instruction.md` からリンクする。
+- 出力ファイル名は **最初から連番前提** とする。分割の有無に依らず、形式は `doc-relations-NNN.md`（ゼロ埋め 3 桁、`001` 始まり）。件数が 1 でも `doc-relations-001.md` のみとし、分割無し用の `doc-relations.md` は置かない。
+- 件数が増えて複数ファイルになる場合も同じ連番を継続し、`instruction.md` から各 `doc-relations-NNN.md` へリンクする。
 - 類似度アルゴリズムは **Character n-gram Jaccard** とする（`backlog:2752d038-bdd8-4920-91af-fa6fc32b01e4`）。LLM および重い外部 NLP 依存は使わない。
 - **n（グラム長）は仕様時点では固定しない。** 実装計画または実装初期に、小規模フィクスチャ比較プロセス（実現方針参照）で選び、選んだ n をコード定数または設定として固定し、単体テストに残す。
 - 既定の提示は閾値カットではなく **常に上位 3 件＋スコア** とする（自動マージの唯一根拠にはしない）。
@@ -170,7 +171,7 @@ flowchart TD
    `--update` と任意の workdir 引数を受け、scaffold パッケージへ渡す。
 
 2. **Update workspace builder (`pkg/scaffold` または隣接パッケージ)**  
-   backup / latest の展開、クリーン判定、`instruction.md` / `doc-relations*.md` 生成。
+   backup / latest の展開、クリーン判定、`instruction.md` / `doc-relations-NNN.md`（連番）生成。
 
 3. **uid スキーマ**  
    `prompts/manifest/schemas/*.json` とカタログ側スキーマへ `uid` を追加。カタログ originals の各 frontmatter に UUID を付与する生成／検証手順を用意する。
@@ -218,7 +219,7 @@ flowchart TD
 3. カタログ側に差分がある状態をシミュレートする（テスト用フィクスチャで `latest` 相当を差し替えてもよい）。
 4. `tt scaffold project axsh-go-standard --update tmp/update/` を実行する。
 5. クリーンパスが選ばれた場合、ローカル `prompts/manifest/` が latest と一致し、余剰が削除されていることを確認する。
-6. クリーンパスが安全側で選ばれなかった場合でも、`tmp/update/backup`・`latest`・`instruction.md`・`doc-relations.md` が生成され、stdout に指示と保存先が出ることを確認する。
+6. クリーンパスが安全側で選ばれなかった場合でも、`tmp/update/backup`・`latest`・`instruction.md`・少なくとも `doc-relations-001.md` が生成され、stdout に指示と保存先が出ることを確認する。単一ファイルでも `doc-relations.md`（連番なし）は作られないこと。
 
 ### シナリオ 2: ローカル編集ありの AI マージ支援
 
@@ -227,7 +228,7 @@ flowchart TD
 3. `latest` 側では別の既存ファイルが改善され、さらに 1 ファイルがリネームされている（`uid` は同一）フィクスチャを用意する。
 4. `--update tmp/update/` を実行する。
 5. ローカル `prompts/manifest/` は自動では壊れていない。
-6. `tmp/update/instruction.md` が英語のマージ方針を含み、`doc-relations.md` が uid 一致でリネームを示し、類似上位が出力される。
+6. `tmp/update/instruction.md` が英語のマージ方針を含み、`doc-relations-001.md`（必要なら後続連番）が uid 一致でリネームを示し、類似上位が出力される。
 7. stdout の指示内容がファイルと整合し、保存先パスが示される。
 8. 指示に従ったマージ（人手またはテスト用の決定的フィクスチャ適用）後、プロジェクト固有追記が残り、latest の改善が取り込まれ、参照が壊れない。
 
@@ -274,7 +275,7 @@ flowchart TD
 | 要件 | 検証 |
 | :--- | :--- |
 | A1 `--update` CLI | 単体（フラグ解析）＋ `tests/tt` で workdir 生成を検証 |
-| A2 レイアウト | 統合テストで backup / latest / instruction / doc-relations の存在を検証 |
+| A2 レイアウト | 統合テストで backup / latest / instruction / `doc-relations-001.md`（連番）の存在を検証。連番なしの `doc-relations.md` が無いこと |
 | A3 stdout 指示 | 統合テストで出力に方針キーワードと保存先が含まれることを検証 |
 | A4 クリーン更新 | フィクスチャ付き単体／統合で上書き・削除を検証。安全側スキップも検証 |
 | A5 方針文言 | `instruction.md` の必須英語フレーズをスナップショットまたは部分一致で検証 |
