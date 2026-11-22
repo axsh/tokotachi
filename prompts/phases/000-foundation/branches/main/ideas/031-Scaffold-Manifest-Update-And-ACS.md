@@ -17,9 +17,9 @@ status: ready
 | 安定識別子 | frontmatter `uid`（RFC 4122 UUID） |
 | 文書類似度 | Character n-gram Jaccard。提示は常に上位 3 件 + スコア |
 | グラム長 n | 仕様では未固定。小規模フィクスチャ比較で適度な分散を確認してから実装定数化（`backlog:ae7030f2-cf41-49f0-a709-8d3f34057272`） |
-| エージェント手順 | カタログ BASE（および REPO）に、`tt` による上流アップデートとマージ方法の capability を追加 |
+| エージェント手順 | 上流アップデート／マージは新規 capability に集約。`prompt-manifest-update` は重複を持たず新スキルを呼び出す |
 
-仕様時点の未決は **n の具体値**および capability の最終 `id`（実装計画で確定可）。それ以外の方針は本仕様で固定する。
+仕様時点の未決は **n の具体値**および新規 capability の最終 `id`（実装計画で確定可）。それ以外の方針は本仕様で固定する。
 
 ## 背景 (Background)
 
@@ -115,9 +115,15 @@ status: ready
 - `catalog/originals/axsh/go-standard-project/base/prompts/manifest/code_content/capabilities/` に、本機能のエージェント向け手順を **capability（スキル）として追加**する。
 - 対象パス（正本）: `catalog/originals/axsh/go-standard-project/base/prompts/manifest/`
 - tokotachi 本体の `prompts/manifest/code_content/capabilities/` にも同じ正本を同期する（既存のカタログ／REPO 収束方針に合わせる）。
-- 既存の `prompt-manifest-update`（ローカルテンプレート編集後の `tt prompt update` によるデプロイ）とは役割を分ける。本 capability は次を扱う。
+- **集約の原則:** 上流カタログからの取り込み・差分マージ・アップデート手順に関する説明は、すべて **新規 capability に集約**する。`prompt-manifest-update` 側に同種の手順を重複して残さない。
+- 新規 capability が扱う内容:
   1. **`tt` による上流プロンプトのアップデート方法**（`tt scaffold … --update [workdir]` の実行タイミング、workdir レイアウト、クリーン更新と AI マージ経路の見分け）
   2. **マージ方法**（`instruction.md` と `doc-relations-NNN.md` の読み方、英語マージ方針の遵守、`uid` 一致優先、類似上位はヒント、プロジェクト固有情報の保全、マージ後の確認）
+  3. 既存 `prompt-manifest-update` に含まれうる「上流更新」「スキャフォールド再取得」「テンプレート同梱物の取り込み」など、上記と重複する記述の **正本**
+- **`prompt-manifest-update` の改訂（必須）:**
+  - ローカルテンプレート編集と `tt prompt update` によるデプロイ手順は `prompt-manifest-update` に残す。
+  - 上流アップデート／マージに触れる箇所は本文を持たず、新規 capability を **呼び出す**（`uses_capabilities` および本文の `\{{capability:<id>}}` 参照。実装時の記法は既存テンプレート規約に従う）。
+  - BASE と REPO の両方の `prompt-manifest-update` を同じ方針で直す。
 - capability の `id` / ファイル名は実装計画で最終確定してよい（例: `scaffold-manifest-update`）。スキーマ必須の frontmatter（`uid` 導入後はそれも含む）と `tags: [baseline]`（または同等）を満たすこと。
 - `instruction.md` の本文方針と矛盾しないこと。エージェントが `--update` 出力を受け取ったあと、このスキルを参照してマージ作業を完了できる粒度で書く。
 
@@ -204,7 +210,7 @@ flowchart TD
    既存 `tags.go` の選択ロジックは維持する。追加は (1) `tt prompt tags` 相当の列挙、(2) カタログの非 `baseline` サンプル、(3) ACS 呼称付きヘルプ／capability 文書。
 
 6. **更新・マージ capability（A9）**  
-   カタログ BASE と REPO の `code_content/capabilities/` に新規 capability を置く。`prompt-manifest-update` はローカル編集のデプロイ手順のまま残し、上流取り込み（`--update`）と AI マージ手順は新 capability に集約する。必要なら相互参照を付ける。
+   カタログ BASE と REPO の `code_content/capabilities/` に新規 capability を置き、上流アップデート／マージ手順の正本とする。`prompt-manifest-update` はデプロイ手順に特化し、重複するアップデート説明は削除して新 capability を `uses_capabilities` と本文参照で呼び出す。
 
 ### `--force` との役割分担
 
@@ -274,8 +280,10 @@ flowchart TD
 
 1. BASE（`catalog/originals/axsh/go-standard-project/base/prompts/manifest/code_content/capabilities/`）に、`tt scaffold … --update` とマージ手順を書いた capability が存在する。
 2. REPO の同パス相当にも同期されている。
-3. 内容に、workdir レイアウト、`instruction.md` / `doc-relations-NNN.md` の使い方、マージ方針、`prompt-manifest-update` との役割分担が含まれる。
-4. スキーマ検証（および導入後の `uid`）を通る。
+3. 内容に、workdir レイアウト、`instruction.md` / `doc-relations-NNN.md` の使い方、マージ方針が含まれる。
+4. BASE / REPO の `prompt-manifest-update` は、上流アップデート／マージの詳細本文を持たず、新 capability を呼び出す（`uses_capabilities` または本文の capability 参照）。
+5. 両 capability 間でアップデート手順の重複コピーが無い。
+6. スキーマ検証（および導入後の `uid`）を通る。
 
 ---
 
@@ -308,7 +316,7 @@ flowchart TD
 | B2 ドキュメント | ヘルプまたは capability 本文に ACS 説明・`--tags` 案内が含まれることの検査 |
 | B3 発見 CLI | `tt prompt tags` の単体／統合テスト（タグ一覧と所属の期待値） |
 | B4 非 baseline サンプル | カタログ検査＋ scaffold 後にサンプルが残ることの統合テスト |
-| A9 更新・マージ capability | BASE / REPO にファイルが存在し、必須キーワード（`--update`、`instruction.md`、`doc-relations-`、マージ方針）とスキーマ適合を検査 |
+| A9 更新・マージ capability | BASE / REPO に新 capability が存在し必須キーワードを含む。`prompt-manifest-update` が新 capability を参照し、上流アップデート手順の重複本文が無いことを検査 |
 
 手動の目視だけを完了条件にしない。上記スクリプトによる自動検証を必須とする。
 
