@@ -25,3 +25,6 @@ Thumbs.db
 
 # Branch-local verification runs (not for commit)
 prompts/phases/*/branches/*/_runs/
+
+# Local knowledge-DB runtime data (SQLite); corpus is committed separately when shared
+shared/kdb/*/data/
