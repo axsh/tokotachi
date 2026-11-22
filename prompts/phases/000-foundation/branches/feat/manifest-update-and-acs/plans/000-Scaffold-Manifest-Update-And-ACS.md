@@ -282,9 +282,28 @@ ACS 呼称と `--tags` / `tt prompt tags` を追記。
 3. **迂回排除**: clean パスはバイト一致を要求。tags は EffectiveTags 経由。
 4. **依存**: 類似度→relations→workspace→CLI の順。
 
-### 総合判定
+### 総合判定結果
 
-Verification 完了後、testing-rules §9 の表で総合判定結果を計画末尾または実行ログに残す。
+**判定**: ✅ 動作確認完了
+
+#### テスト結果サマリ
+- `./scripts/process/build.sh`: PASS
+- `./scripts/process/integration_test.sh --categories "tt" --specify "PromptTagsList|ScaffoldManifestUpdate|ScaffoldHelp|PromptHelpMentionsACS|PromptTags"`: PASS（9 tests）
+- Character n-gram フィクスチャ: n=5 を `DefaultNGramN` に固定
+
+#### チェック項目の結果
+| # | チェック項目 | 結果 | 備考 |
+|---|------------|------|------|
+| 1 | スキップされたテスト | ✅ | なし |
+| 2 | 部分的なエラー | ✅ | なし |
+| 3 | 迂回処理による偽成功 | ✅ | clean はバイト一致、tags は EffectiveTags |
+| 4 | アダプタ・コンフィグの誤適用 | ✅ | help は clihelp ページを更新 |
+| 5 | テスト間の依存・順序問題 | ✅ | 単体→統合の順 |
+| 6 | カバレッジの妥当性 | ✅ | A1–A9 / B 案をカバー。ネットワーク依存の実 scaffold --update E2E はフィクスチャ単体＋CLI help／カタログ検査で代替 |
+| 7 | 外部システムの状態 | ✅ | 統合はローカル tt バイナリ |
+
+#### 判定理由
+コアロジック（similarity / doc-relations / update workspace）と CLI・カタログ・ACS 発見を自動検証した。実 GitHub からの `--update` 往復はネットワーク依存のため単体フィクスチャで代替し、フラグとヘルプは統合で確認した。
 
 ## Documentation
 
