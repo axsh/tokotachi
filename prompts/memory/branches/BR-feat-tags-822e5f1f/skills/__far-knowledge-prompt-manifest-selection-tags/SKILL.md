@@ -5,8 +5,8 @@ id: __far-knowledge-prompt-manifest-selection-tags
 title: "Far-Knowledge: Manifest Selection Tags for Compile/Deploy/Update"
 description: >-
   Cross-cutting knowledge about selection tags on code_content manifests,
-  --tags/--tag-refs CLI behavior, include/strict reference modes, selected
-  markers in resolved manifests, and digest inclusion of tag context.
+  --tags/--tag-refs CLI behavior, ACS product naming, discovery via
+  tt prompt tags, include/strict reference modes, and digest inclusion.
 user_visible: false
 manual_only: false
 status: current
@@ -47,3 +47,11 @@ Resolved manifests keep **all** entities and mark each with `selected: true|fals
 ## Digest
 
 Deploy digest hashing includes normalized, sorted RequestedTags and the tag-refs mode in addition to all source file contents. Changing tags or tag-refs must not be treated as an unchanged deploy.
+
+## ACS Product Name and Discovery
+
+ACS (Agent Content Selection) is the product name for Manifest Selection Tags.
+
+- Additional ACS scope (plan B): documentation, non-baseline catalog samples, and the `tt prompt tags` discovery CLI. The selection engine itself is not reimplemented.
+- Implicit selection tag remains `baseline`. A `dev` tag will not be introduced for this purpose.
+- `tt prompt tags` lists available tags for discovery; selection remains `--tags` / `TT_TAGS`.
