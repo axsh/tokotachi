@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: execute-all-after-spec
+uid: 007d77d5-3364-4b45-8646-7524b53d2c35
 kind: procedure
 title: Execute All After Spec
 trigger:

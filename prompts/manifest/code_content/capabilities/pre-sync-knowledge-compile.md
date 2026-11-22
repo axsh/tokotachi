@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: capability
 id: pre-sync-knowledge-compile
+uid: 4c39a396-61f7-4498-be44-dda0093d6d58
 title: Pre-Sync Knowledge Compile
 description: >-
   Before creating a Pull Request or pulling from a remote/local branch,

@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: policy
 id: far-knowledge-memory
+uid: 6bc97b49-a8d5-4ac5-a080-559c8f29ac92
 title: Far-Knowledge Memory Policy
 scope: project
 activation:

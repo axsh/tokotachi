@@ -41,7 +41,7 @@ None.（仕様レビュー済み。ユーザー指示により計画→実装を
 *   **Technical Design**:
 
 ```go
-const DefaultNGramN = 4 // fixed after fixture comparison in tests
+const DefaultNGramN = 5 // fixed after fixture comparison in tests (n=5 best margin)
 
 func NormalizeForSimilarity(s string) string // CRLF→LF, collapse runs of whitespace optionally keep simple: only CRLF→LF + trim
 func CharNGrams(s string, n int) map[string]struct{}

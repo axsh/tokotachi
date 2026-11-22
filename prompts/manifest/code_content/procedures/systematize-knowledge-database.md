@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: procedure
 id: systematize-knowledge-database
+uid: 37ed65ab-529c-4b4f-9810-0c8e4f07077f
 title: Systematize Knowledge Database
 trigger:
   command: systematize-knowledge-database

@@ -3,6 +3,7 @@ activation:
     mode: always
 apiVersion: agent.meta/v1
 id: vibe-coding-standard
+uid: eee2df3d-7cb2-43d5-b37f-cb7f3c336b9f
 kind: skip
 scope: project
 title: Vibe Coding Standard

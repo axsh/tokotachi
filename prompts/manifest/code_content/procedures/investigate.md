@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: investigate
+uid: 9fab8525-37f3-4b6c-8226-58d46040c116
 kind: procedure
 title: Investigate
 trigger:

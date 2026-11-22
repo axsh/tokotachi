@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: testing-rules
+uid: 03675c3d-2e54-404e-84dd-8cfe3a26e3b6
 kind: policy
 scope: project
 title: Testing Rules

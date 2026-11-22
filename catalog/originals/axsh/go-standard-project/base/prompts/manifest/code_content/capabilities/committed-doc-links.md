@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: capability
 id: committed-doc-links
+uid: b85db550-6c17-47be-8475-725c0720db47
 title: Committed Document Link Boundary
 description: >-
   リポジトリにコミットする Markdown から、ワークスペース相対パスへの

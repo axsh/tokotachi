@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: logging-rules
+uid: abe2d728-e100-473b-aa54-1956b85edb03
 kind: policy
 scope: project
 title: Logging Rules

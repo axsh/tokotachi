@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: capability
 id: knowledge-database
+uid: d065f2b1-b1f6-463f-ab61-0d749f13afff
 title: 知識データベース
 description: >-
   知識データベース（知識DB、KDB）を新しく設計するときに使う。

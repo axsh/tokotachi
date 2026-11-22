@@ -3,6 +3,7 @@ activation:
     mode: trigger
 apiVersion: agent.meta/v1
 id: coding-rules
+uid: c3a955ae-de76-4f63-b7af-ddb3184ef6ce
 kind: policy
 scope: project
 title: Coding Rules

@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: review-point
+uid: 74c7655a-d28b-4cdc-99c2-841694596137
 kind: procedure
 title: Review Point
 trigger:

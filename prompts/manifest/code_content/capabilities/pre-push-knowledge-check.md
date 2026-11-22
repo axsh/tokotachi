@@ -2,6 +2,7 @@
 apiVersion: agent.meta/v1
 kind: capability
 id: pre-push-knowledge-check
+uid: 651852bf-dcf3-4b75-a525-f8f428f2508f
 title: Pre-Push Knowledge Check
 description: >-
   Before git push, inspect all committed changes and determine whether they

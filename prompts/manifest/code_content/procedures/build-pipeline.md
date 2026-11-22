@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: build-pipeline
+uid: 98859248-4128-4e1d-8681-6f82312665d6
 kind: procedure
 title: Build, Test, and Verify Pipeline
 trigger:

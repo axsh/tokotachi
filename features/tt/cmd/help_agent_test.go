@@ -81,7 +81,7 @@ func TestAgentHelp_FlagHelpSameAsTopic(t *testing.T) {
 func TestAgentHelp_RequiredPathsRegistered(t *testing.T) {
 	required := []string{
 		"up", "down", "create", "delete", "open", "close", "editor", "status", "list", "shell", "exec",
-		"prompt", "prompt compile", "prompt deploy", "prompt update", "prompt instruction",
+		"prompt", "prompt compile", "prompt deploy", "prompt update", "prompt tags", "prompt instruction",
 		"agent", "agent record", "agent status", "agent intake", "agent knowledge",
 		"merge", "pr", "doctor", "scaffold", "_update-code-status",
 	}

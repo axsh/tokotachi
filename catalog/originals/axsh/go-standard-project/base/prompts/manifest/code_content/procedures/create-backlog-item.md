@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: create-backlog-item
+uid: 94fda777-812f-484d-a7d8-b112cc0b35bb
 kind: procedure
 title: Create Backlog Item
 trigger:

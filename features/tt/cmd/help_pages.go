@@ -131,13 +131,24 @@ func registerPromptHelp() {
 	ex := "0 success\n1 failure"
 	clihelp.Register("prompt", page(
 		"tt prompt",
-		"Manage prompt manifest compilation and deployment. Template refs: `{{kind:id}}` (see `tt prompt instruction`).",
-		"When updating agent rules/skills from the prompt manifest.",
+		"Manage prompt manifest compilation and deployment (ACS via --tags). Template refs: `{{kind:id}}` (see `tt prompt instruction`).",
+		"When updating agent rules/skills from the prompt manifest, or selecting an Agent Config Set with tags.",
 		"Do not hand-edit deployed `.cursor`/`.claude` outputs as the source of truth.",
 		"Workspace with `prompts/manifest`.",
-		"Subcommands: compile, deploy, update, instruction. Path flags: --workspace, --prompts-dir, …",
+		"Subcommands: compile, deploy, update, tags, instruction. Path flags: --workspace, --prompts-dir, …\n"+
+			"ACS: `--tags` / `TT_TAGS` (default baseline). Discover tags with `tt prompt tags`. Prefer one manifest tree over A/B/C folder copies.",
 		ex,
-		"`tt help prompt update`\n`tt help prompt instruction`",
+		"`tt help prompt tags`\n`tt help prompt update`\n`tt help prompt instruction`",
+	))
+	clihelp.Register("prompt tags", page(
+		"tt prompt tags",
+		"List ACS selection tags and which code_content entities belong to each tag.",
+		"When discovering available Agent Config Sets before compile/deploy/update.",
+		"Do not use tags list as a substitute for deploy; it is read-only discovery.",
+		"Readable prompts tree with project.yaml.",
+		"`tt prompt tags` (path flags as for compile).",
+		ex,
+		"`tt help prompt`\n`tt help prompt update`",
 	))
 	clihelp.Register("prompt compile", page(
 		"tt prompt compile",
@@ -384,10 +395,11 @@ func registerMiscHelp() {
 	clihelp.Register("scaffold", page(
 		"tt scaffold",
 		"Scaffold directory structures and files from predefined templates downloaded from an external repository.",
-		"Bootstrapping new feature layouts.",
-		"Do not overwrite existing projects without review.",
+		"Bootstrapping new feature layouts, or preparing a prompts/manifest update workspace with --update.",
+		"Do not overwrite existing projects without review. Prefer --update over --force when merging upstream manifests.",
 		"Network access if templates are remote.",
-		"`tt scaffold` with template flags.",
+		"`tt scaffold` with template flags.\n"+
+			"`tt scaffold <category> <name> --update [workdir]` prepares backup/latest/instruction.md/doc-relations-NNN.md for AI merge.",
 		ex,
 		"`tt help create`",
 	))

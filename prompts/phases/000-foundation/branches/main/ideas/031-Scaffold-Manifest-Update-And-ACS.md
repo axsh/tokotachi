@@ -16,7 +16,7 @@ status: ready
 | ACS 追加範囲 | B 案: ドキュメント + 非 baseline サンプル + 発見 CLI（`tt prompt tags` 相当）。選択エンジンは再実装しない |
 | 安定識別子 | frontmatter `uid`（RFC 4122 UUID） |
 | 文書類似度 | Character n-gram Jaccard。提示は常に上位 3 件 + スコア |
-| グラム長 n | 仕様では未固定。小規模フィクスチャ比較で適度な分散を確認してから実装定数化（`backlog:ae7030f2-cf41-49f0-a709-8d3f34057272`） |
+| グラム長 n | Character n-gram Jaccard の **n=5**（フィクスチャ比較で margin 最大。`pkg/scaffold.DefaultNGramN`） |
 | エージェント手順 | 上流アップデート／マージは新規 capability に集約。`prompt-manifest-update` は重複を持たず新スキルを呼び出す |
 
 仕様時点の未決は **n の具体値**および新規 capability の最終 `id`（実装計画で確定可）。それ以外の方針は本仕様で固定する。
@@ -102,7 +102,7 @@ status: ready
 - 出力ファイル名は **最初から連番前提** とする。分割の有無に依らず、形式は `doc-relations-NNN.md`（ゼロ埋め 3 桁、`001` 始まり）。件数が 1 でも `doc-relations-001.md` のみとし、分割無し用の `doc-relations.md` は置かない。
 - 件数が増えて複数ファイルになる場合も同じ連番を継続し、`instruction.md` から各 `doc-relations-NNN.md` へリンクする。
 - 類似度アルゴリズムは **Character n-gram Jaccard** とする（`backlog:2752d038-bdd8-4920-91af-fa6fc32b01e4`）。LLM および重い外部 NLP 依存は使わない。
-- **n（グラム長）は仕様時点では固定しない。** 実装計画または実装初期に、小規模フィクスチャ比較プロセス（実現方針参照）で選び、選んだ n をコード定数または設定として固定し、単体テストに残す。
+- **n（グラム長）は 5。** 小規模フィクスチャ比較（n=3,4,5）で正対応と誤対応の margin が最大だった値を `pkg/scaffold.DefaultNGramN` に固定し、単体テストで回帰する（`backlog:ae7030f2-cf41-49f0-a709-8d3f34057272`）。
 - 既定の提示は閾値カットではなく **常に上位 3 件＋スコア** とする（自動マージの唯一根拠にはしない）。
 
 #### A8. ダウンロード履歴との関係
@@ -330,7 +330,7 @@ flowchart TD
 | 暗黙タグ `baseline` 維持（`dev` 不要） | `backlog:02bee65a-49a3-4945-8e10-18d2e23ac2c0`（決着） |
 | frontmatter 安定識別子は `uid` | `backlog:b7c00a38-db8d-4b8c-948f-e94f860db404`（決着） |
 | 類似度は Character n-gram Jaccard（n はフィクスチャ比較） | `backlog:2752d038-bdd8-4920-91af-fa6fc32b01e4`（決着） |
-| n（グラム長）のフィクスチャ比較と固定 | `backlog:ae7030f2-cf41-49f0-a709-8d3f34057272`（先送り） |
+| n（グラム長）は 5 に固定 | `backlog:ae7030f2-cf41-49f0-a709-8d3f34057272`（決着） |
 | ACS 追加範囲は B 案 | `backlog:85d5fd04-4028-47ff-87ba-f20b69b41773`（決着） |
 
 ---

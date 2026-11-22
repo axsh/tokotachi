@@ -1,6 +1,7 @@
 ---
 apiVersion: agent.meta/v1
 id: create-reproducible-report
+uid: d101ef5a-a257-440b-81e7-883ff6888670
 kind: procedure
 title: Create Reproducible Report
 trigger:
