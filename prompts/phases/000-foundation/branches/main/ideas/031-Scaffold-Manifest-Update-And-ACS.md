@@ -3,10 +3,22 @@ apiVersion: agent.meta/v1
 id: Scaffold-Manifest-Update-And-ACS
 kind: idea
 title: スキャフォールド・マニフェスト更新と Agent Config Set (ACS) 支援
-status: draft
+status: ready
 ---
 
 # スキャフォールド・マニフェスト更新と Agent Config Set (ACS) 支援
+
+## 決定サマリ（レビュー確定）
+
+| 項目 | 決定 |
+| :--- | :--- |
+| 暗黙タグ | 既存の `baseline` を維持。`dev` は新設しない |
+| ACS 追加範囲 | B 案: ドキュメント + 非 baseline サンプル + 発見 CLI（`tt prompt tags` 相当）。選択エンジンは再実装しない |
+| 安定識別子 | frontmatter `uid`（RFC 4122 UUID） |
+| 文書類似度 | Character n-gram Jaccard。提示は常に上位 3 件 + スコア |
+| グラム長 n | 仕様では未固定。小規模フィクスチャ比較で適度な分散を確認してから実装定数化（`backlog:ae7030f2-cf41-49f0-a709-8d3f34057272`） |
+
+仕様時点の未決は **n の具体値のみ**（実装計画または実装初期の先送り）。それ以外の方針は本仕様で固定する。
 
 ## 背景 (Background)
 
