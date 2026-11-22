@@ -47,3 +47,7 @@ body: inline
 - Take `latest` for additive safety guards and schema improvements when uid-aligned or new upstream-only files
 - Leave the `--update` workdir in place after merge; it is evidence, not a disposable cleanup target
 - Catalog capability `scaffold-manifest-update` documents the procedure; `prompt-manifest-update` calls it for upstream merge
+
+## Ask User for Scaffold Update Arguments
+
+Agents must not hardcode `tt scaffold` category/name. Ask the user for category, name, workdir, and optional flags before running `--update`, and use their answers literally.
