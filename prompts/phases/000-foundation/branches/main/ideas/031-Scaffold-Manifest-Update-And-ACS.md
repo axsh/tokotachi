@@ -272,7 +272,7 @@ flowchart TD
 | :--- | :--- |
 | 既存タグ仕様 | [000-Manifest-Tags.md](../../feat-tags/ideas/000-Manifest-Tags.md) |
 | 暗黙タグ `baseline` 維持（`dev` 不要） | `backlog:02bee65a-49a3-4945-8e10-18d2e23ac2c0`（決着） |
-| frontmatter `uid` | `backlog:b7c00a38-db8d-4b8c-948f-e94f860db404` |
+| frontmatter 安定識別子は `uid` | `backlog:b7c00a38-db8d-4b8c-948f-e94f860db404`（決着） |
 | 類似度アルゴリズム選定 | `backlog:2752d038-bdd8-4920-91af-fa6fc32b01e4` |
 | ACS 追加範囲は B 案 | `backlog:85d5fd04-4028-47ff-87ba-f20b69b41773`（決着） |
 
